@@ -40,6 +40,7 @@ function moodFactors(u){
   if(grief>0.05) f.push(['lutto', -0.3*grief]);
   if(boomT>0) f.push(['annata abbondante', 0.08]);
   if(u.funT>0) f.push(['svago in taverna', 0.15]);
+  if(weatherNow().mood&&!(u.act==='sleep'&&u.bed&&u.from===u.bed)) f.push([weatherNow().label+' fuori', weatherNow().mood]);
   if(u.bonds&&friendNear(u)) f.push(['un amico vicino', 0.06]);
   if(u.sorrowT>0) f.push(['ha perso un amico', -0.2]);
   if(u.kind==='thrall') f.push(['assoggettato', -0.2]);
@@ -59,10 +60,10 @@ function needsTick(){
     const u=units[i];
     if(!hasNeeds(u)) continue;
     const n=needsOf(u);
-    n.food=Math.max(0, n.food-1/NEEDS.FULL);
+    n.food=Math.max(0, n.food-diff().needs/NEEDS.FULL);
     if(u.act==='sleep'&&u.from===u.goal)
       n.rest=Math.min(1, n.rest+1/(u.bed&&u.from===u.bed?NEEDS.BED_REST:NEEDS.GROUND_REST));
-    else n.rest=Math.max(0, n.rest-1/(NEEDS.AWAKE*traitMul(u,'awake')));
+    else n.rest=Math.max(0, n.rest-diff().needs/(NEEDS.AWAKE*traitMul(u,'awake')));
     n.mood+=(moodTarget(u)-n.mood)*NEEDS.MOOD_EASE;
     if(u.funT>0) u.funT--;
     if(u.sorrowT>0) u.sorrowT--;

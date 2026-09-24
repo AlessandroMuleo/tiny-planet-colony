@@ -32,7 +32,9 @@ function govContext(){
     spoil: r.spoil,
     moodAvg: (()=>{ const m=units.filter(u=>hasNeeds(u)&&u.needs); return m.length?m.reduce((s,u)=>s+u.needs.mood,0)/m.length:0.6; })(),
     children: myPeople().filter(u=>u.stage==='child').length,
-    dryJobs: FC.mine.filter(t=>isMine(t)&&t.biome==='sand'&&jobsOf(t)>0&&!wellNear(t)).length,
+    // lavori all'asciutto: sulla sabbia sempre, in siccità anche i campi
+    dryJobs: FC.mine.filter(t=>isMine(t)&&jobsOf(t)>0&&!wellNear(t)&&
+      (t.biome==='sand'||(weather.kind==='siccita'&&BUILDINGS[t.building].per&&BUILDINGS[t.building].per.food>0))).length,
     // lingotti: servono per torrette, ambasciata e rampa
     wantBars: (tech>=1||raidNo>=2||settlements.length>0)&&(res.bar||0)<40};
 }

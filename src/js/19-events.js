@@ -220,7 +220,7 @@ function colonyWealth(){
    altrimenti una colonia grande verrebbe schiacciata */
 function raidSize(){
   const pts=Math.sqrt(Math.max(0,colonyWealth()))*0.12*(1+0.15*(worldIndex-1));
-  return Math.max(1,Math.min(14,Math.round(pts*narratorPhase().size)));
+  return Math.max(1,Math.min(14,Math.round(pts*narratorPhase().size*diff().raid)));
 }
 function raidInterval(){
   return Math.round((100+(hasOrbital('eye')?ORBITALS.eye.delay:0))*

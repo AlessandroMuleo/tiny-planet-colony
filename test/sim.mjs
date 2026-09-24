@@ -27,7 +27,8 @@ const FPS = 5;                        // passi di simulazione per secondo di gio
 /* eventi casuali che devono comparire in almeno uno degli scenari: per un
    seme solo sarebbero fragili (ogni modifica sposta i numeri casuali), ma
    se non compaiono mai in tutta la suite qualcosa si è rotto davvero    */
-const SUITE_EXPECT = ['❓', 'Il governatore sceglie', '🔬', '🏆', '🕯', '💍', '🥀', 'ripartono col bottino', 'ripresa'];
+const SUITE_EXPECT = ['❓', 'Il governatore sceglie', '🔬', '🏆', '🕯', '💍', '🥀', 'ripartono col bottino', 'ripresa',
+  '⛈', '🌵', '🌫', '⚡'];
 
 const SCENARIOS = [
   // survive: col governatore la colonia deve arrivare viva alla fine
@@ -38,6 +39,8 @@ const SCENARIOS = [
   { name: 'terzo mondo con rivali',      seed: 11, world: 3, auto: true, survive: true, expect: ['📜', 'accetta il dono'] },
   { name: 'quinto mondo con rivali',     seed: 23, world: 5, auto: true, survive: true },
   { name: 'salva e ricarica a metà',     seed: 5,  world: 3, auto: true, reload: true, survive: true },
+  // difficile: incursioni più forti, fame e sonno più rapidi, meno scorte
+  { name: 'difficile col governatore',   seed: 9,  world: 2, auto: true, survive: true, difficulty: 'difficile' },
   // a metà partita si parte per il mondo successivo: sbarcano i veterani
   { name: 'nuovo mondo coi veterani',    seed: 13, world: 2, auto: true, survive: true, expect: ['🚀 Sbarcano'],
     midway: `const pad=FC.mine.find(t=>isMine(t)&&housesOf(t)>0)||FC.mine.find(t=>isMine(t));
@@ -55,8 +58,9 @@ const SCENARIOS = [
 const DRIVER = `
 var __acc = 0, __clock = 0, __tick = 0, __stale = new Map(), __progress = new Map();
 
-function __setup(world, seed, autoOn){
+function __setup(world, seed, autoOn, diffName){
   worldIndex = world; worldSeed = seed;
+  difficulty = diffName || 'normale'; res = startingRes();
   generateWorld(worldSeed); applySeason(); refreshHUD();
   auto = autoOn;
 }
@@ -156,6 +160,7 @@ function __check(){
   if(tech !== researched.size) bad.push('tech = ' + tech + ' ma i nodi completati sono ' + researched.size);
   for(const id of researched) if(!RESEARCH[id]) bad.push('nodo di ricerca sconosciuto: ' + id);
   if(researching && (!RESEARCH[researching] || researched.has(researching))) bad.push('ricerca in corso non valida: ' + researching);
+  if(!WEATHER[weather.kind] || !(weather.t > -1)) bad.push('meteo non valido: ' + weather.kind);
   if(!NARRATOR_PHASES[narrator.phase]) bad.push('narratore in una fase sconosciuta: ' + narrator.phase);
   if(choice && !CHOICE_EVENTS[choice.id]) bad.push('scelta sconosciuta: ' + choice.id);
   const RELS = ['ostile','neutrale','alleato','assoggettato','conquistato'];
@@ -213,7 +218,7 @@ function runScenario(sc) {
   let crashed = null;
   const t0 = Date.now();
   try {
-    game.run(`__setup(${sc.world}, ${sc.seed}, ${sc.auto})`);
+    game.run(`__setup(${sc.world}, ${sc.seed}, ${sc.auto}, ${JSON.stringify(sc.difficulty || 'normale')})`);
     if (sc.setup) game.run(sc.setup);
     const dt = 1 / FPS;
     for (let f = 0; f < TICKS * FPS; f++) {

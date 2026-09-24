@@ -11,7 +11,7 @@ function restartGame(){
   $('over').classList.remove('on');
   gameOver=false;
   worldIndex=1; worldSeed=Date.now()%99999;
-  res={food:22,mat:60,pow:12,bar:0}; pop=3; sci=0; tech=0; eventIn=110; boomT=0;
+  res=startingRes(); pop=3; sci=0; tech=0; eventIn=110; boomT=0;
   researched=new Set(); researching=null; stats=[]; veterans=[];
   generateWorld(worldSeed); applySeason(); refreshHUD();
   toast('Una nuova colonia atterra su '+NAMES[0]+'.');
@@ -139,7 +139,8 @@ $('b-load').addEventListener('click',loadGame);
 $('b-log').addEventListener('click',toggleLog);
 $('b-research').addEventListener('click',toggleResearch);
 $('b-share').addEventListener('click',()=>{
-  const url=location.origin+location.pathname+'?seed='+worldSeed+(worldIndex>1?'&mondo='+worldIndex:'');
+  const url=location.origin+location.pathname+'?seed='+worldSeed+(worldIndex>1?'&mondo='+worldIndex:'')+
+    (difficulty!=='normale'?'&difficolta='+difficulty:'');
   const done=()=>toast('Link copiato: riapre questo pianeta (seme '+worldSeed+').');
   if(navigator.clipboard) navigator.clipboard.writeText(url).then(done,()=>toast(url));
   else toast(url);

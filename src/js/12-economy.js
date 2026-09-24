@@ -54,7 +54,8 @@ function rates(){
       food-=(B.eats.food||0)*w2; matr-=(B.eats.mat||0)*w2;
     }
     if(B.per){
-      food+=(B.per.food||0)*w2*(B.noSeason?1:S)*P*(trait.food||1)*(boomT>0?1.4:1)*(famineT>0&&!B.noSeason?0.5:1)*(1+techSum('food'));
+      food+=(B.per.food||0)*w2*(B.noSeason?1:S)*P*(trait.food||1)*(boomT>0?1.4:1)*(famineT>0&&!B.noSeason?0.5:1)*(1+techSum('food'))
+           *(B.noSeason||!B.per.food?1:weatherFood(t));      // la serra è al riparo dal tempo
       matr+=(B.per.mat||0)*(B.per.mat>0?w2*P*(trait.mat||1):w);
       pow +=(B.per.pow||0)*w2*P*(trait.pow||1);
       scir+=(B.per.sci||0)*w2*P;
@@ -277,11 +278,11 @@ function economyTick(){
 
   sendCaravans();
   // la torre di segnalazione avvista la navetta 25 secondi prima
-  if(!raidActive&&raidIn===26&&activeFlag('watch')){
+  if(!raidActive&&raidIn===26&&activeFlag('watch')&&!weatherNow().fog){
     raidWarned=true; logEvent('🔭 La torre avvista una navetta: incursione tra 25 secondi. Bambini al riparo!');
   }
   if(!raidActive){ raidIn--; if(raidIn<=0){ raidWarned=false; spawnRaid(); raidIn=raidInterval(); } }
-  raidersTick(); narratorTick(); choiceTick(); chainTick(); socialTick(); achievementTick();
+  raidersTick(); narratorTick(); choiceTick(); chainTick(); socialTick(); achievementTick(); weatherTick();
   for(const s of settlements) rivalThink(s);
   diplomacyTick();
   if(auto) autoThink();

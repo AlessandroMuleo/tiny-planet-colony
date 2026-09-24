@@ -8,7 +8,7 @@ function snapshot(){
     res:{...res}, pop, sci, tech, season, seasonT, raidIn, raidNo, worldAge, dayT,
     eventIn, boomT, padCargoMat, padCargoFood, grief, raidWarned,
     narrator:{phase:narrator.phase,t:narrator.t,hurt:narrator.hurt}, choice, famineT, exiles, chainT,
-    researched:[...researched], researching, stats, achFlags,
+    researched:[...researched], researching, stats, achFlags, weather, difficulty,
     army:{size:army.size, target:si(army.target)},
     settlements:settlements.map(s=>({name:s.name, core:s.core.id, relation:s.relation,
       mat:s.mat, thinkT:s.thinkT, tradeT:s.tradeT||0,
@@ -105,7 +105,9 @@ function restore(d){
     pop=myPeople().length; sci=d.sci;
     // salvataggi di prima dell'albero: i vecchi livelli diventano i primi nodi dell'economia e dell'esercito
     researched=new Set((d.researched||['tools','weapons','rotation'].slice(0,d.tech||0)).filter(id=>RESEARCH[id]));
-    tech=researched.size; achFlags=d.achFlags||{}; researching=RESEARCH[d.researching]?d.researching:null; stats=d.stats||[]; season=d.season; seasonT=d.seasonT;
+    tech=researched.size; achFlags=d.achFlags||{};
+    difficulty=DIFFICULTY[d.difficulty]?d.difficulty:'normale';
+    weather=d.weather&&WEATHER[d.weather.kind]?{...d.weather}:{kind:'sereno',t:120}; applyWeather(); researching=RESEARCH[d.researching]?d.researching:null; stats=d.stats||[]; season=d.season; seasonT=d.seasonT;
     raidIn=d.raidIn; raidNo=d.raidNo; worldAge=d.worldAge; dayT=d.dayT;
     eventIn=d.eventIn; boomT=d.boomT; grief=d.grief||0; raidWarned=!!d.raidWarned;
     narrator=d.narrator&&NARRATOR_PHASES[d.narrator.phase]?{...d.narrator}:{phase:'calma',t:0,hurt:0};

@@ -68,7 +68,7 @@ function resolveCombat(dt){
       const foe=o.faction==='raider'||
         (o.faction==='rival'&&o.settlement&&o.settlement.relation==='ostile');
       if(!foe) continue;
-      if(tp.distanceTo(o.mesh.position)<B.range+(hasTech('forts')?1:0)){
+      if(tp.distanceTo(o.mesh.position)<(B.range+(hasTech('forts')?1:0))*turretReach()){
         o.hp-=B.dps*techWar()*dt;
         if(beams){
           const g=new THREE.BufferGeometry().setFromPoints([tp,o.mesh.position.clone()]);
@@ -130,7 +130,10 @@ function resolveCombat(dt){
     }
     if(set) checkConquest(set);
   }
-  if(raidActive&&raiders().length===0&&!props.some(p=>p.payload)){ raidActive=false; toast('Incursione respinta.'); refreshHUD(); }
+  if(raidActive&&raiders().length===0&&!props.some(p=>p.payload)){
+    raidActive=false; if(weather.kind==='temporale') achFlags.stormRaid=true;
+    toast('Incursione respinta.'); refreshHUD();
+  }
 }
 
 /* ═══════════════ incursioni: la navetta li sbarca ═══════════ */

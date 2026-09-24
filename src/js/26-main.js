@@ -1,5 +1,6 @@
 try{
   loadAchievements();
+  res=startingRes();
   generateWorld(worldSeed);
   applySeason();
   updateCamera();

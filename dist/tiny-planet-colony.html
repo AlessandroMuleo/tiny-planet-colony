@@ -703,7 +703,7 @@ let selected=null, marker=null;
    ?auto accende il governatore: così un mondo si può condividere con un link */
 const URLP = typeof location!=='undefined' ? new URLSearchParams(location.search) : new URLSearchParams();
 let worldSeed=(+URLP.get('seed')>0?+URLP.get('seed'):Date.now())%99999, worldIndex=Math.max(1,Math.min(12,+URLP.get('mondo')||1));
-let res={food:22, mat:60, pow:12, bar:0}, pop=3;
+let res={food:22, mat:60, pow:12, bar:0}, pop=3;   // le scorte iniziali le decide la difficoltà (26-main)
 let sci=0, tech=0;
 let season=0, seasonT=0;
 let raidIn=70, raidNo=0, raidActive=false;
@@ -745,6 +745,7 @@ function generateWorld(seed){
   raidIn=160; raidNo=0; raidActive=false; army={size:0,target:null};
   season=0; seasonT=0; worldAge=0;
   narrator={phase:'calma',t:0,hurt:0}; choice=null; famineT=0; exiles=0; chainT=0;
+  weather={kind:'sereno',t:120}; applyWeather();
   beams=new THREE.Group(); planetGroup.add(beams);
   ringGroup=new THREE.Group(); planetGroup.add(ringGroup); rings.clear();
   if(orbitGroup) scene.remove(orbitGroup);
@@ -790,7 +791,7 @@ function generateWorld(seed){
 
   document.getElementById('w-name').textContent=NAMES[(worldIndex-1)%NAMES.length];
   document.getElementById('w-count').textContent=
-    (worldIndex===1?'primo mondo':'mondo n° '+worldIndex)+' · seme '+worldSeed+' · '+trait.name+' ('+trait.note+')'+
+    (worldIndex===1?'primo mondo':'mondo n° '+worldIndex)+' · seme '+worldSeed+(difficulty!=='normale'?' · '+diff().label:'')+' · '+trait.name+' ('+trait.note+')'+
     (worldIndex>1?' · eredità +'+Math.round((legacy()-1)*100)+'%':'');
 }
 
@@ -1170,7 +1171,7 @@ const DAY_LEN=110;                      // secondi per un giro completo
 function stepDay(dt){
   if(!dayCycle){
     if(nightOn!==false){ nightOn=false; updateLights(); }
-    sun.intensity=1.15; rim.intensity=0.45; scene.children[0].intensity=0.9;
+    sun.intensity=1.15*(weatherNow().light||1); rim.intensity=0.45; scene.children[0].intensity=0.9*(weatherNow().light||1);
     return;
   }
   dayT=(dayT+dt/DAY_LEN)%1;
@@ -1179,9 +1180,9 @@ function stepDay(dt){
   // quanto è alto il sole rispetto all'emisfero illuminato
   const h=Math.max(-1,Math.min(1,Math.sin(a)*0.55+Math.cos(a)*0.45));
   const day=Math.max(0,Math.min(1,(h+0.35)/0.9));
-  sun.intensity=0.12+1.05*day;
+  sun.intensity=(0.12+1.05*day)*(weatherNow().light||1);
   rim.intensity=0.5-0.18*day;
-  scene.children[0].intensity=0.34+0.56*day;   // luce ambientale
+  scene.children[0].intensity=(0.34+0.56*day)*Math.min(1.05,weatherNow().light||1);   // luce ambientale
   const isNight=day<0.42;
   if(isNight!==nightOn){ nightOn=isNight; updateLights(); }
 }
@@ -1547,6 +1548,9 @@ function destroyBuilding(tile){
   tile.building=null; tile.owner=null; tile.workers=0; tile.hp=0; tile.hpMax=0;
   tile.settlement=null; tile.site=null;
   tile.size=1;
+  // se è crollato un magazzino, ciò che non ci sta più va perso subito:
+  // prima restava oltre la capienza fino al tick successivo
+  if(mine){ const cap=capacity(); for(const k of ['food','mat','pow','bar']) res[k]=Math.min(res[k]||0,cap); }
   bumpWalk(); syncJobs(); refreshHUD();
   if(selected===tile) setInspector(tile);
   if(mine){ toast(was+': distrutta.'); narratorHurt(0.5); }
@@ -1716,7 +1720,8 @@ function rates(){
       food-=(B.eats.food||0)*w2; matr-=(B.eats.mat||0)*w2;
     }
     if(B.per){
-      food+=(B.per.food||0)*w2*(B.noSeason?1:S)*P*(trait.food||1)*(boomT>0?1.4:1)*(famineT>0&&!B.noSeason?0.5:1)*(1+techSum('food'));
+      food+=(B.per.food||0)*w2*(B.noSeason?1:S)*P*(trait.food||1)*(boomT>0?1.4:1)*(famineT>0&&!B.noSeason?0.5:1)*(1+techSum('food'))
+           *(B.noSeason||!B.per.food?1:weatherFood(t));      // la serra è al riparo dal tempo
       matr+=(B.per.mat||0)*(B.per.mat>0?w2*P*(trait.mat||1):w);
       pow +=(B.per.pow||0)*w2*P*(trait.pow||1);
       scir+=(B.per.sci||0)*w2*P;
@@ -1939,11 +1944,11 @@ function economyTick(){
 
   sendCaravans();
   // la torre di segnalazione avvista la navetta 25 secondi prima
-  if(!raidActive&&raidIn===26&&activeFlag('watch')){
+  if(!raidActive&&raidIn===26&&activeFlag('watch')&&!weatherNow().fog){
     raidWarned=true; logEvent('🔭 La torre avvista una navetta: incursione tra 25 secondi. Bambini al riparo!');
   }
   if(!raidActive){ raidIn--; if(raidIn<=0){ raidWarned=false; spawnRaid(); raidIn=raidInterval(); } }
-  raidersTick(); narratorTick(); choiceTick(); chainTick(); socialTick(); achievementTick();
+  raidersTick(); narratorTick(); choiceTick(); chainTick(); socialTick(); achievementTick(); weatherTick();
   for(const s of settlements) rivalThink(s);
   diplomacyTick();
   if(auto) autoThink();
@@ -2278,6 +2283,7 @@ function moodFactors(u){
   if(grief>0.05) f.push(['lutto', -0.3*grief]);
   if(boomT>0) f.push(['annata abbondante', 0.08]);
   if(u.funT>0) f.push(['svago in taverna', 0.15]);
+  if(weatherNow().mood&&!(u.act==='sleep'&&u.bed&&u.from===u.bed)) f.push([weatherNow().label+' fuori', weatherNow().mood]);
   if(u.bonds&&friendNear(u)) f.push(['un amico vicino', 0.06]);
   if(u.sorrowT>0) f.push(['ha perso un amico', -0.2]);
   if(u.kind==='thrall') f.push(['assoggettato', -0.2]);
@@ -2297,10 +2303,10 @@ function needsTick(){
     const u=units[i];
     if(!hasNeeds(u)) continue;
     const n=needsOf(u);
-    n.food=Math.max(0, n.food-1/NEEDS.FULL);
+    n.food=Math.max(0, n.food-diff().needs/NEEDS.FULL);
     if(u.act==='sleep'&&u.from===u.goal)
       n.rest=Math.min(1, n.rest+1/(u.bed&&u.from===u.bed?NEEDS.BED_REST:NEEDS.GROUND_REST));
-    else n.rest=Math.max(0, n.rest-1/(NEEDS.AWAKE*traitMul(u,'awake')));
+    else n.rest=Math.max(0, n.rest-diff().needs/(NEEDS.AWAKE*traitMul(u,'awake')));
     n.mood+=(moodTarget(u)-n.mood)*NEEDS.MOOD_EASE;
     if(u.funT>0) u.funT--;
     if(u.sorrowT>0) u.sorrowT--;
@@ -2768,7 +2774,7 @@ function resolveCombat(dt){
       const foe=o.faction==='raider'||
         (o.faction==='rival'&&o.settlement&&o.settlement.relation==='ostile');
       if(!foe) continue;
-      if(tp.distanceTo(o.mesh.position)<B.range+(hasTech('forts')?1:0)){
+      if(tp.distanceTo(o.mesh.position)<(B.range+(hasTech('forts')?1:0))*turretReach()){
         o.hp-=B.dps*techWar()*dt;
         if(beams){
           const g=new THREE.BufferGeometry().setFromPoints([tp,o.mesh.position.clone()]);
@@ -2830,7 +2836,10 @@ function resolveCombat(dt){
     }
     if(set) checkConquest(set);
   }
-  if(raidActive&&raiders().length===0&&!props.some(p=>p.payload)){ raidActive=false; toast('Incursione respinta.'); refreshHUD(); }
+  if(raidActive&&raiders().length===0&&!props.some(p=>p.payload)){
+    raidActive=false; if(weather.kind==='temporale') achFlags.stormRaid=true;
+    toast('Incursione respinta.'); refreshHUD();
+  }
 }
 
 /* ═══════════════ incursioni: la navetta li sbarca ═══════════ */
@@ -3571,7 +3580,7 @@ function colonyWealth(){
    altrimenti una colonia grande verrebbe schiacciata */
 function raidSize(){
   const pts=Math.sqrt(Math.max(0,colonyWealth()))*0.12*(1+0.15*(worldIndex-1));
-  return Math.max(1,Math.min(14,Math.round(pts*narratorPhase().size)));
+  return Math.max(1,Math.min(14,Math.round(pts*narratorPhase().size*diff().raid)));
 }
 function raidInterval(){
   return Math.round((100+(hasOrbital('eye')?ORBITALS.eye.delay:0))*
@@ -3784,7 +3793,9 @@ function govContext(){
     spoil: r.spoil,
     moodAvg: (()=>{ const m=units.filter(u=>hasNeeds(u)&&u.needs); return m.length?m.reduce((s,u)=>s+u.needs.mood,0)/m.length:0.6; })(),
     children: myPeople().filter(u=>u.stage==='child').length,
-    dryJobs: FC.mine.filter(t=>isMine(t)&&t.biome==='sand'&&jobsOf(t)>0&&!wellNear(t)).length,
+    // lavori all'asciutto: sulla sabbia sempre, in siccità anche i campi
+    dryJobs: FC.mine.filter(t=>isMine(t)&&jobsOf(t)>0&&!wellNear(t)&&
+      (t.biome==='sand'||(weather.kind==='siccita'&&BUILDINGS[t.building].per&&BUILDINGS[t.building].per.food>0))).length,
     // lingotti: servono per torrette, ambasciata e rampa
     wantBars: (tech>=1||raidNo>=2||settlements.length>0)&&(res.bar||0)<40};
 }
@@ -4044,7 +4055,7 @@ function refreshHUD(r){
   $('r-raid').textContent=raidActive?raiders().length+' nemici':narratorPhase().label+(famineT>0?' · carestia':'');
   $('r-raid').title='Prossima incursione: circa '+raidSize()+' predoni';
   $('r-raid').className='rate'+(raidActive||raidIn<15?' neg':'');
-  $('s-season').textContent=SEASONS[season].name+(boomT>0?' · abbondanza '+boomT+'s':'');
+  $('s-season').textContent=SEASONS[season].name+(weather.kind!=='sereno'?' · '+weatherNow().label:'')+(boomT>0?' · abbondanza '+boomT+'s':'');
   $('s-tech').textContent=tech+'/'+Object.keys(RESEARCH).length;
   $('r-tech').textContent = researching
     ? RESEARCH[researching].name+' '+Math.floor(sci)+'/'+RESEARCH[researching].cost
@@ -4418,7 +4429,7 @@ function snapshot(){
     res:{...res}, pop, sci, tech, season, seasonT, raidIn, raidNo, worldAge, dayT,
     eventIn, boomT, padCargoMat, padCargoFood, grief, raidWarned,
     narrator:{phase:narrator.phase,t:narrator.t,hurt:narrator.hurt}, choice, famineT, exiles, chainT,
-    researched:[...researched], researching, stats, achFlags,
+    researched:[...researched], researching, stats, achFlags, weather, difficulty,
     army:{size:army.size, target:si(army.target)},
     settlements:settlements.map(s=>({name:s.name, core:s.core.id, relation:s.relation,
       mat:s.mat, thinkT:s.thinkT, tradeT:s.tradeT||0,
@@ -4515,7 +4526,9 @@ function restore(d){
     pop=myPeople().length; sci=d.sci;
     // salvataggi di prima dell'albero: i vecchi livelli diventano i primi nodi dell'economia e dell'esercito
     researched=new Set((d.researched||['tools','weapons','rotation'].slice(0,d.tech||0)).filter(id=>RESEARCH[id]));
-    tech=researched.size; achFlags=d.achFlags||{}; researching=RESEARCH[d.researching]?d.researching:null; stats=d.stats||[]; season=d.season; seasonT=d.seasonT;
+    tech=researched.size; achFlags=d.achFlags||{};
+    difficulty=DIFFICULTY[d.difficulty]?d.difficulty:'normale';
+    weather=d.weather&&WEATHER[d.weather.kind]?{...d.weather}:{kind:'sereno',t:120}; applyWeather(); researching=RESEARCH[d.researching]?d.researching:null; stats=d.stats||[]; season=d.season; seasonT=d.seasonT;
     raidIn=d.raidIn; raidNo=d.raidNo; worldAge=d.worldAge; dayT=d.dayT;
     eventIn=d.eventIn; boomT=d.boomT; grief=d.grief||0; raidWarned=!!d.raidWarned;
     narrator=d.narrator&&NARRATOR_PHASES[d.narrator.phase]?{...d.narrator}:{phase:'calma',t:0,hurt:0};
@@ -4549,7 +4562,7 @@ function restartGame(){
   $('over').classList.remove('on');
   gameOver=false;
   worldIndex=1; worldSeed=Date.now()%99999;
-  res={food:22,mat:60,pow:12,bar:0}; pop=3; sci=0; tech=0; eventIn=110; boomT=0;
+  res=startingRes(); pop=3; sci=0; tech=0; eventIn=110; boomT=0;
   researched=new Set(); researching=null; stats=[]; veterans=[];
   generateWorld(worldSeed); applySeason(); refreshHUD();
   toast('Una nuova colonia atterra su '+NAMES[0]+'.');
@@ -4677,7 +4690,8 @@ $('b-load').addEventListener('click',loadGame);
 $('b-log').addEventListener('click',toggleLog);
 $('b-research').addEventListener('click',toggleResearch);
 $('b-share').addEventListener('click',()=>{
-  const url=location.origin+location.pathname+'?seed='+worldSeed+(worldIndex>1?'&mondo='+worldIndex:'');
+  const url=location.origin+location.pathname+'?seed='+worldSeed+(worldIndex>1?'&mondo='+worldIndex:'')+
+    (difficulty!=='normale'?'&difficolta='+difficulty:'');
   const done=()=>toast('Link copiato: riapre questo pianeta (seme '+worldSeed+').');
   if(navigator.clipboard) navigator.clipboard.writeText(url).then(done,()=>toast(url));
   else toast(url);
@@ -5091,8 +5105,98 @@ function achievementsHTML(){
       return '<div class="ach-i'+(on?' on':'')+'" title="'+A.desc+'"><b>'+(on?'🏆 ':'')+A.label+'</b><span>'+A.desc+'</span></div>';
     }).join('')+'</div></div>';
 }
+/* ═══════════════ meteo e difficoltà ═══════════════ */
+
+/* ── meteo ───────────────────────────────────────────────────────────
+   Sopra le stagioni c'è il tempo che fa, e cambia ogni 80–180 secondi.
+   Ogni tipo di tempo ha una conseguenza che chiede una risposta:
+   · temporale: i campi rendono di più, ma cadono fulmini sugli edifici
+     (un parafulmine è una torre di segnalazione: li attira lei);
+   · siccità: i campi rendono il 30% in meno, tranne vicino a un pozzo;
+   · nebbia: le torrette vedono meno lontano e la torre non avvista le navette. */
+const WEATHER = {
+  sereno:   {label:'sereno'},
+  temporale:{label:'temporale', food:1.15, bolts:0.05, light:0.55, mood:-0.04},
+  siccita:  {label:'siccità',   food:0.7,  light:1.12},
+  nebbia:   {label:'nebbia',    fog:true,  turret:0.7, light:0.75}
+};
+/* pesi per stagione: d'estate la siccità, d'autunno i temporali, d'inverno la nebbia */
+const WEATHER_ODDS = [
+  {sereno:5, temporale:3, nebbia:1},
+  {sereno:5, siccita:3, temporale:2},
+  {sereno:3, temporale:3, nebbia:3},
+  {sereno:4, nebbia:4, temporale:1}
+];
+let weather={kind:'sereno', t:120};
+const weatherNow = () => WEATHER[weather.kind]||WEATHER.sereno;
+/* quanto rende un campo col tempo di oggi: il pozzo salva dalla siccità */
+const weatherFood = t => weather.kind==='siccita' ? (wellNear(t)?1:WEATHER.siccita.food) : (weatherNow().food||1);
+const turretReach = () => weatherNow().turret||1;
+function weatherTick(){
+  if(--weather.t>0){ lightningTick(); return; }
+  const odds=WEATHER_ODDS[season]||WEATHER_ODDS[0];
+  const total=Object.values(odds).reduce((a,b)=>a+b,0);
+  let r=Math.random()*total, kind='sereno';
+  for(const k in odds){ r-=odds[k]; if(r<0){ kind=k; break; } }
+  const was=weather.kind;
+  weather={kind, t:80+Math.floor(Math.random()*100)};
+  if(kind!==was) logEvent(kind==='sereno'?'☀ Torna il sereno.':
+    kind==='temporale'?'⛈ Temporale: i campi ringraziano, ma attenti ai fulmini.':
+    kind==='siccita'?'🌵 Siccità: i campi lontani dai pozzi rendono il 30% in meno.':
+    '🌫 Nebbia: le torrette vedono meno lontano, la torre non avvista le navette.');
+  applyWeather();
+}
+function lightningTick(){
+  const W=weatherNow();
+  if(!W.bolts||Math.random()>W.bolts) return;
+  const mine=FC.mine.filter(isMine);
+  if(!mine.length) return;
+  // una torre di segnalazione fa da parafulmine: il colpo va a lei e non fa danni
+  const rod=mine.find(t=>hasFlag(t,'watch'));
+  const hit=rod||mine[Math.floor(Math.random()*mine.length)];
+  boltFX(hit);
+  if(rod){ toast('⚡ Un fulmine si scarica sulla torre di segnalazione.'); return; }
+  const name=BUILDINGS[hit.building].name;
+  damageBuilding(hit,12);
+  toast('⚡ Un fulmine colpisce '+name+'.');
+}
+function boltFX(tile){
+  const top=tile.center.clone().multiplyScalar(R+18), pts=[top];
+  const end=surfacePos(tile,0.3);
+  for(let i=1;i<7;i++){ const p=top.clone().lerp(end,i/7); p.x+=Math.random()*0.8-0.4; p.z+=Math.random()*0.8-0.4; pts.push(p); }
+  pts.push(end);
+  const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineBasicMaterial({color:0xe6f0ff,transparent:true}));
+  addFX(line,0.35,k=>{ line.material.opacity=k; });
+}
+/* nebbia e luce: la scena cambia col tempo (le luci del giorno le ricalcola stepDay) */
+function applyWeather(){
+  const want=!!weatherNow().fog;
+  if(want===!!scene.fog) return;
+  // la camera sta a ~36 dal centro: la faccia visibile del pianeta è tra 22 e 36
+  scene.fog = want ? new THREE.Fog(0x8a97ad,16,42) : null;
+  // i materiali già compilati non vedono la nebbia aggiunta dopo: vanno ricompilati
+  scene.traverse(o=>{ if(o.material) (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.needsUpdate=true); });
+}
+
+/* ── difficoltà ──────────────────────────────────────────────────────
+   ?difficolta=facile | normale | difficile nell'indirizzo. Cambia la forza
+   delle incursioni, quanto in fretta vengono fame e sonno, e le scorte
+   iniziali.                                                            */
+const DIFFICULTY = {
+  facile:   {label:'facile',    raid:0.7,  needs:0.8, start:1.5},
+  normale:  {label:'normale',   raid:1,    needs:1,   start:1},
+  difficile:{label:'difficile', raid:1.35, needs:1.2, start:0.7}
+};
+let difficulty = DIFFICULTY[URLP.get('difficolta')] ? URLP.get('difficolta') : 'normale';
+const diff = () => DIFFICULTY[difficulty]||DIFFICULTY.normale;
+function startingRes(){
+  const k=diff().start;
+  return {food:Math.round(22*k), mat:Math.round(60*k), pow:12, bar:0};
+}
 try{
   loadAchievements();
+  res=startingRes();
   generateWorld(worldSeed);
   applySeason();
   updateCamera();

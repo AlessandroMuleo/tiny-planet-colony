@@ -11,7 +11,9 @@ Logistica a blocchi, stagioni, ricerca, clan rivali, incursioni, spazio.
 Parametri dell'indirizzo, utili per condividere un pianeta:
 `?seed=4242` riapre lo stesso mondo, `&mondo=3` parte dal terzo (con i
 clan), `&auto` accende il governatore. Il pulsante «condividi» copia il
-link del pianeta in corso.
+link del pianeta in corso. `&difficolta=facile` o `difficile` cambia la
+forza delle incursioni (×0,7 / ×1,35), quanto in fretta vengono fame e
+sonno (×0,8 / ×1,2) e le scorte iniziali (×1,5 / ×0,7).
 
 ## Struttura
 
@@ -66,7 +68,8 @@ bisogni medi.
 ## La simulazione di prova
 
 Gira il codice vero del gioco (three.js r128, lo stesso della CDN) con DOM e
-renderer finti e `Math.random` a seme fisso. Otto scenari: primo mondo con
+renderer finti e `Math.random` a seme fisso. Nove scenari, tra cui uno in
+difficoltà difficile: primo mondo con
 e senza governatore, mondi con clan rivali, una partita salvata e ricaricata
 a metà, una partenza per il mondo successivo coi veterani, e un clan
 assoggettato senza guarnigione. Col governatore la colonia
@@ -120,6 +123,20 @@ gli amici di ogni colono.
 Sedici traguardi (popolazione, ricerca, diplomazia, mondi raggiunti…) si
 sbloccano giocando e restano nel browser da una partita all'altra; sono in
 fondo alla schermata statistiche.
+
+## Meteo
+
+Sopra le stagioni c'è il tempo, che cambia ogni 80–180 secondi con pesi
+diversi per stagione:
+
+| Tempo | Effetto | Risposta |
+|---|---|---|
+| temporale | campi +15%, fulmini sugli edifici (12 danni), umore −0,04 a chi è fuori | una torre di segnalazione fa da parafulmine |
+| siccità | campi −30% | un pozzo vicino li salva; il governatore ne costruisce |
+| nebbia | torrette −30% di portata, la torre non avvista le navette | — |
+
+La scena cambia: luce più scura col temporale, più chiara in siccità,
+nebbia vera che sbiadisce il bordo del pianeta.
 
 ## Diplomazia
 

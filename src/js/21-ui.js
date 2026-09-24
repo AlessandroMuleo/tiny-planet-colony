@@ -33,7 +33,7 @@ function refreshHUD(r){
   $('r-raid').textContent=raidActive?raiders().length+' nemici':narratorPhase().label+(famineT>0?' · carestia':'');
   $('r-raid').title='Prossima incursione: circa '+raidSize()+' predoni';
   $('r-raid').className='rate'+(raidActive||raidIn<15?' neg':'');
-  $('s-season').textContent=SEASONS[season].name+(boomT>0?' · abbondanza '+boomT+'s':'');
+  $('s-season').textContent=SEASONS[season].name+(weather.kind!=='sereno'?' · '+weatherNow().label:'')+(boomT>0?' · abbondanza '+boomT+'s':'');
   $('s-tech').textContent=tech+'/'+Object.keys(RESEARCH).length;
   $('r-tech').textContent = researching
     ? RESEARCH[researching].name+' '+Math.floor(sci)+'/'+RESEARCH[researching].cost

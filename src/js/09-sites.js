@@ -78,6 +78,9 @@ function destroyBuilding(tile){
   tile.building=null; tile.owner=null; tile.workers=0; tile.hp=0; tile.hpMax=0;
   tile.settlement=null; tile.site=null;
   tile.size=1;
+  // se è crollato un magazzino, ciò che non ci sta più va perso subito:
+  // prima restava oltre la capienza fino al tick successivo
+  if(mine){ const cap=capacity(); for(const k of ['food','mat','pow','bar']) res[k]=Math.min(res[k]||0,cap); }
   bumpWalk(); syncJobs(); refreshHUD();
   if(selected===tile) setInspector(tile);
   if(mine){ toast(was+': distrutta.'); narratorHurt(0.5); }

@@ -8,7 +8,7 @@ let selected=null, marker=null;
    ?auto accende il governatore: così un mondo si può condividere con un link */
 const URLP = typeof location!=='undefined' ? new URLSearchParams(location.search) : new URLSearchParams();
 let worldSeed=(+URLP.get('seed')>0?+URLP.get('seed'):Date.now())%99999, worldIndex=Math.max(1,Math.min(12,+URLP.get('mondo')||1));
-let res={food:22, mat:60, pow:12, bar:0}, pop=3;
+let res={food:22, mat:60, pow:12, bar:0}, pop=3;   // le scorte iniziali le decide la difficoltà (26-main)
 let sci=0, tech=0;
 let season=0, seasonT=0;
 let raidIn=70, raidNo=0, raidActive=false;
