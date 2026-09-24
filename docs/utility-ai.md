@@ -132,6 +132,44 @@ posto lo tiene, e i posti liberi vanno a chi è più esperto in quel mestiere.
 Con gli stessi semi, i cambi di lavoro in 600 tick sono scesi da 968–1743 a
 26–36.
 
+## Il governatore
+
+La modalità automatica usa lo stesso motore, applicato alla colonia intera
+(`src/js/20-governor.js`). Ogni progetto di costruzione riceve un punteggio
+dalle pressioni della colonia: tick di cibo in magazzino, letti liberi,
+materiali, energia, minaccia, feriti, alleati. Si apre il cantiere del
+progetto migliore. Se costa più di quello che c'è, il governatore aspetta e
+risparmia invece di ripiegare su qualcosa di meno utile.
+
+| Progetto | Peso | Cosa lo spinge |
+|---|---|---|
+| Fattoria, Peschiera | 1,1 · 1,0 | cibo scarso |
+| Capanna, Alloggi | 1,25 | letti finiti (capanna se i materiali sono pochi, alloggi se abbondano) |
+| Miniera | 0,9 | materiali scarsi, oppure nessuna miniera |
+| Centrale | 0,85 | energia in calo e poca in scorta |
+| Deposito | 0,9 | cibo o materiali vicino alla capienza |
+| Ospedale | 0,9 | feriti, nessun ospedale |
+| Torretta, Armeria, Mura | 0,8 · 0,8 · 0,5 | minaccia |
+| Centro ricerca, Santuario, Roccaforte, Mercato, Serra, Officina | 0,55–0,85 | colonia avviata o ricca, alleati, inverno, cibo in avanzo |
+
+Due correzioni rispetto a un punteggio puro:
+
+- **Disoccupati come bonus.** I coloni senza lavoro alzano il peso dei progetti
+  che creano posti (fattorie, miniere, officine) fino al +50%. All'inizio erano
+  una considerazione moltiplicativa: quando tutti lavoravano, abbassava quei
+  progetti, e con il cibo a zero la fattoria perdeva contro le capanne. La
+  simulazione l'ha mostrato con quattro colonie estinte su cinque.
+- **Rendimenti decrescenti.** Ogni cantiere aperto della stessa categoria (cibo,
+  letti, materiali…) moltiplica il punteggio per 0,45. Senza, il cibo vinceva
+  tutti i cantieri e l'energia non arrivava mai, quindi niente ricerca.
+
+I posti di lavoro liberi vanno prima dove la pressione è più alta: cibo se
+scarseggia, materiali, energia, ricerca, armeria se c'è minaccia. I cantieri
+aperti sono uno ogni 4 lavoratori, fino a 6.
+
+Passando il mouse su «auto» si leggono i tre progetti col punteggio più alto
+all'ultima decisione.
+
 ## Prenotazioni
 
 Un portatore che sceglie un cantiere prenota un blocco, e un cantiere non

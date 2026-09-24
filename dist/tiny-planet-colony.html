@@ -3005,56 +3005,166 @@ function haulSteps(t){
   const d=distField(st)[t.id];
   return d<0?99:d;
 }
-function autoThink(){
+/* ── governatore a utility ─────────────────────────────────────────
+   Stesso motore dei coloni (14-utility.js), applicato alla colonia intera.
+   Ogni progetto di costruzione riceve un punteggio dalle "pressioni" della
+   colonia; si apre il cantiere del migliore. Se il migliore costa più di
+   quanto c'è, si aspetta e si risparmia: non si ripiega su qualcosa di
+   meno utile solo perché costa poco.                                    */
+function govContext(){
   const r=rates();
-  if(idleCount()>0){
-    const open=workedTiles().filter(t=>(t.workers||0)<jobsOf(t));
-    const pref=r.food<0.6?['farm','fishery','mine','lab','plant','armory']
-             : raidActive?['armory','farm','fishery','mine','plant','lab']
-                         :['farm','fishery','mine','plant','lab','armory','fort'];
-    open.sort((a,b)=>pref.indexOf(a.building)-pref.indexOf(b.building));
-    for(const t of open)
-      while((t.workers||0)<jobsOf(t)&&idleCount()>0) t.workers++;
-    syncJobs();
-  }
+  const mineOrSite=t=>isMine(t)||(t.site&&t.owner==='you');
+  const count={};
+  for(const t of tiles) if(t.building&&mineOrSite(t)) count[t.building]=(count[t.building]||0)+1;
+  const eat=Math.max(0.5, r.stock-r.food);            // quanto si mangia a tick
+  let freeJobs=0;
+  for(const t of workedTiles()) freeJobs+=jobsOf(t)-(t.workers||0);
+  const idle=idleCount();
+  return {r, count:k=>count[k]||0, cap:capacity(), eat,
+    foodDays: res.food/eat,                           // tick di cibo in magazzino
+    freeBeds: r.houses-pop,
+    jobless: Math.max(0, idle-freeJobs),              // disoccupati: servono posti di lavoro
+    threat: Math.min(1,(raidNo+1)/6)*(raidIn<40||raidActive?1:0.7),
+    wounded: myPeople().filter(u=>u.wounded).length,
+    allies: settlements.some(s=>s.relation==='alleato'||s.relation==='assoggettato'),
+    winter: SEASONS[season].food<0.8};
+}
+/* considerazioni che ricorrono */
+const gAfford = key => consider('si può pagare', c=>{
+  const B=BUILDINGS[key], m=B.cost.mat||0, p=B.cost.pow||0;
+  return Math.min(m?res.mat/m:1, p?res.pow/p:1);
+}, CURVES.linear(0.7,0.3));
+const gNone = (key,n=1) => consider('ne mancano', c=>1-c.count(key)/n, CURVES.step(.01));
+/* i disoccupati non sono una condizione ma un bonus: moltiplicarli come le
+   altre considerazioni abbassava tutti i progetti produttivi quando tutti
+   avevano un lavoro, e con il cibo a zero la fattoria perdeva con le capanne */
+const withJobs = base => c => base*(1+0.5*Math.min(1,c.jobless/6));
+const gFood = consider('cibo scarso', c=>Math.max(1-c.foodDays/80, c.r.food<0?0.75:0), CURVES.logistic(.45,8));
 
-  const have=k=>tiles.filter(t=>(isMine(t)||t.site)&&(t.building===k)).length;
-  let want=null;
-  if(r.food<0.4) want='farm';
-  else if(pop>=r.houses-1) want = res.mat>60 ? 'block' : 'hut';
-  else if(have('mine')===0) want='mine';
-  else if(r.pow<0.3) want='plant';
-  else if(res.mat>capacity()*0.85) want='depot';
-  else if(have('armory')===0&&worldIndex>1) want='armory';
-  else if(myPeople().some(u=>u.wounded)&&have('clinic')===0) want='clinic';
-  else if(have('turret')<1+Math.floor(raidNo/3)) want='turret';
-  else if(have('lab')===0&&res.mat>110) want='lab';
-  else if(have('shrine')===0&&res.mat>120) want='shrine';
-  else if(have('fort')===0&&res.mat>160) want='fort';
-  else if(have('market')===0&&settlements.some(s=>s.relation==='alleato')) want='market';
-  else if(have('green')===0&&SEASONS[season].food<0.8&&res.mat>90) want='green';
-  else if(have('workshop')===0&&res.food>capacity()*0.6) want='workshop';
-  else if(have('wall')<Math.min(8,Math.floor(pop/3))) want='wall';
-  else if(r.food<1.2) want='farm';
-  else if(idleCount()>0) want='mine';
+const GOV_PROJECTS={
+  farm:    {label:'Fattoria', weight:withJobs(1.1), considerations:[gFood, gAfford('farm')]},
+  fishery: {label:'Peschiera', weight:withJobs(1.0), considerations:[gFood, gAfford('fishery')]},
+  green:   {label:'Serra', weight:0.85, considerations:[gFood,
+    consider('inverno o carestia', c=>is(c.winter||c.r.food<0)), gAfford('green')]},
+  // i letti vengono subito dopo il cibo: senza letti non nasce nessuno,
+  // ed è la crescita a tenere viva la colonia
+  hut:     {label:'Capanna', weight:1.25, considerations:[
+    consider('letti finiti', c=>1-c.freeBeds/4, CURVES.logistic(.6,10)),
+    consider('pochi materiali', c=>1-res.mat/120, CURVES.linear(0.7,0.3)), gAfford('hut')]},
+  block:   {label:'Alloggi', weight:1.25, considerations:[
+    consider('letti finiti', c=>1-c.freeBeds/8, CURVES.logistic(.6,10)),
+    consider('materiali in abbondanza', c=>res.mat/120, CURVES.power(1.5)), gAfford('block')]},
+  mine:    {label:'Miniera', weight:withJobs(0.9), considerations:[
+    consider('materiali scarsi', c=>Math.max(1-res.mat/Math.min(c.cap,220), 1-c.count('mine')), CURVES.linear(0.8,0.2)),
+    gAfford('mine')]},
+  workshop:{label:'Officina', weight:withJobs(0.6), considerations:[
+    consider('cibo in avanzo', c=>c.foodDays/150, CURVES.logistic(.6,8)),
+    consider('materiali scarsi', c=>1-res.mat/Math.min(c.cap,220)), gAfford('workshop')]},
+  // l'energia non è vitale come cibo e letti, ma ricerca, torrette e santuari
+  // la chiedono: sotto i letti, alla pari con la miniera
+  plant:   {label:'Centrale', weight:0.85, considerations:[
+    consider('energia in calo', c=>0.6-c.r.pow, CURVES.logistic(.3,8)),
+    consider('poca energia in scorta', c=>1-res.pow/Math.min(c.cap,120), CURVES.linear(0.8,0.2)),
+    gAfford('plant')]},
+  depot:   {label:'Deposito', weight:0.9, considerations:[
+    // l'energia piena non chiede spazio: serve per cibo e materiali
+    consider('magazzini pieni', c=>Math.max(res.food,res.mat)/c.cap, CURVES.logistic(.85,18)),
+    gAfford('depot')]},
+  clinic:  {label:'Ospedale', weight:0.9, considerations:[
+    consider('feriti', c=>c.wounded/3, CURVES.linear(0.7,0.3)), gNone('clinic'), gAfford('clinic')]},
+  turret:  {label:'Torretta', weight:0.8, considerations:[
+    consider('minaccia', c=>c.threat),
+    consider('poche difese', c=>1-c.count('turret')/(1+Math.floor(raidNo/3))), gAfford('turret')]},
+  armory:  {label:'Armeria', weight:0.8, considerations:[
+    consider('minaccia', c=>Math.max(c.threat, worldIndex>1?0.8:0)), gNone('armory'), gAfford('armory')]},
+  wall:    {label:'Mura', weight:0.5, considerations:[
+    consider('minaccia', c=>c.threat),
+    consider('mura da completare', c=>1-c.count('wall')/Math.max(1,Math.min(8,Math.floor(pop/3)))), gAfford('wall')]},
+  lab:     {label:'Centro ricerca', weight:0.7, considerations:[
+    consider('ricerca da fare', c=>is(tech<3)), gNone('lab'),
+    consider('colonia avviata', c=>res.mat/110, CURVES.logistic(.8,10)), gAfford('lab')]},
+  shrine:  {label:'Santuario', weight:0.55, considerations:[
+    consider('minaccia', c=>c.threat), gNone('shrine'),
+    consider('colonia ricca', c=>res.mat/120, CURVES.logistic(.85,10)), gAfford('shrine')]},
+  fort:    {label:'Roccaforte', weight:0.55, considerations:[
+    consider('minaccia', c=>c.threat), gNone('fort'),
+    consider('colonia ricca', c=>res.mat/160, CURVES.logistic(.85,10)), gAfford('fort')]},
+  market:  {label:'Mercato', weight:0.6, considerations:[
+    consider('alleati', c=>is(c.allies)), gNone('market'), gAfford('market')]}
+};
+/* Rendimenti decrescenti: un cantiere aperto risponde già in parte alla sua
+   pressione, ma la pressione resta finché non è finito. Senza questo il
+   progetto in testa (quasi sempre il cibo) vinceva tre cantieri su tre e
+   i bisogni secondari, come l'energia, non arrivavano mai. Ogni cantiere
+   aperto della stessa categoria moltiplica il punteggio per GOV_DECAY.   */
+const GOV_DECAY = 0.45;
+const projectKind = k => {
+  const B=BUILDINGS[k];
+  if(B.houses) return 'houses';
+  if(B.per) for(const r in B.per) if(B.per[r]>0) return r;
+  return k;
+};
+function rankProjects(c){
+  const open={};
+  for(const t of openSites()) if(t.owner==='you'){ const k=projectKind(t.site.kind); open[k]=(open[k]||0)+1; }
+  return explain(GOV_PROJECTS,c,null)
+    .map(p=>({...p, score:p.score*Math.pow(GOV_DECAY, open[projectKind(p.action)]||0)}))
+    .sort((a,b)=>b.score-a.score);
+}
+/* sotto questa soglia il progetto migliore non vale un cantiere */
+const GOV_MIN = 0.25;
+let govLast=null;                 // l'ultima decisione, con i motivi (tooltip di «auto»)
+
+/* gli addetti: ogni posto libero ha un punteggio secondo la risorsa che produce */
+function govStaff(c){
+  const need={
+    food: 0.4+0.6*clamp01(1-c.foodDays/80)+(c.r.food<0?0.4:0),
+    mat:  0.3+0.6*clamp01(1-res.mat/Math.min(c.cap,220)),
+    pow:  0.3+0.7*clamp01(0.6-c.r.pow),
+    sci:  tech<3?0.45:0.05
+  };
+  const score=t=>{
+    const B=BUILDINGS[t.building];
+    if(B.armory) return 0.2+0.8*c.threat;
+    if(B.launch) return 0.1;
+    const k=skillKey(t);
+    return k?need[k]:0.3;
+  };
+  const open=workedTiles().filter(t=>(t.workers||0)<jobsOf(t)).sort((a,b)=>score(b)-score(a));
+  for(const t of open) while((t.workers||0)<jobsOf(t)&&idleCount()>0) t.workers++;
+  syncJobs();
+}
+
+function autoThink(){
+  const c=govContext();
+  if(idleCount()>0) govStaff(c);
 
   // non apre più cantieri di quanti la manodopera ne possa servire
-  const maxSites=Math.max(1,Math.min(3,Math.floor(workforce()/4)));
-  if(want&&openSites().length<maxSites){
-    const B=BUILDINGS[want];
-    // taglia scelta in base a quanto è ricca e popolosa la colonia
-    let sz=1;
-    if(B.jobs>0||B.houses){
-      if(res.mat>(B.cost.mat||0)*4&&pop>14) sz=3;
-      else if(res.mat>(B.cost.mat||0)*2.5&&pop>8) sz=2;
-    }
-    while(sz>1&&(res.mat<(B.cost.mat||0)*sz||res.pow<(B.cost.pow||0)*sz)) sz--;
-    if(res.mat>=(B.cost.mat||0)*sz&&res.pow>=(B.cost.pow||0)*sz){
-      const spot=pickSpot(want,sz);
-      if(spot){
-        res.mat-=(B.cost.mat||0)*sz; res.pow-=(B.cost.pow||0)*sz;
-        startSite(spot,want,'you',sz);
+  // uno ogni 4 braccia, fino a 6: con 3 fissi una colonia grande restava con
+  // decine di coloni fermi e i materiali accumulati in magazzino
+  const maxSites=Math.max(1,Math.min(6,Math.floor(workforce()/4)));
+  if(openSites().length<maxSites){
+    const ranked=rankProjects(c);
+    const best=ranked[0];
+    govLast=ranked.slice(0,3);
+    $('b-auto').title='Governatore — '+ranked.slice(0,3).map(p=>p.label+' '+p.score.toFixed(2)).join(' · ');
+    if(best&&best.score>=GOV_MIN){
+      const want=best.action, B=BUILDINGS[want];
+      // taglia scelta in base a quanto è ricca e popolosa la colonia
+      let sz=1;
+      if(B.jobs>0||B.houses){
+        if(res.mat>(B.cost.mat||0)*4&&pop>14) sz=3;
+        else if(res.mat>(B.cost.mat||0)*2.5&&pop>8) sz=2;
       }
+      while(sz>1&&(res.mat<(B.cost.mat||0)*sz||res.pow<(B.cost.pow||0)*sz)) sz--;
+      if(res.mat>=(B.cost.mat||0)*sz&&res.pow>=(B.cost.pow||0)*sz){
+        const spot=pickSpot(want,sz);
+        if(spot){
+          res.mat-=(B.cost.mat||0)*sz; res.pow-=(B.cost.pow||0)*sz;
+          startSite(spot,want,'you',sz);
+        }
+      }
+      // altrimenti si aspetta: il progetto migliore resta quello, si risparmia
     }
   }
   // se un deposito è troppo lontano dai cantieri, ne piazza uno in mezzo

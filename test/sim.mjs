@@ -25,12 +25,13 @@ const TRACE = +arg('trace', 0);        // ogni N tick: cosa fanno i coloni
 const FPS = 5;                        // passi di simulazione per secondo di gioco (dt = 0,2 s)
 
 const SCENARIOS = [
-  { name: 'primo mondo, automatico',     seed: 1,  world: 1, auto: true },
-  { name: 'primo mondo, automatico #2',  seed: 7,  world: 1, auto: true },
+  // survive: col governatore la colonia deve arrivare viva alla fine
+  { name: 'primo mondo, automatico',     seed: 1,  world: 1, auto: true, survive: true },
+  { name: 'primo mondo, automatico #2',  seed: 7,  world: 1, auto: true, survive: true },
   { name: 'primo mondo, senza giocatore',seed: 3,  world: 1, auto: false },
-  { name: 'terzo mondo con rivali',      seed: 11, world: 3, auto: true },
-  { name: 'quinto mondo con rivali',     seed: 23, world: 5, auto: true },
-  { name: 'salva e ricarica a metà',     seed: 5,  world: 3, auto: true, reload: true }
+  { name: 'terzo mondo con rivali',      seed: 11, world: 3, auto: true, survive: true },
+  { name: 'quinto mondo con rivali',     seed: 23, world: 5, auto: true, survive: true },
+  { name: 'salva e ricarica a metà',     seed: 5,  world: 3, auto: true, reload: true, survive: true }
 ];
 
 /* Il ciclo di gioco di 23-main.js, senza disegno né requestAnimationFrame,
@@ -154,7 +155,9 @@ function __trace(){
     ' · sazi ' + pct(n.food) + ' riposati ' + pct(n.rest) + ' umore ' + pct(n.mood) +
     ' · esperienza media ' + Math.round(units.filter(u => u.skills && u.job).reduce((s, u) => s + (skillMul(u, skillKey(u.job)) - 1), 0) /
       Math.max(1, units.filter(u => u.skills && u.job).length) * 100) + '%' +
-    ' · cibo ' + Math.round(res.food) + ' mat ' + Math.round(res.mat) + ' · cantieri ' +
+    ' · cibo ' + Math.round(res.food) + ' mat ' + Math.round(res.mat) + ' en ' + Math.round(res.pow) +
+    (typeof govLast !== 'undefined' && govLast ? ' · gov ' + govLast.map(p => p.action + ' ' + p.score.toFixed(2)).join(' ') : '') +
+    ' · cantieri ' +
     tiles.filter(t => t.site && t.owner === 'you').map(t => t.site.have + '/' + t.site.need).join(' ');
 }
 
@@ -202,6 +205,8 @@ function runScenario(sc) {
     crashed = e;
   }
   const summary = game.run('__summary()');
+  if (sc.survive && summary.gameOver)
+    issues.push({ level: 'errore', tick: summary.tick, msg: 'la colonia si è estinta col governatore attivo' });
   return { sc, issues, crashed, failures: game.failures, summary, toasts: game.toasts, traces, ms: Date.now() - t0 };
 }
 
