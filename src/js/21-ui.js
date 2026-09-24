@@ -125,8 +125,12 @@ function renderMinds(tile){
   for(const u of here.slice(0,3)){
     const n=u.needs, why=explainColonist(u).slice(0,3);
     const cur=COLONIST_ACTIONS[u.act];
-    html+='<div class="mind"><div class="who">'+UNITS[u.kind].label+' · '+AGES[u.stage].label+
-      '<b>'+(cur?cur.label:'—')+'</b></div><div class="needs">'+
+    const sk=bestSkill(u);
+    const tr=(u.traits||[]).map(id=>'<span title="'+PERSON_TRAITS[id].note+'">'+PERSON_TRAITS[id].label+'</span>').join(', ');
+    html+='<div class="mind"><div class="who">'+(u.name||UNITS[u.kind].label)+' · '+AGES[u.stage].label+
+      (u.kind==='thrall'?' · assoggettato':'')+'<b>'+(cur?cur.label:'—')+'</b></div>'+
+      ((tr||sk)?'<div class="traits">'+[tr, sk&&sk.bonus>=0.01?sk.label+' +'+Math.round(sk.bonus*100)+'%':''].filter(Boolean).join(' · ')+'</div>':'')+
+      '<div class="needs">'+
       bar('sazio',n.food)+bar('riposato',n.rest)+bar('umore',n.mood)+'</div><ol>'+
       why.map(w=>{
         const worst=w.detail.slice().sort((a,b)=>a.value-b.value)[0];

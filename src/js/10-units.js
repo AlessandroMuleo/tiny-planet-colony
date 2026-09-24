@@ -42,6 +42,7 @@ function spawnUnit(kind,faction,tile){
     mode:'idle',carry:null,site:null,workT:0,bob:Math.random()*6,
     age:0, stage:'adult', wounded:false};
   if(UNITS[kind].civil){ u.age=AGES.child.until+Math.floor(Math.random()*60); applyAge(u); }
+  if(faction==='you'&&UNITS[kind].civil) initPerson(u);
   units.push(u);
   return u;
 }

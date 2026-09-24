@@ -92,6 +92,46 @@ mangiano dalla scorta comune e non dormono, come prima.
 Chi mangia, dorme o scappa non produce: la resa di un edificio conta solo
 chi sta davvero lavorando.
 
+## Tratti
+
+Ogni colono nasce con un nome e da zero a due tratti. I tratti non hanno
+codice proprio: moltiplicano il peso di alcune azioni o cambiano un bisogno.
+Per questo costano poco una volta che la utility AI esiste.
+
+| Tratto | Effetto |
+|---|---|
+| pigro | lavorare e costruire ×0,85, dormire ×1,15 |
+| coraggioso | difendere ×1,3, scappare ×0,7 |
+| pauroso | scappare ×1,35, difendere ×0,75 (esclude coraggioso) |
+| ingegnoso | impara il 50% più in fretta |
+| goloso | la fame conta ×1,2: va a mangiare prima |
+| robusto | regge il 30% in più senza dormire |
+| allegro | +0,1 all'obiettivo dell'umore |
+
+Un tratto nuovo è una voce in `PERSON_TRAITS`.
+
+## Abilità
+
+Si impara lavorando: un punto di esperienza per ogni tick passato al lavoro,
+otto per ogni blocco consegnato a un cantiere. Il bonus è
+`0,6 · xp / (xp + 200)`: +30% a 200 punti, e non supera mai il +60%. I primi
+tick valgono più degli ultimi.
+
+| Mestiere | Da dove viene | Cosa migliora |
+|---|---|---|
+| agricoltura | fattorie, serre, peschiere | la resa |
+| estrazione | miniere, officine | la resa |
+| energia | centrali | la resa |
+| ricerca | centri ricerca | la resa |
+| costruzione | blocchi consegnati | la velocità di chi fa la spola |
+
+Perché le abilità contino, i coloni non devono saltare da un lavoro all'altro.
+Prima ogni nascita o cantiere nuovo ridistribuiva tutti i posti da capo: in
+600 tick un colono cambiava lavoro in media più di una volta. Ora chi ha un
+posto lo tiene, e i posti liberi vanno a chi è più esperto in quel mestiere.
+Con gli stessi semi, i cambi di lavoro in 600 tick sono scesi da 968–1743 a
+26–36.
+
 ## Prenotazioni
 
 Un portatore che sceglie un cantiere prenota un blocco, e un cantiere non

@@ -16,7 +16,8 @@ function snapshot(){
     units:units.map(u=>({k:u.kind, f:u.faction, at:u.from.id, hp:u.hp, age:u.age,
       wd:!!u.wounded, set:si(u.settlement), dep:!!u.deployed,
       load:u.load, dl:!!u.delivered, life:u.lifeT||0,
-      nd:u.needs?[u.needs.food,u.needs.rest,u.needs.mood]:null})),
+      nd:u.needs?[u.needs.food,u.needs.rest,u.needs.mood]:null,
+      nm:u.name, tr:u.traits, sk:u.skills})),
     orbit:orbit.map(o=>o.kind), moonCrew:moonCrew.length};
 }
 function saveGame(silent){
@@ -80,6 +81,7 @@ function restore(d){
       u.deployed=e.dep;
       // salvataggi di prima dei bisogni: il colono parte sazio e riposato
       if(e.nd) u.needs={food:e.nd[0], rest:e.nd[1], mood:e.nd[2]};
+      if(e.nm){ u.name=e.nm; u.traits=(e.tr||[]).filter(id=>PERSON_TRAITS[id]); u.skills={...(e.sk||{})}; }
       if(e.k==='caravan'){ u.load=e.load; u.delivered=e.dl; u.lifeT=e.life; if(!e.dl) takeCarry(u,0xd9a441); }
     }
     Object.assign(res,d.res);

@@ -118,6 +118,10 @@ function __check(){
   for(const u of units){
     if(u.claimed) claims.set(u.claimed, (claims.get(u.claimed) || 0) + 1);
     if(u.bed) beds.set(u.bed, (beds.get(u.bed) || 0) + 1);
+    if(hasNeeds(u) && (!u.name || !Array.isArray(u.traits) || !u.skills)) bad.push(u.kind + ': civile senza nome, tratti o abilità');
+    for(const k in u.skills || {})
+      if(!__fin(u.skills[k]) || u.skills[k] < 0 || !SKILLS[k]) bad.push(u.kind + ': abilità ' + k + ' = ' + u.skills[k]);
+    for(const id of u.traits || []) if(!PERSON_TRAITS[id]) bad.push(u.kind + ': tratto sconosciuto ' + id);
     if(u.needs) for(const k of ['food','rest','mood'])
       if(!__fin(u.needs[k]) || u.needs[k] < 0 || u.needs[k] > 1) bad.push(u.kind + ': bisogno ' + k + ' = ' + u.needs[k]);
   }
@@ -148,6 +152,8 @@ function __trace(){
   return 't' + __tick + ' ' + (nightOn ? 'notte' : 'giorno') + ' · ' +
     Object.entries(acts).sort((a, b) => b[1] - a[1]).map(([a, c]) => a + ' ' + c).join(', ') +
     ' · sazi ' + pct(n.food) + ' riposati ' + pct(n.rest) + ' umore ' + pct(n.mood) +
+    ' · esperienza media ' + Math.round(units.filter(u => u.skills && u.job).reduce((s, u) => s + (skillMul(u, skillKey(u.job)) - 1), 0) /
+      Math.max(1, units.filter(u => u.skills && u.job).length) * 100) + '%' +
     ' · cibo ' + Math.round(res.food) + ' mat ' + Math.round(res.mat) + ' · cantieri ' +
     tiles.filter(t => t.site && t.owner === 'you').map(t => t.site.have + '/' + t.site.need).join(' ');
 }
@@ -181,11 +187,13 @@ function runScenario(sc) {
       if (TRACE && f % (TRACE * FPS) === 0) traces.push(game.run('__trace()'));
       // a metà partita: salva, ricarica dal salvataggio e continua da lì
       if (sc.reload && f === Math.floor(TICKS * FPS / 2)) {
-        const before = game.run('JSON.stringify([myPeople().length, units.filter(u=>u.needs).length, Math.round(res.food)])');
+        const state = 'JSON.stringify([myPeople().length, units.filter(u=>u.needs).length, Math.round(res.food), ' +
+          'units.filter(u=>u.name).map(u=>u.name+(u.traits||[]).join("")+Math.round(Object.values(u.skills||{}).reduce((a,b)=>a+b,0))).sort().join()])';
+        const before = game.run(state);
         game.run('saveGame(true); loadGame(); __stale.clear(); __progress.clear();');
-        const after = game.run('JSON.stringify([myPeople().length, units.filter(u=>u.needs).length, Math.round(res.food)])');
+        const after = game.run(state);
         if (before !== after) issues.push({ level: 'errore', tick: game.run('__tick'),
-          msg: 'dopo il caricamento [coloni, con bisogni, cibo] = ' + after + ', prima ' + before });
+          msg: 'dopo il caricamento coloni, bisogni, cibo, nomi, tratti o abilità sono cambiati' });
       }
       if (game.failures.length) break;
       if (game.run('gameOver')) break;

@@ -63,7 +63,9 @@ function dutyTick(){
   for(const u of units){
     if(u.faction!=='you'||!u.job||!isMine(u.job)) continue;
     if(hasNeeds(u)&&u.act!=='work') continue;
-    u.job.effWorkers=(u.job.effWorkers||0)+workPower(u)*moodWork(u);
+    const k=skillKey(u.job);
+    u.job.effWorkers=(u.job.effWorkers||0)+workPower(u)*moodWork(u)*skillMul(u,k);
+    if(hasNeeds(u)) practice(u,k,1);
   }
 }
 
@@ -113,8 +115,13 @@ function syncJobs(){
   // per mangiare e dormire: la squadra è un po' più grande per compensare
   const wanted=Math.min(8, Math.ceil(blocksLeft/3));
   const needBuilders=Math.min(wanted, Math.max(0, able.length-1));
-  const crew=able.slice(0,needBuilders);
-  able=able.slice(needBuilders);
+  // la squadra si prende prima tra chi ci è già, poi tra chi non ha un lavoro,
+  // e a parità tra i costruttori più esperti: così i contadini restano nei campi
+  const crewOrder=able.slice().sort((a,b)=>
+    (b.builder?1:0)-(a.builder?1:0) || (a.job?1:0)-(b.job?1:0) ||
+    (a.kind==='thrall'?1:0)-(b.kind==='thrall'?1:0) || skillXp(b,'build')-skillXp(a,'build'));
+  const crew=crewOrder.slice(0,needBuilders);
+  able=able.filter(u=>!crew.includes(u));
   for(const u of crew){
     u.builder=true;
     if(u.job){ u.job=null; u.mode='idle'; dropCarry(u); }
@@ -123,8 +130,9 @@ function syncJobs(){
   for(const u of able) u.builder=false;
   const unable=myLabor().filter(u=>workPower(u)===0);
   for(const u of unable){ if(u.job){ u.job=null; u.mode='idle'; dropCarry(u); } }
-  able.forEach((u,i)=>{
-    const t=slots[i]||null;
+  const placed=placeWorkers(able,slots);
+  able.forEach(u=>{
+    const t=placed.get(u)||null;
     if(u.job!==t){ u.mode='idle'; u.workT=0; dropCarry(u); }
     u.job=t;
     let want='idle';
@@ -135,6 +143,32 @@ function syncJobs(){
   });
   for(const u of unable) if(u.kind!=='idle'&&u.kind!=='thrall') morph(u,'idle');
   refreshArmy();
+}
+/* Chi ha già un posto lo tiene; i posti liberi vanno a chi è più esperto
+   in quel mestiere (i coloni prima degli assoggettati). Prima si ripartiva
+   da capo a ogni cambiamento e i coloni saltavano da un lavoro all'altro:
+   con le abilità, spostarli a caso butterebbe via l'esperienza.         */
+function placeWorkers(able,slots){
+  const free=new Map();
+  for(const t of slots) free.set(t,(free.get(t)||0)+1);
+  const out=new Map(), rest=[];
+  for(const u of able){
+    if(u.job&&free.get(u.job)>0){ out.set(u,u.job); free.set(u.job,free.get(u.job)-1); }
+    else rest.push(u);
+  }
+  for(const [t,n] of free){
+    const k=skillKey(t);
+    for(let i=0;i<n&&rest.length;i++){
+      let bi=0;
+      for(let j=1;j<rest.length;j++){
+        const a=rest[j], b=rest[bi];
+        const ta=a.kind==='thrall'?1:0, tb=b.kind==='thrall'?1:0;
+        if(ta<tb||(ta===tb&&skillXp(a,k)>skillXp(b,k))) bi=j;
+      }
+      out.set(rest[bi],t); rest.splice(bi,1);
+    }
+  }
+  return out;
 }
 function morph(u,kind){
   const carried=!!u.hasCargo;

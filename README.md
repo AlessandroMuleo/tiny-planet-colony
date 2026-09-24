@@ -85,9 +85,11 @@ più rapido per accorgersi di aver cambiato qualcosa senza volerlo.
 
 Con una utility AI: ogni azione riceve un punteggio da curve di risposta sui
 bisogni e sulla situazione, e si fa quella che vale di più. I dettagli, con un
-esempio numerico, sono in [docs/utility-ai.md](docs/utility-ai.md). In gioco,
-selezionando una casella con dei coloni l'ispettore mostra i loro bisogni e
-le tre azioni col punteggio più alto.
+esempio numerico, sono in [docs/utility-ai.md](docs/utility-ai.md). Ogni
+colono ha un nome, da zero a due tratti che correggono le sue curve, e abilità
+che crescono con la pratica. In gioco, selezionando una casella con dei coloni
+l'ispettore mostra nome, tratti, mestiere migliore, bisogni e le tre azioni
+col punteggio più alto.
 
 ## Aggiungere cose
 
@@ -99,3 +101,4 @@ le tre azioni col punteggio più alto.
   `run()`.
 - **Un'azione dei coloni:** una voce in `COLONIST_ACTIONS` (15-colonists), con
   peso, considerazioni e `run()`.
+- **Un tratto dei coloni:** una voce in `PERSON_TRAITS` (15-colonists).

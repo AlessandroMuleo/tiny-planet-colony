@@ -69,6 +69,7 @@
   .mind{border-top:1px solid var(--line);padding-top:8px;font-size:11.5px;color:var(--ink-dim)}
   .mind .who{display:flex;justify-content:space-between;gap:6px;color:var(--ink)}
   .mind .who b{font-weight:500;color:var(--ember)}
+  .mind .traits{margin-top:2px;font-size:11px}
   .mind .needs{display:grid;grid-template-columns:auto 1fr;gap:2px 6px;align-items:center;margin:5px 0}
   .mind .bar{height:4px;border-radius:2px;background:var(--line);overflow:hidden}
   .mind .bar i{display:block;height:100%;background:var(--moss)}
@@ -1430,6 +1431,7 @@ function spawnUnit(kind,faction,tile){
     mode:'idle',carry:null,site:null,workT:0,bob:Math.random()*6,
     age:0, stage:'adult', wounded:false};
   if(UNITS[kind].civil){ u.age=AGES.child.until+Math.floor(Math.random()*60); applyAge(u); }
+  if(faction==='you'&&UNITS[kind].civil) initPerson(u);
   units.push(u);
   return u;
 }
@@ -1553,7 +1555,9 @@ function dutyTick(){
   for(const u of units){
     if(u.faction!=='you'||!u.job||!isMine(u.job)) continue;
     if(hasNeeds(u)&&u.act!=='work') continue;
-    u.job.effWorkers=(u.job.effWorkers||0)+workPower(u)*moodWork(u);
+    const k=skillKey(u.job);
+    u.job.effWorkers=(u.job.effWorkers||0)+workPower(u)*moodWork(u)*skillMul(u,k);
+    if(hasNeeds(u)) practice(u,k,1);
   }
 }
 
@@ -1603,8 +1607,13 @@ function syncJobs(){
   // per mangiare e dormire: la squadra è un po' più grande per compensare
   const wanted=Math.min(8, Math.ceil(blocksLeft/3));
   const needBuilders=Math.min(wanted, Math.max(0, able.length-1));
-  const crew=able.slice(0,needBuilders);
-  able=able.slice(needBuilders);
+  // la squadra si prende prima tra chi ci è già, poi tra chi non ha un lavoro,
+  // e a parità tra i costruttori più esperti: così i contadini restano nei campi
+  const crewOrder=able.slice().sort((a,b)=>
+    (b.builder?1:0)-(a.builder?1:0) || (a.job?1:0)-(b.job?1:0) ||
+    (a.kind==='thrall'?1:0)-(b.kind==='thrall'?1:0) || skillXp(b,'build')-skillXp(a,'build'));
+  const crew=crewOrder.slice(0,needBuilders);
+  able=able.filter(u=>!crew.includes(u));
   for(const u of crew){
     u.builder=true;
     if(u.job){ u.job=null; u.mode='idle'; dropCarry(u); }
@@ -1613,8 +1622,9 @@ function syncJobs(){
   for(const u of able) u.builder=false;
   const unable=myLabor().filter(u=>workPower(u)===0);
   for(const u of unable){ if(u.job){ u.job=null; u.mode='idle'; dropCarry(u); } }
-  able.forEach((u,i)=>{
-    const t=slots[i]||null;
+  const placed=placeWorkers(able,slots);
+  able.forEach(u=>{
+    const t=placed.get(u)||null;
     if(u.job!==t){ u.mode='idle'; u.workT=0; dropCarry(u); }
     u.job=t;
     let want='idle';
@@ -1625,6 +1635,32 @@ function syncJobs(){
   });
   for(const u of unable) if(u.kind!=='idle'&&u.kind!=='thrall') morph(u,'idle');
   refreshArmy();
+}
+/* Chi ha già un posto lo tiene; i posti liberi vanno a chi è più esperto
+   in quel mestiere (i coloni prima degli assoggettati). Prima si ripartiva
+   da capo a ogni cambiamento e i coloni saltavano da un lavoro all'altro:
+   con le abilità, spostarli a caso butterebbe via l'esperienza.         */
+function placeWorkers(able,slots){
+  const free=new Map();
+  for(const t of slots) free.set(t,(free.get(t)||0)+1);
+  const out=new Map(), rest=[];
+  for(const u of able){
+    if(u.job&&free.get(u.job)>0){ out.set(u,u.job); free.set(u.job,free.get(u.job)-1); }
+    else rest.push(u);
+  }
+  for(const [t,n] of free){
+    const k=skillKey(t);
+    for(let i=0;i<n&&rest.length;i++){
+      let bi=0;
+      for(let j=1;j<rest.length;j++){
+        const a=rest[j], b=rest[bi];
+        const ta=a.kind==='thrall'?1:0, tb=b.kind==='thrall'?1:0;
+        if(ta<tb||(ta===tb&&skillXp(a,k)>skillXp(b,k))) bi=j;
+      }
+      out.set(rest[bi],t); rest.splice(bi,1);
+    }
+  }
+  return out;
 }
 function morph(u,kind){
   const carried=!!u.hasCargo;
@@ -2042,6 +2078,7 @@ function moodFactors(u){
   if(grief>0.05) f.push(['lutto', -0.3*grief]);
   if(boomT>0) f.push(['annata abbondante', 0.08]);
   if(u.kind==='thrall') f.push(['assoggettato', -0.2]);
+  for(const id of u.traits||[]) if(PERSON_TRAITS[id].mood) f.push([PERSON_TRAITS[id].label, PERSON_TRAITS[id].mood]);
   return f;
 }
 /* FC.beds è la fotografia di inizio fotogramma: un alloggio può essere caduto
@@ -2060,7 +2097,7 @@ function needsTick(){
     n.food=Math.max(0, n.food-1/NEEDS.FULL);
     if(u.act==='sleep'&&u.from===u.goal)
       n.rest=Math.min(1, n.rest+1/(u.bed&&u.from===u.bed?NEEDS.BED_REST:NEEDS.GROUND_REST));
-    else n.rest=Math.max(0, n.rest-1/NEEDS.AWAKE);
+    else n.rest=Math.max(0, n.rest-1/(NEEDS.AWAKE*traitMul(u,'awake')));
     n.mood+=(moodTarget(u)-n.mood)*NEEDS.MOOD_EASE;
     // gli assoggettati non se ne vanno: per loro le rivolte arriveranno con la diplomazia
     if(u.kind==='thrall'||myPeople().length<=1) continue;
@@ -2074,6 +2111,70 @@ function needsTick(){
   if(starved) toast(starved===1?'Il cibo è finito: un colono se n’è andato.':'Il cibo è finito: '+starved+' coloni se ne sono andati.');
   if(left) toast(left===1?'Un colono scontento ha lasciato la colonia.':left+' coloni scontenti hanno lasciato la colonia.');
   return starved+left>0;
+}
+
+/* ── chi è: nome, tratti, abilità ──────────────────────────────────
+   I tratti non hanno codice proprio: cambiano i pesi delle azioni, la
+   fame, il sonno, l'umore o quanto in fretta si impara. Un tratto nuovo
+   si aggiunge qui.                                                     */
+const PERSON_NAMES=['Ada','Bruno','Carla','Dario','Elsa','Fabio','Gea','Ivo','Lia','Marco',
+  'Nora','Otto','Pia','Rino','Sara','Tito','Una','Vito','Zeno','Alba','Ciro','Dora','Enzo',
+  'Irma','Leo','Mia','Nico','Olga','Piero','Rita','Sesto','Teo','Vera','Aldo','Bice','Elio'];
+const PERSON_TRAITS={
+  lazy:    {label:'pigro',      note:'lavora e costruisce meno volentieri, dorme di più',
+            weights:{work:0.85, build:0.85, sleep:1.15}},
+  brave:   {label:'coraggioso', note:'difende invece di scappare', weights:{fight:1.3, flee:0.7}, not:'timid'},
+  timid:   {label:'pauroso',    note:'scappa prima', weights:{flee:1.35, fight:0.75}, not:'brave'},
+  clever:  {label:'ingegnoso',  note:'impara il 50% più in fretta', learn:1.5},
+  glutton: {label:'goloso',     note:'ha fame prima degli altri', hunger:1.2},
+  sturdy:  {label:'robusto',    note:'regge il 30% in più senza dormire', awake:1.3},
+  cheerful:{label:'allegro',    note:'di umore migliore', mood:0.1}
+};
+/* prodotto di un campo numerico su tutti i tratti del colono (1 se nessuno lo ha) */
+function traitMul(u,field,key){
+  let m=1;
+  for(const id of u.traits||[]){
+    const T=PERSON_TRAITS[id]; if(!T) continue;
+    const v=key?(T[field]&&T[field][key]):T[field];
+    if(typeof v==='number') m*=v;
+  }
+  return m;
+}
+/* chiamata da spawnUnit per ogni civile tuo: nasce con un nome e 0–2 tratti */
+function initPerson(u){
+  u.name=PERSON_NAMES[Math.floor(Math.random()*PERSON_NAMES.length)];
+  const r=Math.random(), want=r<0.35?0:r<0.8?1:2, ids=Object.keys(PERSON_TRAITS);
+  u.traits=[];
+  for(let tries=0; u.traits.length<want&&tries<10; tries++){
+    const id=ids[Math.floor(Math.random()*ids.length)];
+    if(u.traits.includes(id)||u.traits.includes(PERSON_TRAITS[id].not)) continue;
+    u.traits.push(id);
+  }
+  u.skills={};
+}
+
+/* abilità: si impara lavorando. A SKILL_HALF punti di esperienza la resa
+   è +30%, e non supera mai il +60%: i primi tick valgono più degli ultimi */
+const SKILLS={food:'agricoltura', mat:'estrazione', pow:'energia', sci:'ricerca', build:'costruzione'};
+const SKILL_HALF=200;
+/* il mestiere di un edificio è la sua prima produzione positiva (l'armeria non ne ha) */
+const skillKey = t => {
+  const B=t&&t.building&&BUILDINGS[t.building];
+  if(!B||!B.per) return null;
+  for(const k in B.per) if(B.per[k]>0) return k;
+  return null;
+};
+const skillXp = (u,k) => (u.skills&&u.skills[k])||0;
+const skillMul = (u,k) => k ? 1+0.6*skillXp(u,k)/(skillXp(u,k)+SKILL_HALF) : 1;
+function practice(u,k,amount){
+  if(!k||!u.skills) return;
+  u.skills[k]=skillXp(u,k)+amount*traitMul(u,'learn');
+}
+/* il mestiere in cui il colono è più bravo, per l'ispettore */
+function bestSkill(u){
+  let best=null, xp=0;
+  for(const k in u.skills||{}) if(u.skills[k]>xp){ xp=u.skills[k]; best=k; }
+  return best?{key:best, label:SKILLS[best], bonus:skillMul(u,best)-1}:null;
 }
 
 /* ── prenotazioni ──────────────────────────────────────────────────
@@ -2116,7 +2217,10 @@ function colonistContext(u){
     else site=reachableSites(u.from).filter(t=>freeBlocks(t)>0)
       .sort((a,b)=>b.center.dot(u.from.center)-a.center.dot(u.from.center))[0]||null;
   }
-  return {u, n:needsOf(u), canFight, able, foe, foeDist:foe?bd:Infinity,
+  // i tratti moltiplicano i pesi delle azioni: tw.fight = 1,3 per un coraggioso
+  const tw={};
+  for(const k in COLONIST_ACTIONS) tw[k]=traitMul(u,'weights',k);
+  return {u, n:needsOf(u), tw, hungerMul:traitMul(u,'hunger'), canFight, able, foe, foeDist:foe?bd:Infinity,
     raid:FC.raiders.length>0, site, night:!!nightOn, current:u.act,
     hpRatio:u.hp/u.hpMax};
 }
@@ -2125,14 +2229,16 @@ function colonistContext(u){
    Ogni azione: label, weight, considerations, run(u,ctx) → casella
    obiettivo. Le curve sono il posto dove si regola il comportamento.  */
 const is = v => v?1:0;
+/* peso di base, corretto dai tratti del colono */
+const W = (base,key) => c => base*(c.tw[key]||1);
 const COLONIST_ACTIONS = {
-  fight:{label:'difendere', weight:1.0, considerations:[
+  fight:{label:'difendere', weight:W(1.0,'fight'), considerations:[
     consider('sa combattere',  c=>is(c.canFight), CURVES.step(.5)),
     consider('nemico vicino',  c=>1-c.foeDist/MILITIA_RANGE, CURVES.power(.5)),
     consider('in salute',      c=>c.hpRatio, CURVES.logistic(.45,12))
   ], run:(u,c)=>c.foe.from},
 
-  flee:{label:'scappare', weight:1.2, considerations:[
+  flee:{label:'scappare', weight:W(1.2,'flee'), considerations:[
     consider('nemico vicino',  c=>1-c.foeDist/FLEE_RANGE, CURVES.power(.5)),
     consider('vulnerabile',    c=>c.canFight ? (1-c.hpRatio) : 1, CURVES.power(2))
   ], run:(u,c)=>{
@@ -2144,20 +2250,20 @@ const COLONIST_ACTIONS = {
     return away[0]||u.from;
   }},
 
-  shelter:{label:'al riparo', weight:0.95, considerations:[
+  shelter:{label:'al riparo', weight:W(0.95,'shelter'), considerations:[
     consider('incursione',     c=>is(c.raid), CURVES.step(.5)),
     consider('indifeso',       c=>is(c.u.stage==='child'||c.u.wounded), CURVES.step(.5)),
     consider('c\'è un rifugio',c=>is(FC.mine.some(t=>BUILDINGS[t.building].shelter)), CURVES.step(.5))
   ], run:u=>nearestOf(u.from,FC.mine,t=>!!BUILDINGS[t.building].shelter)},
 
-  heal:{label:'curarsi', weight:0.85, considerations:[
+  heal:{label:'curarsi', weight:W(0.85,'heal'), considerations:[
     consider('ferito',         c=>is(c.u.wounded), CURVES.step(.5)),
     consider('salute persa',   c=>1-c.hpRatio, CURVES.linear(.6,.4))
   ], run:u=>nearestOf(u.from,FC.mine,t=>!!BUILDINGS[t.building].heal)
           || u.bed || nearestOf(u.from,FC.beds,t=>reachable(u.from,t)) || u.from},
 
-  eat:{label:'mangiare', weight:1.0, considerations:[
-    consider('fame',           c=>1-c.n.food, CURVES.logistic(.6,10)),
+  eat:{label:'mangiare', weight:W(1.0,'eat'), considerations:[
+    consider('fame',           c=>(1-c.n.food)*c.hungerMul, CURVES.logistic(.6,10)),
     consider('c\'è cibo',      c=>res.food>=0.5?1:0.05),
     consider('un magazzino',   c=>is(FC.storage.length||FC.mine.length), CURVES.step(.5))
   ], run:u=>{
@@ -2171,7 +2277,7 @@ const COLONIST_ACTIONS = {
     return u.from;
   }},
 
-  sleep:{label:'dormire', weight:0.9, considerations:[
+  sleep:{label:'dormire', weight:W(0.9,'sleep'), considerations:[
     // chi dorme già continua finché non è riposato: senza, si sveglierebbe
     // appena la stanchezza scende sotto la soglia che l'ha fatto coricare
     consider('stanchezza',     c=>c.current==='sleep' ? (c.n.rest<0.95?1:0) : 1-c.n.rest, CURVES.logistic(.6,10)),
@@ -2188,16 +2294,16 @@ const COLONIST_ACTIONS = {
     return spot;
   }},
 
-  work:{label:'lavorare', weight:0.6, considerations:[
+  work:{label:'lavorare', weight:W(0.6,'work'), considerations:[
     consider('ha un lavoro',   c=>is(c.u.job), CURVES.step(.5))
   ], run:(u,c,dt)=>workRun(u,dt)},
 
-  build:{label:'costruire', weight:0.55, considerations:[
+  build:{label:'costruire', weight:W(0.55,'build'), considerations:[
     consider('può lavorare',   c=>is(c.able&&!c.u.job), CURVES.step(.5)),
     consider('un cantiere libero', c=>is(c.site), CURVES.step(.5))
   ], run:(u,c)=>buildRun(u,c.site)},
 
-  gather:{label:'tornare a casa', weight:0.1, considerations:[], run:u=>
+  gather:{label:'tornare a casa', weight:W(0.1,'gather'), considerations:[], run:u=>
     nearestOf(u.from,FC.beds,t=>reachable(u.from,t)) || nearestOf(u.from,FC.mine,t=>reachable(u.from,t))}
 };
 
@@ -2234,6 +2340,7 @@ function buildRun(u,site){
   dropCarry(u);
   releaseBlock(u);
   addBlockToSite(site);
+  practice(u,'build',8);
   u.mode='idle';
   return null;
 }
@@ -2333,7 +2440,8 @@ function stepUnits(dt){
     // solo strade finite: un cantiere ha già il tipo dell'edificio e dava il bonus
     const road=t=>hasFlag(t,'road')&&!t.site;
     const onRoad=road(u.from)||road(u.to);
-    u.t+=dt*u.speed*(onRoad?1.6:1);
+    // un costruttore esperto fa la spola più in fretta
+    u.t+=dt*u.speed*(onRoad?1.6:1)*(u.act==='build'?skillMul(u,'build'):1);
     if(u.t>=1){
       u.t=0; u.from=u.to;
       if(goal&&goal!==u.from) u.to=stepToward(u.from,goal,fly,u.faction!=='you');
@@ -3132,8 +3240,12 @@ function renderMinds(tile){
   for(const u of here.slice(0,3)){
     const n=u.needs, why=explainColonist(u).slice(0,3);
     const cur=COLONIST_ACTIONS[u.act];
-    html+='<div class="mind"><div class="who">'+UNITS[u.kind].label+' · '+AGES[u.stage].label+
-      '<b>'+(cur?cur.label:'—')+'</b></div><div class="needs">'+
+    const sk=bestSkill(u);
+    const tr=(u.traits||[]).map(id=>'<span title="'+PERSON_TRAITS[id].note+'">'+PERSON_TRAITS[id].label+'</span>').join(', ');
+    html+='<div class="mind"><div class="who">'+(u.name||UNITS[u.kind].label)+' · '+AGES[u.stage].label+
+      (u.kind==='thrall'?' · assoggettato':'')+'<b>'+(cur?cur.label:'—')+'</b></div>'+
+      ((tr||sk)?'<div class="traits">'+[tr, sk&&sk.bonus>=0.01?sk.label+' +'+Math.round(sk.bonus*100)+'%':''].filter(Boolean).join(' · ')+'</div>':'')+
+      '<div class="needs">'+
       bar('sazio',n.food)+bar('riposato',n.rest)+bar('umore',n.mood)+'</div><ol>'+
       why.map(w=>{
         const worst=w.detail.slice().sort((a,b)=>a.value-b.value)[0];
@@ -3406,7 +3518,8 @@ function snapshot(){
     units:units.map(u=>({k:u.kind, f:u.faction, at:u.from.id, hp:u.hp, age:u.age,
       wd:!!u.wounded, set:si(u.settlement), dep:!!u.deployed,
       load:u.load, dl:!!u.delivered, life:u.lifeT||0,
-      nd:u.needs?[u.needs.food,u.needs.rest,u.needs.mood]:null})),
+      nd:u.needs?[u.needs.food,u.needs.rest,u.needs.mood]:null,
+      nm:u.name, tr:u.traits, sk:u.skills})),
     orbit:orbit.map(o=>o.kind), moonCrew:moonCrew.length};
 }
 function saveGame(silent){
@@ -3470,6 +3583,7 @@ function restore(d){
       u.deployed=e.dep;
       // salvataggi di prima dei bisogni: il colono parte sazio e riposato
       if(e.nd) u.needs={food:e.nd[0], rest:e.nd[1], mood:e.nd[2]};
+      if(e.nm){ u.name=e.nm; u.traits=(e.tr||[]).filter(id=>PERSON_TRAITS[id]); u.skills={...(e.sk||{})}; }
       if(e.k==='caravan'){ u.load=e.load; u.delivered=e.dl; u.lifeT=e.life; if(!e.dl) takeCarry(u,0xd9a441); }
     }
     Object.assign(res,d.res);
