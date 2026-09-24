@@ -1,0 +1,3404 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Colonia — pianeta minuscolo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#070d1a; --ink:#eef2f8; --ink-dim:#8a97ad;
+    --ember:#ff7a3c; --moss:#8fd98a; --rival:#e0616b; --raid:#b96bff;
+    --line:rgba(160,180,210,.16); --panel:rgba(13,21,38,.86);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{background:var(--void);color:var(--ink);
+    font-family:"Space Grotesk",system-ui,-apple-system,sans-serif;
+    overflow:hidden;-webkit-tap-highlight-color:transparent}
+  #stage{position:fixed;inset:0}
+  canvas{display:block;touch-action:none}
+  button{font-family:inherit}
+
+  .hud{position:fixed;top:0;left:0;right:0;display:flex;gap:22px;align-items:baseline;
+    flex-wrap:wrap;padding:14px 18px;
+    background:linear-gradient(to bottom,rgba(7,13,26,.9),rgba(7,13,26,0));pointer-events:none}
+  .stat{display:flex;gap:6px;align-items:baseline}
+  .stat b{font-weight:700;font-size:18px;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+  .stat span{font-size:12px;color:var(--ink-dim)}
+  .stat .rate{font-size:11px;color:var(--moss)}
+  .stat .rate.neg{color:var(--ember)}
+  .topright{margin-left:auto;display:flex;align-items:center;gap:10px;pointer-events:auto}
+  .world{text-align:right;font-size:12px;color:var(--ink-dim);line-height:1.45}
+  .world b{display:block;color:var(--ink);font-size:15px;font-weight:500}
+  .ctrl{display:flex;gap:4px}
+  .ctrl button{all:unset;padding:5px 9px;border:1px solid var(--line);border-radius:3px;
+    font-size:12px;cursor:pointer;color:var(--ink-dim);transition:.12s}
+  .ctrl button:hover{border-color:var(--ember);color:var(--ink)}
+  .ctrl button.on{border-color:var(--ember);color:var(--ember);background:rgba(255,122,60,.12)}
+  .ctrl button.pwr-on{border-color:#50d2ff;color:#50d2ff;background:rgba(80,210,255,.18)}
+  .ctrl button:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+
+  .panel{position:fixed;padding:13px 14px;background:var(--panel);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:3px;font-size:13px;line-height:1.5}
+  .inspector{left:18px;top:82px;width:224px;opacity:0;transform:translateY(-6px);
+    transition:opacity .16s ease,transform .16s ease;pointer-events:none}
+  .inspector.on{opacity:1;transform:none;pointer-events:auto}
+  .inspector h2{margin:0 0 3px;font-size:16px;font-weight:500;letter-spacing:-.01em}
+  .inspector p{margin:0;color:var(--ink-dim);font-size:12.5px}
+  .swatch{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:7px;vertical-align:1px}
+  .crew{display:none;align-items:center;gap:6px;margin-top:11px}
+  .step{all:unset;width:26px;height:26px;display:grid;place-items:center;border:1px solid var(--line);
+    border-radius:3px;cursor:pointer;font-size:16px;line-height:1;color:var(--ink);transition:.12s}
+  .step:hover:not(:disabled){border-color:var(--ember);background:rgba(255,122,60,.12)}
+  .step:disabled{opacity:.3;cursor:not-allowed}
+  .count{min-width:34px;text-align:center;font-size:13.5px;font-variant-numeric:tabular-nums;color:var(--moss)}
+  .fill{all:unset;margin-left:auto;padding:5px 9px;cursor:pointer;border:1px solid var(--line);
+    border-radius:3px;font-size:11.5px;color:var(--ink-dim);transition:.12s}
+  .fill:hover:not(:disabled){border-color:var(--ember);color:var(--ink)}
+  .fill:disabled{opacity:.3;cursor:not-allowed}
+  .fill.danger{margin-left:0;border-color:rgba(224,97,107,.45);color:var(--rival)}
+  .fill.danger:hover:not(:disabled){border-color:var(--rival);color:var(--ink)}
+  .demo{display:none;margin-top:9px}
+  .kinds{display:none;gap:5px;margin-top:9px}
+  .kinds button{all:unset;flex:1;text-align:center;padding:6px 4px;border:1px solid var(--line);
+    border-radius:3px;font-size:11.5px;cursor:pointer;color:var(--ink-dim);transition:.12s}
+  .kinds button.on{border-color:var(--moss);color:var(--moss);background:rgba(143,217,138,.1)}
+  .step:focus-visible,.fill:focus-visible,.kinds button:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+
+  .army{right:18px;top:82px;width:246px;max-height:calc(100vh - 200px);overflow-y:auto}
+  .army h3{margin:0 0 9px;font-size:12px;font-weight:500;color:var(--ink-dim)}
+  .force{display:flex;align-items:center;gap:6px;margin-bottom:11px;padding-bottom:11px;
+    border-bottom:1px solid var(--line)}
+  .force .count{color:var(--ink)}
+  .force span.lbl{font-size:11.5px;color:var(--ink-dim);margin-right:auto}
+  .settle{margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+  .settle:last-child{margin-bottom:0;padding-bottom:0;border-bottom:0}
+  .settle .nm{font-size:13.5px;font-weight:500;display:flex;align-items:baseline;gap:7px}
+  .settle .rel{font-size:11px;color:var(--ink-dim)}
+  .settle .rel.ostile{color:var(--rival)}
+  .settle .rel.alleato{color:var(--moss)}
+  .settle .meta{font-size:11.5px;color:var(--ink-dim);margin:2px 0 7px}
+  .acts{display:flex;gap:5px}
+  .acts button{all:unset;flex:1;text-align:center;padding:6px 4px;border:1px solid var(--line);
+    border-radius:3px;font-size:11.5px;cursor:pointer;color:var(--ink-dim);transition:.12s}
+  .acts button:hover:not(:disabled){border-color:var(--ember);color:var(--ink)}
+  .acts button:disabled{opacity:.3;cursor:not-allowed}
+  .acts button.war{border-color:rgba(224,97,107,.5);color:var(--rival)}
+
+  .dock{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    max-width:min(880px,calc(100vw - 300px))}
+  .tray{display:none;gap:7px;flex-wrap:wrap;justify-content:center}
+  .tray.on{display:flex}
+  .cats{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center}
+  #sizes{display:none}
+  #sizes.on{display:flex}
+  .sizelbl{font-size:11.5px;color:var(--ink-dim);padding-right:2px}
+  .cats button{all:unset;padding:8px 14px;background:var(--panel);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:3px;font-size:12.5px;
+    cursor:pointer;color:var(--ink-dim);transition:.13s}
+  .cats button:hover{border-color:var(--ember);color:var(--ink)}
+  .cats button.on{border-color:var(--ember);color:var(--ember);background:rgba(255,122,60,.14)}
+  .cats button:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+  /* icone compatte: con venti edifici i riquadri diventavano un muro */
+  .card{all:unset;width:44px;height:44px;display:grid;place-items:center;font-size:20px;
+    background:var(--panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:4px;cursor:pointer;transition:.13s;position:relative}
+  .card:hover:not(:disabled),.card:focus-visible{border-color:var(--ember);transform:translateY(-2px)}
+  .card:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+  .card:disabled{opacity:.3;cursor:not-allowed}
+  .card.launch{border-color:rgba(255,122,60,.45)}
+  .tip{position:fixed;pointer-events:none;opacity:0;transform:translateY(4px);
+    transition:opacity .12s ease,transform .12s ease;z-index:80;
+    padding:9px 11px;max-width:250px;background:var(--panel);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:3px;font-size:12.5px;line-height:1.45}
+  .tip.on{opacity:1;transform:none}
+  .tip b{display:block;font-weight:500;font-size:13.5px;margin-bottom:2px}
+  .tip .c{color:var(--ink-dim);font-variant-numeric:tabular-nums}
+  .tip .e{color:var(--moss);display:block;margin-top:3px}
+
+  /* spostata in alto: in basso copriva le icone di costruzione */
+  .toast{position:fixed;left:50%;top:74px;transform:translateX(-50%) translateY(-8px);
+    padding:8px 14px;font-size:13px;background:var(--panel);border:1px solid var(--line);
+    border-radius:3px;opacity:0;transition:.2s;pointer-events:none;max-width:70vw;text-align:center}
+  .toast.on{opacity:1;transform:translateX(-50%)}
+  .toast{z-index:70}
+  .err{position:fixed;left:20px;right:20px;top:50%;transform:translateY(-50%);max-width:560px;
+    margin:0 auto;padding:16px 18px;display:none;background:#1c0f14;border:1px solid var(--ember);
+    border-radius:3px;font-size:13px;line-height:1.6;white-space:pre-wrap}
+  .err.on{display:block}
+  .err b{display:block;margin-bottom:6px;font-weight:500;color:var(--ember)}
+  .diag{position:fixed;left:18px;bottom:18px;font-size:11px;color:var(--ink-dim);
+    font-variant-numeric:tabular-nums;pointer-events:none}
+
+  /* registro eventi: i toast si sovrascrivono, qui resta la storia */
+  .log{left:18px;bottom:40px;width:300px;max-height:38vh;overflow-y:auto;display:none;z-index:60}
+  .log.on{display:block}
+  .log h3{margin:0 0 6px;font-size:12px;font-weight:500;color:var(--ink-dim);display:flex;justify-content:space-between}
+  .log .keys{font-size:10.5px;color:var(--ink-dim);line-height:1.5;margin-bottom:8px;
+    padding-bottom:8px;border-bottom:1px solid var(--line)}
+  .log .keys kbd{font-family:inherit;border:1px solid var(--line);border-radius:2px;padding:0 4px;color:var(--ink)}
+  .log ol{list-style:none;margin:0;padding:0}
+  .log li{font-size:12px;padding:3px 0;border-bottom:1px solid rgba(160,180,210,.07);display:flex;gap:8px}
+  .log li time{color:var(--ink-dim);font-variant-numeric:tabular-nums;min-width:38px}
+  .log li.ev{color:#ffc46b}
+
+  /* la colonia è perduta */
+  .over{position:fixed;inset:0;display:none;place-items:center;background:rgba(7,13,26,.72);z-index:90}
+  .over.on{display:grid}
+  .over .box{padding:22px 24px;max-width:380px;text-align:center;background:var(--panel);
+    border:1px solid var(--ember);border-radius:3px}
+  .over h2{margin:0 0 8px;font-weight:500;font-size:20px}
+  .over p{margin:0 0 16px;color:var(--ink-dim);font-size:13px;line-height:1.55}
+  .over button{all:unset;cursor:pointer;padding:8px 16px;border:1px solid var(--ember);border-radius:3px;
+    color:var(--ember);font-size:13px}
+  .over button:hover{background:rgba(255,122,60,.14)}
+  .over button:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+  .rowbtns{display:none;gap:6px;margin-top:9px;flex-wrap:wrap}
+  .rowbtns .fill{margin-left:0}
+  @media (max-width:900px){
+    .army{display:none}
+    .dock{max-width:calc(100vw - 24px)}
+    .diag{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+
+<div class="hud">
+  <div class="stat"><b id="s-food">0</b><span>cibo</span><span class="rate" id="r-food"></span></div>
+  <div class="stat"><b id="s-mat">0</b><span>materiali</span><span class="rate" id="r-mat"></span></div>
+  <div class="stat"><b id="s-pow">0</b><span>energia</span><span class="rate" id="r-pow"></span></div>
+  <div class="stat"><b id="s-pop">0</b><span>coloni</span><span class="rate" id="r-pop"></span></div>
+  <div class="stat"><b id="s-demo">0·0·0</b><span>bimbi·adulti·anziani</span><span class="rate" id="r-hurt"></span></div>
+  <div class="stat"><b id="s-build">0</b><span>al cantiere</span></div>
+  <div class="stat"><b id="s-war">0</b><span>truppe</span></div>
+  <div class="stat"><b id="s-orbit">0</b><span>in orbita</span></div>
+  <div class="stat"><b id="s-raid">—</b><span>incursione</span><span class="rate" id="r-raid"></span></div>
+  <div class="stat"><b id="s-season">—</b><span>stagione</span></div>
+  <div class="stat"><b id="s-tech">0</b><span>ricerca</span><span class="rate" id="r-tech"></span></div>
+  <div class="stat"><b id="s-thrall">0</b><span>assoggettati</span></div>
+  <div class="topright">
+    <div class="ctrl" id="powers">
+      <button id="p-bolt" title="Fulmine — 20 energia: 35 danni ai nemici nel punto colpito">⚡ 20</button>
+      <button id="p-rain" title="Pioggia — 15 energia: +30 cibo e raccolti accelerati">🌧 15</button>
+      <button id="p-heal" title="Cura solare — 15 energia: guarisce i tuoi nel raggio">✨ 15</button>
+    </div>
+    <div class="ctrl">
+      <button id="b-auto" title="I coloni costruiscono e si organizzano da soli">auto</button>
+      <button id="b-cargo" class="on" title="Mostra o nascondi i materiali trasportati">carichi</button>
+      <button id="b-day" class="on" title="Attiva o disattiva il ciclo giorno/notte">giorno/notte</button>
+    </div>
+    <div class="ctrl">
+      <button id="b-save" title="Salva la partita in questo browser (Ctrl+S). Salvataggio automatico ogni 30 s">salva</button>
+      <button id="b-load" title="Riprendi l'ultima partita salvata">carica</button>
+      <button id="b-log" title="Registro eventi e scorciatoie (L)">registro</button>
+    </div>
+    <div class="ctrl" id="speeds">
+      <button data-mul="0" title="Pausa (spazio)" aria-label="Pausa">⏸</button>
+      <button data-mul="1" class="on" title="Velocità normale (1)">1×</button>
+      <button data-mul="2" title="Velocità doppia (2)">2×</button>
+      <button data-mul="4" title="Velocità quadrupla (3)">4×</button>
+    </div>
+    <div class="world"><b id="w-name">—</b><span id="w-count"></span></div>
+  </div>
+</div>
+
+<div class="panel inspector" id="inspector">
+  <h2 id="i-title">—</h2>
+  <p id="i-body">—</p>
+  <div class="crew" id="i-crew">
+    <button class="step" id="i-minus" aria-label="Togli un addetto">−</button>
+    <span class="count" id="i-count">0/0</span>
+    <button class="step" id="i-plus" aria-label="Aggiungi un addetto">+</button>
+    <button class="fill" id="i-fill">al completo</button>
+  </div>
+  <div class="crew" id="i-cargorow" style="flex-direction:column;align-items:stretch;gap:6px">
+    <div style="font-size:11px;color:var(--ink-dim)">Carico per il nuovo mondo</div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:11px;min-width:52px;color:var(--ink-dim)">materiali</span>
+      <button class="step" id="cm-minus">−</button>
+      <span class="count" id="cm-amt">0</span>
+      <button class="step" id="cm-plus">+</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:11px;min-width:52px;color:var(--ink-dim)">cibo</span>
+      <button class="step" id="cf-minus">−</button>
+      <span class="count" id="cf-amt">0</span>
+      <button class="step" id="cf-plus">+</button>
+      <button class="fill" id="c-launch">lancia</button>
+    </div>
+  </div>
+  <div class="rowbtns" id="i-uprow">
+    <button class="fill" id="i-upgrade" title="Amplia la struttura (U)">amplia</button>
+    <button class="fill" id="i-repair">ripara</button>
+  </div>
+  <div class="demo" id="i-demorow">
+    <button class="fill danger" id="i-demolish">demolisci</button>
+  </div>
+  <div class="kinds" id="i-kinds">
+    <button data-kind="spear">lancieri</button>
+    <button data-kind="bow">arcieri</button>
+  </div>
+  <div class="demo" id="i-disbandrow">
+    <button class="fill" id="i-disband">congeda tutti → coloni</button>
+  </div>
+</div>
+
+<div class="panel army" id="army">
+  <h3>Esercito</h3>
+  <div class="force">
+    <span class="lbl">schierate all'attacco</span>
+    <button class="step" id="a-minus" aria-label="Meno truppe">−</button>
+    <span class="count" id="a-size">0/0</span>
+    <button class="step" id="a-plus" aria-label="Più truppe">+</button>
+  </div>
+  <div id="a-list"></div>
+</div>
+
+<div class="dock">
+  <div class="tray" id="tray"></div>
+  <div class="cats" id="sizes">
+    <span class="sizelbl">taglia</span>
+    <button data-size="1" class="on">1×</button>
+    <button data-size="2">2×</button>
+    <button data-size="3">3×</button>
+  </div>
+  <div class="cats" id="cats"></div>
+</div>
+<div class="panel log" id="log">
+  <h3><span>Registro</span><span id="log-count"></span></h3>
+  <div class="keys">
+    <kbd>spazio</kbd> pausa · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> velocità · <kbd>A</kbd> auto ·
+    <kbd>F</kbd> fulmine · <kbd>R</kbd> pioggia · <kbd>C</kbd> cura · <kbd>U</kbd> amplia ·
+    <kbd>Esc</kbd> annulla · <kbd>Ctrl+S</kbd> salva · <kbd>L</kbd> registro
+  </div>
+  <ol id="log-list"></ol>
+</div>
+<div class="over" id="over" role="dialog" aria-modal="true" aria-labelledby="over-title">
+  <div class="box">
+    <h2 id="over-title">La colonia è perduta</h2>
+    <p id="over-body">Non resta nessuno a portare avanti il villaggio.</p>
+    <button id="over-restart">ricomincia da capo</button>
+  </div>
+</div>
+<div class="tip" id="tip"></div>
+<div class="toast" id="toast"></div>
+<div class="err" id="err"></div>
+<div class="diag" id="diag">avvio…</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   COLONIA — pianeta minuscolo
+   Geosfera, logistica a blocchi, stagioni, ricerca, popoli rivali.
+   ═══════════════════════════════════════════════════════════════ */
+
+function fail(msg){
+  const box=document.getElementById('err');
+  box.innerHTML='<b>Qualcosa si è rotto.</b>'+msg;
+  box.classList.add('on');
+}
+
+const R = 14, SUBDIV = 11, SKIRT = 1.8;   // 10·11²+2 = 1212 caselle
+const USE = 0.15, DRIP = 0.5;
+const FOOD_DRIP = 1.0;   // il cibo ha un rifornimento doppio: 1 al tick
+const WALL_COST = 14;    // quanti passi di deviazione vale sfondare un muro
+
+/* ── ciclo di vita, in tick (1 tick = 1 s a velocità 1×) ─────── */
+const AGES = {
+  child: {until:45,  eat:0.25, work:0,   scale:0.62, label:'bambino'},
+  adult: {until:260, eat:0.45, work:1,   scale:1.00, label:'adulto'},
+  elder: {until:340, eat:0.35, work:0.7, scale:0.86, label:'anziano'}
+};
+const stageAt = age => age<AGES.child.until ? 'child' : age<AGES.adult.until ? 'adult' : 'elder';
+const WOUND_AT = 0.4;          // sotto il 40% di salute un colono è ferito
+const SELF_HEAL = 0.06;        // guarigione senza ospedale, per tick
+const BASE_STORE = 140;
+
+/* ── stagioni ─────────────────────────────────────────────────── */
+const SEASONS = [
+  {name:'primavera', food:1.15, tint:0x7fbf5e},
+  {name:'estate',    food:1.00, tint:0x74b45c},
+  {name:'autunno',   food:1.10, tint:0xa3a04a},
+  {name:'inverno',   food:0.55, tint:0xbcc6cf}
+];
+const SEASON_LEN = 55;   // tick per stagione
+
+/* ── random e rumore ──────────────────────────────────────────── */
+function mulberry32(a){
+  return function(){
+    a|=0; a=a+0x6D2B79F5|0;
+    let t=Math.imul(a^a>>>15,1|a);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
+function randomUnit(rnd){
+  const z=rnd()*2-1, a=rnd()*Math.PI*2, r=Math.sqrt(1-z*z);
+  return new THREE.Vector3(r*Math.cos(a), r*Math.sin(a), z);
+}
+function makeNoise(seed){
+  const rnd=mulberry32(seed), waves=[];
+  for(let i=0;i<15;i++) waves.push({dir:randomUnit(rnd), freq:0.9+rnd()*4.4,
+    amp:1/(1+i*0.52), phase:rnd()*Math.PI*2});
+  return p=>{ let s=0,tot=0;
+    for(const w of waves){ s+=w.amp*Math.sin(p.dot(w.dir)*w.freq+w.phase); tot+=w.amp; }
+    return s/tot; };
+}
+
+/* ── geosfera: duale di un icosaedro suddiviso ────────────────── */
+function buildHexasphere(subdiv){
+  const t=(1+Math.sqrt(5))/2;
+  const base=[[-1,t,0],[1,t,0],[-1,-t,0],[1,-t,0],[0,-1,t],[0,1,t],
+              [0,-1,-t],[0,1,-t],[t,0,-1],[t,0,1],[-t,0,-1],[-t,0,1]]
+    .map(v=>new THREE.Vector3(v[0],v[1],v[2]).normalize());
+  const baseFaces=[[0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],[1,5,9],[5,11,4],
+                   [11,10,2],[10,7,6],[7,1,8],[3,9,4],[3,4,2],[3,2,6],[3,6,8],
+                   [3,8,9],[4,9,5],[2,4,11],[6,2,10],[8,6,7],[9,8,1]];
+  const verts=[], vmap=new Map(), tris=[];
+  const key=v=>v.x.toFixed(5)+','+v.y.toFixed(5)+','+v.z.toFixed(5);
+  function addVert(v){
+    const n=v.clone().normalize(), k=key(n);
+    if(vmap.has(k)) return vmap.get(k);
+    verts.push(n); vmap.set(k,verts.length-1); return verts.length-1;
+  }
+  for(const f of baseFaces){
+    const A=base[f[0]], B=base[f[1]], C=base[f[2]], rows=[];
+    for(let i=0;i<=subdiv;i++){
+      const L=A.clone().lerp(B,i/subdiv), Rt=A.clone().lerp(C,i/subdiv), row=[];
+      for(let j=0;j<=i;j++) row.push(addVert(i===0?L:L.clone().lerp(Rt,j/i)));
+      rows.push(row);
+    }
+    for(let i=1;i<=subdiv;i++) for(let j=0;j<i;j++){
+      tris.push([rows[i-1][j],rows[i][j],rows[i][j+1]]);
+      if(j<i-1) tris.push([rows[i-1][j],rows[i][j+1],rows[i-1][j+1]]);
+    }
+  }
+  const centroids=tris.map(tr=>verts[tr[0]].clone().add(verts[tr[1]]).add(verts[tr[2]]).normalize());
+  const around=verts.map(()=>[]), neigh=verts.map(()=>new Set());
+  tris.forEach((tr,ti)=>{
+    for(const v of tr) around[v].push(ti);
+    neigh[tr[0]].add(tr[1]); neigh[tr[0]].add(tr[2]);
+    neigh[tr[1]].add(tr[0]); neigh[tr[1]].add(tr[2]);
+    neigh[tr[2]].add(tr[0]); neigh[tr[2]].add(tr[1]);
+  });
+  return verts.map((center,i)=>{
+    const n=center.clone();
+    let u=new THREE.Vector3(0,0,1).cross(n);
+    if(u.lengthSq()<1e-6) u=new THREE.Vector3(1,0,0).cross(n);
+    u.normalize();
+    const w=n.clone().cross(u);
+    const corners=around[i].map(ti=>centroids[ti])
+      .sort((a,b)=>Math.atan2(a.dot(w),a.dot(u))-Math.atan2(b.dot(w),b.dot(u)));
+    return {id:i, center:n, corners, neighbors:[...neigh[i]]};
+  });
+}
+
+/* ── biomi ────────────────────────────────────────────────────── */
+const BIOMES = {
+  ocean:  {label:'Oceano',   top:0x27618f, side:0x1b4467, build:false, water:true, lift:-0.34},
+  sand:   {label:'Sabbia',   top:0xd6c187, side:0xa8935f, build:true,  lift:0.10},
+  meadow: {label:'Prateria', top:0x74b45c, side:0x4a7a3c, build:true,  season:true, lift:0.30},
+  soil:   {label:'Terra',    top:0x9b7550, side:0x6d5038, build:true,  lift:0.55},
+  rock:   {label:'Roccia',   top:0x7f8792, side:0x565d68, build:true,  lift:0.95},
+  volcano:{label:'Vulcano',  top:0x3a2622, side:0x241512, build:false, lift:1.25},
+  lava:   {label:'Lava',     top:0xff5a1f, side:0x8a2a0c, build:false, lift:1.10}
+};
+
+/* ── edifici ──────────────────────────────────────────────────────
+   cat    = catalogo in cui compare
+   blocks = blocchetti che i coloni devono trasportare al cantiere
+   ships  = quanti carichi di prodotto genera (animazione + resa)      */
+const BUILDINGS = {
+  hut:    {cat:'base', name:'Capanna',  cost:{mat:10},        blocks:3,  effect:'4 posti letto',        jobs:0, houses:4, hp:25, store:40},
+  block:  {cat:'base', name:'Alloggi',  cost:{mat:34},        blocks:7,  effect:'12 posti letto',       jobs:0, houses:12, hp:40, store:30},
+  farm:   {cat:'base', name:'Fattoria', cost:{mat:14},        blocks:4,  effect:'1,3 cibo a testa',     jobs:2, per:{food:1.3}, ships:'food', hp:25},
+  mine:   {cat:'base', name:'Miniera',  cost:{mat:18},        blocks:5,  effect:'0,8 materiali a testa',jobs:3, per:{mat:0.8}, ships:'mat', needs:['rock','soil'], hp:28},
+  plant:  {cat:'base', name:'Centrale', cost:{mat:24},        blocks:6,  effect:'2 energia a testa',    jobs:2, per:{pow:2}, hp:28},
+  depot:  {cat:'base', name:'Deposito', cost:{mat:22},        blocks:5,  effect:'+150 di capienza',     jobs:0, store:150, hp:30},
+  road:   {cat:'base', name:'Strada',   cost:{mat:4},         blocks:1,  effect:'chi ci passa va il 60% più veloce', jobs:0, road:true, hp:15},
+  workshop:{cat:'base',name:'Officina', cost:{mat:40},        blocks:7,  effect:'converte 1,6 cibo in 1,1 materiali a testa', jobs:3, per:{mat:1.1}, eats:{food:1.6}, ships:'mat', hp:32},
+  green:  {cat:'base', name:'Serra',    cost:{mat:48,pow:20}, blocks:8,  effect:'1,5 cibo a testa, immune alle stagioni', jobs:2, per:{food:1.5}, ships:'food', noSeason:true, drain:0.6, hp:28},
+  market: {cat:'base', name:'Mercato',  cost:{mat:38},        blocks:6,  effect:'+60% ai tributi e abilita lo scambio', jobs:1, trade:true, hp:30, store:60},
+  clinic: {cat:'base', name:'Ospedale',  cost:{mat:35},       blocks:6,  effect:'cura i feriti nel raggio', jobs:2, heal:1.6, range:5.5, hp:30},
+
+  dock:   {cat:'acqua',name:'Molo',     cost:{mat:12},        blocks:3,  effect:'rende il mare percorribile', jobs:0, water:true, hp:20},
+  fishery:{cat:'acqua',name:'Peschiera',cost:{mat:20},        blocks:4,  effect:'1,6 cibo a testa, sul mare', jobs:2, per:{food:1.6}, ships:'food', water:true, hp:22},
+
+  wall:   {cat:'difesa',name:'Mura',    cost:{mat:8},         blocks:2,  effect:'barriera: i nemici non la attraversano', jobs:0, wall:true, hp:120},
+  armory: {cat:'difesa',name:'Armeria', cost:{mat:30},        blocks:7,  effect:'addestra lancieri o arcieri', jobs:3, per:{mat:-0.3}, armory:true, hp:45},
+  turret: {cat:'difesa',name:'Torretta',cost:{mat:40,pow:15}, blocks:8,  effect:'spara da sola sui nemici', jobs:0, drain:0.4, range:5.0, dps:3.5, hp:35},
+  shrine: {cat:'difesa',name:'Santuario',cost:{mat:45,pow:20},blocks:9,  effect:'un guardiano ogni 25s', jobs:0, drain:0.5, spawns:'guardian', every:25, cap:4, hp:40},
+  fort:   {cat:'difesa',name:'Roccaforte',cost:{mat:80,pow:25},blocks:12,effect:'rifugio per bambini e feriti durante le incursioni', jobs:2, drain:0.3, shelter:true, range:4.0, hp:150},
+
+  lab:    {cat:'scienza',name:'Centro ricerca',cost:{mat:55,pow:30}, blocks:9, effect:'0,9 ricerca a testa', jobs:2, per:{sci:0.9}, hp:35},
+
+  pad:    {cat:'speciale',name:'Rampa di lancio', cost:{mat:70,pow:40}, blocks:14, effect:'parti per un nuovo mondo', jobs:4, launch:true, hp:50},
+
+  keep:   {cat:null, name:'Roccaforte rivale', cost:{}, blocks:0, effect:'cuore di un popolo rivale', jobs:0, hp:70, rivalOnly:true},
+  camp:   {cat:null, name:'Accampamento',      cost:{}, blocks:0, effect:'insediamento rivale',      jobs:0, hp:32, rivalOnly:true},
+  rfarm:  {cat:null, name:'Campi rivali',      cost:{}, blocks:0, effect:'nutre l\'espansione del clan', jobs:0, hp:26, rivalOnly:true},
+  rtower: {cat:null, name:'Torre rivale',      cost:{}, blocks:0, effect:'difende il territorio del clan', jobs:0, hp:38, range:4.4, dps:2.8, rivalOnly:true}
+};
+
+/* ── strutture orbitali: non stanno su una casella, stanno in cielo ──
+   Si costruiscono dal catalogo Orbita senza selezionare terreno.
+   Restano su questo pianeta: se parti, le lasci indietro.               */
+const ORBITALS = {
+  station:{name:'Stazione orbitale', cost:{mat:120,pow:60}, effect:'+220 di capienza · richiesta dalle altre',
+           store:220, hub:true},
+  mirror: {name:'Specchio solare',   cost:{mat:90,pow:80},  effect:'annulla la carestia invernale'},
+  cannon: {name:'Cannone orbitale',  cost:{mat:140,pow:110},effect:'colpisce i predoni da orbita · 1 energia',
+           drain:1.0, dps:4.2},
+  eye:    {name:'Occhio profondo',   cost:{mat:100,pow:70}, effect:'+45s tra un\'incursione e l\'altra',
+           drain:0.4, delay:45},
+  moonbase:{name:'Base lunare',      cost:{mat:160,pow:90}, effect:'spedizioni sulla luna: +40 materiali ogni 40s',
+           drain:0.8, every:40, haul:40}
+};
+const ICONS = {
+  hut:'🏠', block:'🏘', farm:'🌾', mine:'⛏', plant:'⚡', depot:'📦', clinic:'✚',
+  road:'🛣', workshop:'🔧', green:'🌱', market:'⚖',
+  dock:'⚓', fishery:'🐟',
+  wall:'🧱', armory:'⚔', turret:'🎯', shrine:'🔯', fort:'🏰',
+  lab:'🔬', pad:'🚀',
+  station:'🛰', mirror:'🪞', cannon:'💥', eye:'👁', moonbase:'🌙'
+};
+
+const CATALOGS = [
+  {id:'base',    label:'Colonia'},
+  {id:'acqua',   label:'Mare'},
+  {id:'difesa',  label:'Difesa'},
+  {id:'scienza', label:'Ricerca'},
+  {id:'speciale',label:'Spazio'},
+  {id:'orbita',  label:'Orbita'}
+];
+
+/* ── ricerca: tre livelli, ognuno migliora resa e armi ────────── */
+const TECH_COST = [0, 90, 240, 480];
+const techProd = () => 1 + 0.18*tech;
+const techWar  = () => 1 + 0.22*tech;
+
+/* ── unità ────────────────────────────────────────────────────── */
+const UNITS = {
+  worker:  {label:'colono',    hp:10, dmg:0.6, range:0.9, speed:.40, color:0xffd9a8, civil:true},
+  idle:    {label:'inattivo',  hp:10, dmg:0.6, range:0.9, speed:.40, color:0x76839c, civil:true},
+  spear:   {label:'lanciere',  hp:13, dmg:2.4, range:1.1, speed:.50, color:0xdfe9ff},
+  bow:     {label:'arciere',   hp:8,  dmg:1.9, range:2.9, speed:.45, color:0x9fe3bd},
+  guardian:{label:'guardiano', hp:26, dmg:3.2, range:1.2, speed:.32, color:0xffc46b},
+  raider:  {label:'predone',   hp:12, dmg:2.6, range:1.1, speed:.34, color:0x9b3fd4},
+  soldier: {label:'soldato',   hp:11, dmg:2.2, range:1.1, speed:.42, color:0xe0616b},
+  thrall:  {label:'assoggettato', hp:10, dmg:0.4, range:0.9, speed:.42, color:0xb99a86, civil:true},
+  caravan: {label:'carovana',  hp:14, dmg:0,   range:0,   speed:.34, color:0xe8c88a}
+};
+const MILITARY = ['spear','bow','guardian'];
+/* chi conta come popolazione: i soldati restano coloni, solo con un altro mestiere */
+const PEOPLE = ['worker','idle','spear','bow'];
+/* gli assoggettati lavorano ma non sono coloni: non occupano letti,
+   non hanno figli, non invecchiano e non impugnano armi */
+const LABOR  = ['worker','idle','spear','bow','thrall'];
+const THRALL_WORK = 0.8, THRALL_EAT = 0.30;
+const MILITIA_RANGE = 3.5;   // un adulto sano va a difendere entro questa distanza
+const FLEE_RANGE   = 4.2;   // bambini, feriti e assoggettati scappano entro questa
+
+/* ── poteri del giocatore: costano energia, colpiscono dove clicchi ── */
+const POWERS = {
+  bolt: {label:'Fulmine', cost:20, dmg:35,  icon:'⚡'},
+  rain: {label:'Pioggia', cost:15, food:30, icon:'🌧'},
+  heal: {label:'Cura',    cost:15, range:5.5, icon:'✨'}
+};
+
+/* ═══════════════ scena ═══════════════ */
+const stage=document.getElementById('stage');
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(42, innerWidth/innerHeight, 1, 400);
+if(!window.WebGLRenderingContext) fail('Questo browser non espone WebGL.');
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.setClearColor(0x070d1a,1);
+stage.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0x5a6b8c,0.9));
+const sun=new THREE.DirectionalLight(0xfff0dd,1.15); sun.position.set(38,28,22); scene.add(sun);
+const rim=new THREE.DirectionalLight(0x4a7fd0,0.45); rim.position.set(-28,-16,-24); scene.add(rim);
+(function stars(){
+  const g=new THREE.BufferGeometry(), pos=[], rnd=mulberry32(7);
+  for(let i=0;i<1600;i++) pos.push(...randomUnit(rnd).multiplyScalar(160+rnd()*120).toArray());
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0x9fb4d8,size:.6,sizeAttenuation:true})));
+})();
+
+const planetGroup=new THREE.Group(); scene.add(planetGroup);
+const UP=new THREE.Vector3(0,1,0);
+const mat=h=>new THREE.MeshPhongMaterial({color:h,flatShading:true,shininess:0,specular:0x000000});
+
+/* ═══════════════ stato ═══════════════ */
+const NAMES=['Kepler-9c','Vesta','Ilo','Brenna','Tarsis','Cinabro','Nyx','Orrò','Sillabe','Ember','Aldo-IV','Marisa'];
+const CLANS=['Vurr','Kesh','Tallim','Oran','Zibbe','Nakar','Serth'];
+
+let tiles=[], faceToTile=[], terrainMesh=null, terrainColor=null, buildMeshes=new Map(), beams=null;
+let units=[], settlements=[], cargos=[], props=[];
+let selected=null, marker=null;
+let worldSeed=Date.now()%99999, worldIndex=1;
+let res={food:22, mat:60, pow:12}, pop=3;
+let sci=0, tech=0;
+let season=0, seasonT=0;
+let raidIn=70, raidNo=0, raidActive=false;
+let army={size:0,target:null};
+let auto=false, speedMul=1, launching=null;
+let orbit=[], orbitGroup=null, seasonPaint=0, worldAge=0;
+let buildSize=1, showCargo=true, ringPaint=0;
+let padCargoMat=40, padCargoFood=20;
+let activePower=null, activeFX=[], rangeMesh=null, dayCycle=true;
+let quiet=false, eventLog=[], logOpen=false, gameOver=false, autoSaveT=0, lastSpeed=1;
+let eventIn=110, boomT=0;       // eventi casuali: prossimo tra N tick; raccolto abbondante per N tick
+
+/* ═══════════════ helper mondo ═══════════════ */
+const tileRadius = t => R + BIOMES[t.biome].lift;
+const surfacePos = (t,lift=0) => t.center.clone().multiplyScalar(tileRadius(t)+lift);
+const isMine = t => t.building && t.owner==='you' && !t.site;
+/* Una struttura sta su una casella sola. La taglia resta, ma vale sui numeri
+   — posti di lavoro, letti, capienza, integrità — non sull'area occupata:
+   gli edifici che si mangiavano due anelli di caselle erano un pugno in un occhio. */
+const footprint = tile => [tile];
+const playerBuildings = () => tiles.filter(isMine);
+/* percorribile: terra, oppure mare con un molo o una struttura marina sopra */
+const walkable = t => BIOMES[t.biome].build ||
+  (t.building && BUILDINGS[t.building].water) || (t.site && BUILDINGS[t.site.kind].water);
+/* Una casella con mura tue non è invalicabile per i nemici: costa carissima.
+   Se esiste un giro più corto di WALL_COST passi lo prendono, altrimenti
+   sfondano. Vedi la Dijkstra in distField().                             */
+const blocksFoe = t => t.owner==='you' &&
+  ((t.building&&BUILDINGS[t.building].wall)||(t.site&&BUILDINGS[t.site.kind].wall));
+const walkableFoe = t => walkable(t) && !blocksFoe(t);
+
+function generateWorld(seed){
+  planetGroup.clear();
+  buildMeshes.clear(); faceToTile=[]; units=[]; settlements=[]; cargos=[]; props=[];
+  selected=null; marker=null; launching=null; rangeMesh=null; activeFX=[]; setInspector(null);
+  raidIn=160; raidNo=0; raidActive=false; army={size:0,target:null};
+  season=0; seasonT=0; worldAge=0;
+  beams=new THREE.Group(); planetGroup.add(beams);
+  ringGroup=new THREE.Group(); planetGroup.add(ringGroup); rings.clear();
+  if(orbitGroup) scene.remove(orbitGroup);
+  orbit=[]; orbitGroup=new THREE.Group(); scene.add(orbitGroup);
+  if(moon) scene.remove(moon);
+  for(const r of moonRuns) scene.remove(r.mesh);
+  moonRuns=[]; moonCrew.length=0; moon=makeMoon(); scene.add(moon);
+
+  const noise=makeNoise(seed), rnd=mulberry32(seed^0x9e37);
+  trait = worldIndex===1 ? TRAITS[0] : TRAITS[Math.floor(rnd()*TRAITS.length)];
+  tiles=buildHexasphere(SUBDIV);
+
+  let peak=null, peakH=-9;
+  for(const t of tiles){
+    t.h=noise(t.center.clone().multiplyScalar(1.5));
+    t.building=null; t.owner=null; t.workers=0; t.unit='spear';
+    t.hp=0; t.hpMax=0; t.settlement=null; t.spawnT=0; t.shipT=0; t.site=null;
+    if(t.h>peakH){ peakH=t.h; peak=t; }
+  }
+  for(const t of tiles){
+    const h=t.h;
+    t.biome = h<-0.14?'ocean' : h<0.00?'sand' : h<0.28?'meadow' : h<0.52?'soil' : 'rock';
+  }
+  peak.biome='lava';
+  for(const n of peak.neighbors) if(tiles[n].biome!=='ocean') tiles[n].biome='volcano';
+
+  buildTerrainMesh();
+
+  const start=tiles.filter(t=>t.biome==='meadow')
+    .sort((a,b)=>Math.abs(a.center.y)-Math.abs(b.center.y))[0] || tiles.find(t=>BIOMES[t.biome].build);
+  finish(start,'hut','you');
+  const near=start.neighbors.map(i=>tiles[i]).find(t=>BIOMES[t.biome].build && !t.building);
+  if(near) finish(near,'farm','you');
+
+  for(let i=0;i<pop;i++) spawnUnit('worker','you',start);
+  for(const t of tiles) if(isMine(t) && jobsOf(t)>0)
+    t.workers=Math.min(jobsOf(t), idleCount());
+
+  makeSettlements(start,rnd);
+  // senza questo syncJobs leggeva i cantieri del pianeta appena lasciato
+  rebuildFrameCache();
+  syncJobs();
+
+  document.getElementById('w-name').textContent=NAMES[(worldIndex-1)%NAMES.length];
+  document.getElementById('w-count').textContent=
+    (worldIndex===1?'primo mondo':'mondo n° '+worldIndex)+' · '+trait.name+' ('+trait.note+')'+
+    (worldIndex>1?' · eredità +'+Math.round((legacy()-1)*100)+'%':'');
+}
+
+/* si nasce in casa, non dall'altra parte del mondo: prima una capanna,
+   poi qualsiasi struttura tua, e solo come ultima spiaggia una casella a caso */
+function randomHome(){
+  const beds=tiles.filter(t=>isMine(t)&&housesOf(t)>0);
+  if(beds.length) return beds[Math.floor(Math.random()*beds.length)];
+  const any=playerBuildings();
+  if(any.length) return any[Math.floor(Math.random()*any.length)];
+  const home=tiles.filter(t=>BIOMES[t.biome].build);
+  return home[Math.floor(Math.random()*home.length)]||tiles[0];
+}
+
+function buildTerrainMesh(){
+  const pos=[], col=[], c=new THREE.Color();
+  const push=(v,hex)=>{ pos.push(v.x,v.y,v.z); c.setHex(hex); col.push(c.r,c.g,c.b); };
+  for(const t of tiles){
+    const B=BIOMES[t.biome], rr=tileRadius(t);
+    const top=t.corners.map(p=>p.clone().multiplyScalar(rr));
+    const bot=t.corners.map(p=>p.clone().multiplyScalar(R-SKIRT));
+    const mid=t.center.clone().multiplyScalar(rr);
+    t.colStart=col.length/3;                       // per la ritinta stagionale
+    for(let i=0;i<top.length;i++){ const j=(i+1)%top.length;
+      push(mid,B.top); push(top[i],B.top); push(top[j],B.top); faceToTile.push(t.id); }
+    t.colTop=col.length/3 - t.colStart;
+    for(let i=0;i<top.length;i++){ const j=(i+1)%top.length;
+      push(top[i],B.side); push(bot[i],B.side); push(bot[j],B.side); faceToTile.push(t.id);
+      push(top[i],B.side); push(bot[j],B.side); push(top[j],B.side); faceToTile.push(t.id); }
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  terrainColor=new THREE.Float32BufferAttribute(col,3);
+  g.setAttribute('color',terrainColor);
+  g.computeVertexNormals();
+  terrainMesh=new THREE.Mesh(g,new THREE.MeshPhongMaterial({
+    vertexColors:true,flatShading:true,shininess:0,specular:0x000000}));
+  terrainMesh.frustumCulled=false;
+  planetGroup.add(terrainMesh);
+  planetGroup.add(new THREE.Mesh(new THREE.SphereGeometry(R-SKIRT-0.05,28,20),
+    new THREE.MeshBasicMaterial({color:0x121a2b})));
+}
+
+/* Il colore non scatta al cambio di stagione: scorre di continuo tra la tinta
+   di quella corrente e quella successiva, in proporzione a quanto è avanzata. */
+const _cA=new THREE.Color(), _cB=new THREE.Color(), _cM=new THREE.Color();
+function applySeason(){
+  if(!terrainColor) return;
+  const k=Math.min(1,Math.max(0,seasonT/SEASON_LEN));
+  _cA.setHex(SEASONS[season].tint);
+  _cB.setHex(SEASONS[(season+1)%SEASONS.length].tint);
+  _cM.copy(_cA).lerp(_cB,k);
+  // lo specchio solare tiene il pianeta a primavera perenne
+  if(hasOrbital('mirror')) _cM.lerp(new THREE.Color(SEASONS[0].tint),0.6);
+  for(const t of tiles){
+    if(!BIOMES[t.biome].season) continue;
+    for(let i=0;i<t.colTop;i++) terrainColor.setXYZ(t.colStart+i,_cM.r,_cM.g,_cM.b);
+  }
+  terrainColor.needsUpdate=true;
+}
+
+/* ── popoli rivali ────────────────────────────────────────────── */
+function makeSettlements(start,rnd){
+  const howMany=Math.min(2, worldIndex-1);
+  for(let s=0;s<howMany;s++){
+    const far=tiles.filter(t=>BIOMES[t.biome].build && !t.building &&
+      t.center.dot(start.center)<0.15 &&
+      settlements.every(x=>t.center.dot(x.core.center)<0.55));
+    if(!far.length) continue;
+    const core=far[Math.floor(rnd()*far.length)];
+    const set={name:'Clan '+CLANS[Math.floor(rnd()*CLANS.length)],
+               core, relation:'neutrale', tiles:[core], mat:30, thinkT:0};
+    finish(core,'keep','rival'); core.settlement=set;
+    let hasFarm=false, hasTower=false;
+    for(const n of core.neighbors){
+      const t=tiles[n];
+      if(!(BIOMES[t.biome].build && !t.building && rnd()<0.75)) continue;
+      let kind='camp';
+      if(!hasFarm && rnd()<0.6){ kind='rfarm'; hasFarm=true; }
+      else if(!hasTower && rnd()<0.5){ kind='rtower'; hasTower=true; }
+      finish(t,kind,'rival'); t.settlement=set; set.tiles.push(t);
+    }
+    const guards=2+Math.floor(rnd()*3)+Math.floor(worldIndex/2);
+    for(let i=0;i<guards;i++){
+      const u=spawnUnit('soldier','rival',set.tiles[i%set.tiles.length]);
+      u.settlement=set;
+    }
+    settlements.push(set);
+  }
+}
+
+/* ═══════════════ mesh degli edifici ═══════════════ */
+function buildingMesh(kind){
+  const g=new THREE.Group();
+  if(kind==='hut'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.62,.44,.62),mat(0xe8d9be)); b.position.y=.22; g.add(b);
+    const r=new THREE.Mesh(new THREE.ConeGeometry(.52,.42,4),mat(0xc4553f)); r.position.y=.63; r.rotation.y=Math.PI/4; g.add(r);
+    for(const x of [-.14,.14]){
+      const w=new THREE.Mesh(new THREE.BoxGeometry(.13,.14,.02),
+        new THREE.MeshBasicMaterial({color:0xffd9a0}));
+      w.position.set(x,.24,.32); w.userData.light=true; w.visible=false; g.add(w);
+    }
+  } else if(kind==='farm'){
+    const p=new THREE.Mesh(new THREE.BoxGeometry(.86,.1,.86),mat(0x6b4a30)); p.position.y=.05; g.add(p);
+    // le spighe crescono col lavoro e spariscono alla mietitura
+    for(let i=-1;i<=1;i++){
+      const r=new THREE.Mesh(new THREE.BoxGeometry(.72,.30,.16),mat(0xd8c25a));
+      r.position.set(0,.10,i*.26);
+      r.userData.crop=true; r.scale.y=0.02;
+      g.add(r);
+    }
+  } else if(kind==='mine'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.6,.3,.6),mat(0x5d6470)); b.position.y=.15; g.add(b);
+    const tw=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.7),mat(0x8b939f)); tw.position.y=.6; g.add(tw);
+    const w=new THREE.Mesh(new THREE.TorusGeometry(.17,.045,6,10),mat(0xd9a441));
+    w.position.y=.92; w.rotation.y=Math.PI/2; w.userData.spin=true; g.add(w);
+  } else if(kind==='plant'){
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(.3,.34,.5,7),mat(0x4d5a72)); b.position.y=.25; g.add(b);
+    const c=new THREE.Mesh(new THREE.CylinderGeometry(.16,.2,.55,7),mat(0x8fd98a)); c.position.y=.75; g.add(c);
+    const pw=new THREE.Mesh(new THREE.SphereGeometry(.1,8,6),
+      new THREE.MeshBasicMaterial({color:0x8fffb0}));
+    pw.position.y=1.0; pw.userData.light=true; pw.visible=false; g.add(pw);
+  } else if(kind==='block'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.8,.72,.6),mat(0xe0d3b8)); b.position.y=.36; g.add(b);
+    const r=new THREE.Mesh(new THREE.BoxGeometry(.88,.12,.68),mat(0xa8563f)); r.position.y=.78; g.add(r);
+    for(const x of [-.24,0,.24]) for(const y of [.28,.56]){
+      const w=new THREE.Mesh(new THREE.BoxGeometry(.13,.15,.02),
+        new THREE.MeshBasicMaterial({color:0xffd9a0}));
+      w.position.set(x,y,.31); w.userData.light=true; w.visible=false; g.add(w);
+    }
+  } else if(kind==='clinic'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.7,.4,.6),mat(0xeef2f8)); b.position.y=.2; g.add(b);
+    const r=new THREE.Mesh(new THREE.BoxGeometry(.76,.1,.66),mat(0x7fb0c9)); r.position.y=.44; g.add(r);
+    const c1=new THREE.Mesh(new THREE.BoxGeometry(.30,.09,.02),
+      new THREE.MeshBasicMaterial({color:0xff6b6b}));
+    c1.position.set(0,.62,.0); g.add(c1);
+    const c2=new THREE.Mesh(new THREE.BoxGeometry(.09,.30,.02),
+      new THREE.MeshBasicMaterial({color:0xff6b6b}));
+    c2.position.set(0,.62,.0); g.add(c2);
+    const w=new THREE.Mesh(new THREE.BoxGeometry(.4,.14,.02),
+      new THREE.MeshBasicMaterial({color:0xffd9a0}));
+    w.position.set(0,.22,.31); w.userData.light=true; w.visible=false; g.add(w);
+  } else if(kind==='road'){
+    const p=new THREE.Mesh(new THREE.BoxGeometry(.9,.06,.5),mat(0x8b8577)); p.position.y=.03; g.add(p);
+    for(let i=-1;i<=1;i++){
+      const s=new THREE.Mesh(new THREE.BoxGeometry(.18,.03,.42),mat(0xa8a294));
+      s.position.set(i*.3,.06,0); g.add(s);
+    }
+  } else if(kind==='workshop'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.7,.4,.6),mat(0x6f6357)); b.position.y=.2; g.add(b);
+    const r=new THREE.Mesh(new THREE.BoxGeometry(.76,.1,.66),mat(0x4d443b)); r.position.y=.44; g.add(r);
+    const ch=new THREE.Mesh(new THREE.CylinderGeometry(.09,.11,.55,6),mat(0x8d8578));
+    ch.position.set(.22,.72,0); g.add(ch);
+    const gear=new THREE.Mesh(new THREE.TorusGeometry(.16,.05,5,8),mat(0xd9a441));
+    gear.position.set(-.18,.55,.2); g.add(gear);
+    const w=new THREE.Mesh(new THREE.BoxGeometry(.3,.12,.02),new THREE.MeshBasicMaterial({color:0xffa860}));
+    w.position.set(-.1,.2,.31); w.userData.light=true; w.visible=false; g.add(w);
+  } else if(kind==='green'){
+    const base=new THREE.Mesh(new THREE.BoxGeometry(.84,.1,.7),mat(0x6b7a5e)); base.position.y=.05; g.add(base);
+    const dome=new THREE.Mesh(new THREE.SphereGeometry(.42,12,8,0,Math.PI*2,0,Math.PI/2),
+      new THREE.MeshPhongMaterial({color:0xb8ecd0,flatShading:true,shininess:0,transparent:true,opacity:.75}));
+    dome.position.y=.1; dome.scale.z=.85; g.add(dome);
+    for(let i=-1;i<=1;i++){
+      const r=new THREE.Mesh(new THREE.BoxGeometry(.5,.22,.1),mat(0x5f9c4a));
+      r.position.set(0,.10,i*.18); r.userData.crop=true; r.scale.y=0.02; g.add(r);
+    }
+    const lw=new THREE.Mesh(new THREE.SphereGeometry(.1,8,6),new THREE.MeshBasicMaterial({color:0xc8ffd8}));
+    lw.position.y=.5; lw.userData.light=true; lw.visible=false; g.add(lw);
+  } else if(kind==='market'){
+    const f=new THREE.Mesh(new THREE.BoxGeometry(.9,.08,.9),mat(0x8a7458)); f.position.y=.04; g.add(f);
+    for(const [x,z] of [[.36,.36],[-.36,.36],[.36,-.36],[-.36,-.36]]){
+      const p=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,.55),mat(0x6b5238));
+      p.position.set(x,.32,z); g.add(p);
+    }
+    const cover=new THREE.Mesh(new THREE.ConeGeometry(.75,.28,4),mat(0xd8734f));
+    cover.position.y=.72; cover.rotation.y=Math.PI/4; g.add(cover);
+    for(const [x,z,c] of [[.15,.1,0xa8c14e],[-.16,-.08,0x9aa4b2]]){
+      const crate=new THREE.Mesh(new THREE.BoxGeometry(.2,.2,.2),mat(c));
+      crate.position.set(x,.18,z); g.add(crate);
+    }
+    const mw=new THREE.Mesh(new THREE.SphereGeometry(.09,8,6),new THREE.MeshBasicMaterial({color:0xffd9a0}));
+    mw.position.y=.5; mw.userData.light=true; mw.visible=false; g.add(mw);
+  } else if(kind==='depot'){
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(.36,.36,.5,8),mat(0xb8a184)); b.position.y=.25; g.add(b);
+    const c=new THREE.Mesh(new THREE.ConeGeometry(.44,.26,8),mat(0x8a7458)); c.position.y=.63; g.add(c);
+  } else if(kind==='dock'){
+    const p=new THREE.Mesh(new THREE.BoxGeometry(.8,.12,.8),mat(0x8a6f4e)); p.position.y=.28; g.add(p);
+    for(const [x,z] of [[.3,.3],[-.3,.3],[.3,-.3],[-.3,-.3]]){
+      const l=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,.5),mat(0x6b5238)); l.position.set(x,.05,z); g.add(l); }
+  } else if(kind==='fishery'){
+    const p=new THREE.Mesh(new THREE.BoxGeometry(.84,.12,.84),mat(0x8a6f4e)); p.position.y=.28; g.add(p);
+    const h=new THREE.Mesh(new THREE.BoxGeometry(.44,.3,.44),mat(0xd7e2ea)); h.position.y=.49; g.add(h);
+    const r=new THREE.Mesh(new THREE.ConeGeometry(.38,.26,4),mat(0x3f7fa8)); r.position.y=.75; r.rotation.y=Math.PI/4; g.add(r);
+    for(const [x,z] of [[.32,.32],[-.32,-.32]]){
+      const l=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,.5),mat(0x6b5238)); l.position.set(x,.05,z); g.add(l); }
+  } else if(kind==='wall'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.78,.46,.30),mat(0x646c78)); b.position.y=.23; g.add(b);
+    for(let i=-2;i<=2;i++){
+      const c=new THREE.Mesh(new THREE.BoxGeometry(.11,.14,.32),mat(0x858f9d));
+      c.position.set(i*.15,.52,0); g.add(c);
+    }
+    for(const x of [-.39,.39]){
+      const p=new THREE.Mesh(new THREE.CylinderGeometry(.08,.1,.56,6),mat(0x4c525c));
+      p.position.set(x,.28,0); g.add(p);
+    }
+  } else if(kind==='rfarm'){
+    const p=new THREE.Mesh(new THREE.BoxGeometry(.86,.1,.86),mat(0x4a2e28)); p.position.y=.05; g.add(p);
+    for(let i=-1;i<=1;i++){
+      const r=new THREE.Mesh(new THREE.BoxGeometry(.72,.18,.16),mat(0xb5633a));
+      r.position.set(0,.16,i*.26); g.add(r);
+    }
+    const shed=new THREE.Mesh(new THREE.BoxGeometry(.3,.3,.3),mat(0x6b3b42)); shed.position.set(-.25,.2,-.25); g.add(shed);
+    const flag=new THREE.Mesh(new THREE.BoxGeometry(.18,.1,.02),mat(0xe0616b)); flag.position.set(.37,.38,.28); g.add(flag);
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(.02,.02,.45),mat(0x8c796b)); pole.position.set(.28,.25,.28); g.add(pole);
+  } else if(kind==='rtower'){
+    const base=new THREE.Mesh(new THREE.CylinderGeometry(.32,.42,.4,6),mat(0x523037)); base.position.y=.2; g.add(base);
+    const mid=new THREE.Mesh(new THREE.CylinderGeometry(.22,.28,.55,6),mat(0x6b3b42)); mid.position.y=.62; g.add(mid);
+    const plat=new THREE.Mesh(new THREE.CylinderGeometry(.34,.24,.12,6),mat(0x3a1f24)); plat.position.y=.92; g.add(plat);
+    for(let i=0;i<4;i++){ const a=(i/4)*Math.PI*2;
+      const spk=new THREE.Mesh(new THREE.ConeGeometry(.04,.22,4),mat(0xe0616b));
+      spk.position.set(Math.cos(a)*.28,1.02,Math.sin(a)*.28); g.add(spk); }
+    const gem=new THREE.Mesh(new THREE.OctahedronGeometry(.12),new THREE.MeshBasicMaterial({color:0xff4555}));
+    gem.position.y=1.04; g.add(gem);
+  } else if(kind==='armory'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.66,.4,.66),mat(0x59616e)); b.position.y=.2; g.add(b);
+    const r=new THREE.Mesh(new THREE.CylinderGeometry(.34,.42,.22,6),mat(0x3f4652)); r.position.y=.5; g.add(r);
+    for(const x of [.22,-.22]){ const s=new THREE.Mesh(new THREE.ConeGeometry(.07,.42,4),mat(0xdfe9ff));
+      s.position.set(x,.72,0); g.add(s); }
+    const aw=new THREE.Mesh(new THREE.BoxGeometry(.34,.12,.02),
+      new THREE.MeshBasicMaterial({color:0xffb26b}));
+    aw.position.set(0,.2,.34); aw.userData.light=true; aw.visible=false; g.add(aw);
+  } else if(kind==='shrine'){
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(.42,.46,.18,6),mat(0x4a4436)); b.position.y=.09; g.add(b);
+    for(let i=0;i<3;i++){ const a=i/3*Math.PI*2;
+      const p=new THREE.Mesh(new THREE.BoxGeometry(.09,.62,.09),mat(0xbfae86));
+      p.position.set(Math.cos(a)*.28,.4,Math.sin(a)*.28); g.add(p); }
+    const o=new THREE.Mesh(new THREE.OctahedronGeometry(.2),mat(0xffc46b)); o.position.y=.86; g.add(o);
+  } else if(kind==='turret'){
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(.34,.4,.24,6),mat(0x4b5361)); b.position.y=.12; g.add(b);
+    const h=new THREE.Mesh(new THREE.SphereGeometry(.2,7,5),mat(0x6f7a8c)); h.position.y=.34; g.add(h);
+    const bar=new THREE.Mesh(new THREE.CylinderGeometry(.055,.055,.6),mat(0xff7a3c));
+    bar.position.set(0,.42,.22); bar.rotation.x=Math.PI/2.4; g.add(bar);
+  } else if(kind==='fort'){
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(.5,.58,.6,8),mat(0x6a7280)); b.position.y=.3; g.add(b);
+    for(let i=0;i<8;i++){ const a=i/8*Math.PI*2;
+      const m2=new THREE.Mesh(new THREE.BoxGeometry(.14,.18,.14),mat(0x848d9c));
+      m2.position.set(Math.cos(a)*.46,.68,Math.sin(a)*.46); g.add(m2); }
+    const t=new THREE.Mesh(new THREE.CylinderGeometry(.2,.24,.5,6),mat(0x8f98a8)); t.position.y=.85; g.add(t);
+    const fw=new THREE.Mesh(new THREE.BoxGeometry(.5,.14,.02),
+      new THREE.MeshBasicMaterial({color:0xffd9a0}));
+    fw.position.set(0,.3,.5); fw.userData.light=true; fw.visible=false; g.add(fw);
+    const f=new THREE.Mesh(new THREE.BoxGeometry(.26,.16,.02),mat(0xff7a3c)); f.position.set(.16,1.15,0); g.add(f);
+    const p=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,.45),mat(0xd8d2c4)); p.position.y=1.12; g.add(p);
+  } else if(kind==='lab'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.6,.34,.6),mat(0x40506b)); b.position.y=.17; g.add(b);
+    const d=new THREE.Mesh(new THREE.SphereGeometry(.32,10,7,0,Math.PI*2,0,Math.PI/2),mat(0x8fd0f0));
+    d.position.y=.34; g.add(d);
+    const a=new THREE.Mesh(new THREE.TorusGeometry(.3,.02,4,14),mat(0xffc46b));
+    a.position.y=.5; a.rotation.x=Math.PI/2.6; g.add(a);
+    const lw=new THREE.Mesh(new THREE.SphereGeometry(.13,8,6),
+      new THREE.MeshBasicMaterial({color:0x9fe3ff}));
+    lw.position.y=.42; lw.userData.light=true; lw.visible=false; g.add(lw);
+  } else if(kind==='pad'){
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(.5,.56,.16,8),mat(0x4a5266)); b.position.y=.08; g.add(b);
+    for(let i=0;i<4;i++){ const a=i/4*Math.PI*2;
+      const l=new THREE.Mesh(new THREE.BoxGeometry(.07,.4,.07),mat(0x6f7a8c));
+      l.position.set(Math.cos(a)*.42,.28,Math.sin(a)*.42); g.add(l); }
+  } else if(kind==='keep'){
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(.42,.5,.55,6),mat(0x6b3b42)); b.position.y=.28; g.add(b);
+    const c=new THREE.Mesh(new THREE.ConeGeometry(.52,.4,6),mat(0xe0616b)); c.position.y=.75; g.add(c);
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.5),mat(0xd8d2c4)); pole.position.y=1.15; g.add(pole);
+    const flag=new THREE.Mesh(new THREE.BoxGeometry(.26,.16,.02),mat(0xe0616b)); flag.position.set(.14,1.3,0); g.add(flag);
+  } else if(kind==='camp'){
+    const b=new THREE.Mesh(new THREE.ConeGeometry(.36,.5,5),mat(0x8a4a52)); b.position.y=.25; g.add(b);
+    const r=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.3),mat(0xd8d2c4)); r.position.y=.62; g.add(r);
+  }
+  return g;
+}
+/* ── raggio d'azione: la calotta segue la curvatura del pianeta ───
+   Il raggio in combattimento è una distanza 3D dal centro della struttura.
+   L'insieme dei punti di superficie a quella distanza è un cerchio sulla
+   sfera: lo ricavo esattamente, invece di appoggiare una semisfera piatta
+   che sprofonderebbe nel terreno ai bordi.                             */
+function clearRange(){
+  if(rangeMesh){
+    rangeMesh.traverse(o=>{ if(o.geometry) o.geometry.dispose(); });
+    planetGroup.remove(rangeMesh); rangeMesh=null;
+  }
+}
+function updateRangeVisual(tile){
+  clearRange();
+  if(!tile) return;
+  const kind=tile.building||(tile.site?tile.site.kind:null);
+  if(!kind) return;
+  const B=BUILDINGS[kind];
+  if(!B||!B.range) return;
+
+  const Rc=tileRadius(tile)+0.4, Rs=R+0.55, d=B.range;
+  let cosT=(Rc*Rc+Rs*Rs-d*d)/(2*Rc*Rs);
+  if(cosT>=1) return;
+  cosT=Math.max(-1,cosT);
+  const ang=Math.acos(cosT);
+
+  const n=tile.center.clone();
+  let u=new THREE.Vector3(0,0,1).cross(n);
+  if(u.lengthSq()<1e-6) u=new THREE.Vector3(1,0,0).cross(n);
+  u.normalize();
+  const w=n.clone().cross(u);
+  const col=tile.owner==='rival'?0xe0616b:(B.heal?0x7fb0c9:(B.shelter?0x8fd98a:0xff7a3c));
+
+  const ringPts=[], capPos=[];
+  const SEG=48;
+  const at=(a,r)=>n.clone().multiplyScalar(Math.cos(r))
+    .add(u.clone().multiplyScalar(Math.sin(r)*Math.cos(a)))
+    .add(w.clone().multiplyScalar(Math.sin(r)*Math.sin(a)))
+    .normalize().multiplyScalar(Rs);
+  for(let i=0;i<=SEG;i++) ringPts.push(at(i/SEG*Math.PI*2, ang));
+  for(let i=0;i<SEG;i++){
+    const a0=i/SEG*Math.PI*2, a1=(i+1)/SEG*Math.PI*2;
+    const c=n.clone().multiplyScalar(Rs), p0=at(a0,ang), p1=at(a1,ang);
+    capPos.push(c.x,c.y,c.z, p0.x,p0.y,p0.z, p1.x,p1.y,p1.z);
+  }
+  const g=new THREE.Group();
+  const cap=new THREE.BufferGeometry();
+  cap.setAttribute('position',new THREE.Float32BufferAttribute(capPos,3));
+  g.add(new THREE.Mesh(cap,new THREE.MeshBasicMaterial({
+    color:col,transparent:true,opacity:.15,side:THREE.DoubleSide,depthWrite:false})));
+  g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ringPts),
+    new THREE.LineBasicMaterial({color:col,transparent:true,opacity:.85})));
+  planetGroup.add(g); rangeMesh=g;
+}
+
+/* ── giorno e notte ───────────────────────────────────────────
+   Il sole gira attorno al pianeta; di notte la luce ambientale cala e le
+   strutture abitate accendono le finestre.                          */
+let dayT=0.25, nightOn=null;
+const DAY_LEN=110;                      // secondi per un giro completo
+function stepDay(dt){
+  if(!dayCycle){
+    if(nightOn!==false){ nightOn=false; updateLights(); }
+    sun.intensity=1.15; rim.intensity=0.45; scene.children[0].intensity=0.9;
+    return;
+  }
+  dayT=(dayT+dt/DAY_LEN)%1;
+  const a=dayT*Math.PI*2;
+  sun.position.set(Math.cos(a)*40, Math.sin(a)*18, Math.sin(a)*34);
+  // quanto è alto il sole rispetto all'emisfero illuminato
+  const h=Math.max(-1,Math.min(1,Math.sin(a)*0.55+Math.cos(a)*0.45));
+  const day=Math.max(0,Math.min(1,(h+0.35)/0.9));
+  sun.intensity=0.12+1.05*day;
+  rim.intensity=0.5-0.18*day;
+  scene.children[0].intensity=0.34+0.56*day;   // luce ambientale
+  const isNight=day<0.42;
+  if(isNight!==nightOn){ nightOn=isNight; updateLights(); }
+}
+/* accese solo dove c'è davvero qualcuno */
+function updateLights(){
+  for(const [id,mesh] of buildMeshes){
+    const t=tiles[id];
+    if(!t||!t.building) continue;
+    const occupied = t.owner==='you' && !t.site &&
+      (jobsOf(t)>0 ? (t.workers||0)>0 : housesOf(t)>0 ? pop>0 : true);
+    mesh.traverse(o=>{ if(o.userData&&o.userData.light) o.visible=!!nightOn&&occupied; });
+  }
+}
+
+/* ── anelli di avanzamento sopra le strutture ─────────────────
+   Un cerchio che si chiude: sui cantieri mostra i blocchi consegnati,
+   sulle fattorie e miniere quanto manca al prossimo carico.        */
+let ringGroup=null;
+const rings=new Map();
+function ringFor(id,color){
+  let r=rings.get(id);
+  if(!r){
+    r=new THREE.Mesh(new THREE.RingGeometry(.30,.42,18,1,0,0.001),
+      new THREE.MeshBasicMaterial({color,side:THREE.DoubleSide,transparent:true,opacity:.9}));
+    ringGroup.add(r); rings.set(id,r);
+  }
+  return r;
+}
+function setRing(tile,p,color){
+  const r=ringFor(tile.id,color);
+  r.geometry.dispose();
+  r.geometry=new THREE.RingGeometry(.30,.42,18,1,Math.PI/2,-Math.max(0.001,p)*Math.PI*2);
+  r.material.color.setHex(color);
+  r.position.copy(surfacePos(tile,1.35));
+  r.lookAt(camera.position);
+  r.visible=true;
+}
+/* La coltura cresce in proporzione al lavoro dell'addetto: quando lui parte
+   col carico, il campo è raso. È lo stesso valore che muove l'anello. */
+function setCrop(tile,p){
+  const g=buildMeshes.get(tile.id);
+  if(!g) return;
+  g.traverse(o=>{ if(o.userData&&o.userData.crop){
+    o.scale.y=Math.max(0.02,p);
+    o.position.y=0.10+0.15*p;
+  }});
+}
+function updateRings(){
+  if(!ringGroup) return;
+  for(const r of rings.values()) r.visible=false;
+  for(const t of FC.sites){ if(t.site) setRing(t, t.site.have/t.site.need, 0xffc46b); }
+  for(const t of FC.mine){
+    const B=BUILDINGS[t.building];
+    if(!B||!B.ships||!(t.workers>0)) continue;
+    let best=0, hauling=false;
+    for(const u of units){
+      if(u.job!==t) continue;
+      if(u.mode==='work') best=Math.max(best,u.workT/harvestTime());
+      if(u.mode==='haul') hauling=true;
+    }
+    setCrop(t, hauling&&best===0 ? 0 : Math.min(1,best));
+    if(best>0) setRing(t, Math.min(1,best), 0x8fd98a);
+  }
+}
+
+/* ── strutture orbitali ─────────────────────────────────────── */
+function orbitalMesh(kind){
+  const g=new THREE.Group();
+  if(kind==='station'){
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,1.5,8),mat(0xc9d2de)); g.add(b);
+    const r=new THREE.Mesh(new THREE.TorusGeometry(1.1,.12,6,16),mat(0x8d97a6));
+    r.rotation.x=Math.PI/2; g.add(r);
+    for(const x of [1.5,-1.5]){ const p=new THREE.Mesh(new THREE.BoxGeometry(1.3,.06,.7),mat(0x3f6fa8));
+      p.position.x=x; g.add(p); }
+  } else if(kind==='mirror'){
+    const d=new THREE.Mesh(new THREE.CircleGeometry(1.5,10),mat(0xffe9b0)); g.add(d);
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(.14,.14,.7),mat(0x8d97a6));
+    b.rotation.x=Math.PI/2; b.position.z=-.35; g.add(b);
+  } else if(kind==='cannon'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.8,.8,1.1),mat(0x5b6472)); g.add(b);
+    const t=new THREE.Mesh(new THREE.CylinderGeometry(.16,.22,1.7,6),mat(0xff7a3c));
+    t.rotation.x=Math.PI/2; t.position.z=1.1; g.add(t);
+  } else if(kind==='moonbase'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(1.2,.6,1.0),mat(0x7a8492)); g.add(b);
+    const pad=new THREE.Mesh(new THREE.CylinderGeometry(.6,.6,.1,8),mat(0x4a5266)); pad.position.y=.35; g.add(pad);
+    const s=new THREE.Mesh(new THREE.ConeGeometry(.22,.7,6),mat(0xe6ecf5)); s.position.y=.75; g.add(s);
+  } else if(kind==='eye'){
+    const d=new THREE.Mesh(new THREE.SphereGeometry(.55,12,8,0,Math.PI*2,0,Math.PI/2),mat(0xd7e2ea));
+    d.rotation.x=Math.PI/2.2; g.add(d);
+    const r=new THREE.Mesh(new THREE.TorusGeometry(.85,.06,5,14),mat(0x9fe3bd));
+    r.rotation.y=Math.PI/3; g.add(r);
+  }
+  return g;
+}
+const hasOrbital = k => orbit.some(o=>o.kind===k&&o.built);
+
+/* ── la luna e le spedizioni ──────────────────────────────────
+   Un satellite vero in scena: la navetta della base lunare ci va,
+   resta un attimo e torna col carico. Niente risorse dal nulla. */
+let moon=null, moonRuns=[];
+function makeMoon(){
+  const g=new THREE.Group();
+  const b=new THREE.Mesh(new THREE.IcosahedronGeometry(2.4,1),mat(0x9aa2ad));
+  g.add(b);
+  for(let i=0;i<7;i++){
+    const c=new THREE.Mesh(new THREE.CircleGeometry(0.3+Math.random()*0.5,7),mat(0x757d88));
+    const d=randomUnit(mulberry32(i*13+5));
+    c.position.copy(d.multiplyScalar(2.38));
+    c.lookAt(0,0,0); c.rotateY(Math.PI);
+    g.add(c);
+  }
+  return g;
+}
+function shuttleMesh(){
+  const g=new THREE.Group();
+  const b=new THREE.Mesh(new THREE.ConeGeometry(.3,1.0,6),mat(0xe6ecf5)); g.add(b);
+  const t=new THREE.Mesh(new THREE.CylinderGeometry(.24,.3,.5,6),mat(0xb9c3d0));
+  t.position.y=-.6; g.add(t);
+  const f=new THREE.Mesh(new THREE.ConeGeometry(.2,.5,6),mat(0x50d2ff));
+  f.position.y=-1.0; f.rotation.x=Math.PI; f.userData.flame=true; g.add(f);
+  return g;
+}
+/* un colono in tuta: casco dorato, resta sulla luna e ci lavora */
+function suitMesh(){
+  const g=new THREE.Group();
+  // r128 non ha CapsuleGeometry: il ternario che avevo scritto veniva letto
+  // come `new THREE.CapsuleGeometry` e lanciava prima ancora di scegliere.
+  const b=new THREE.Mesh(new THREE.CylinderGeometry(.10,.13,.26,7),mat(0xf2f4f8));
+  b.position.y=.13; g.add(b);
+  const h=new THREE.Mesh(new THREE.SphereGeometry(.1,8,6),mat(0xffd27a));
+  h.position.y=.32; g.add(h);
+  const pack=new THREE.Mesh(new THREE.BoxGeometry(.12,.14,.08),mat(0x9aa4b2));
+  pack.position.set(0,.16,-.11); g.add(pack);
+  const flag=new THREE.Mesh(new THREE.BoxGeometry(.14,.09,.01),mat(0xff7a3c));
+  flag.position.set(.14,.3,0); g.add(flag);
+  return g;
+}
+function moonPos(t){
+  const a=t*0.07, tilt=-0.55, rr=R+26;
+  return new THREE.Vector3(Math.cos(a)*rr, Math.sin(a)*rr*Math.sin(tilt), Math.sin(a)*rr*Math.cos(tilt));
+}
+/* Ogni spedizione porta un colono sulla luna: parte come un razzo dalla
+   superficie, atterra, lo lascia lì in tuta, e torna col carico. I coloni
+   lunari restano visibili sul satellite e ne aumentano la resa.        */
+const moonCrew=[];
+function moonYield(){ return ORBITALS.moonbase.haul + moonCrew.length*6; }
+function stepMoon(dt,clock){
+  if(!moon) return;
+  moon.position.copy(moonPos(clock));
+  moon.rotation.y+=dt*0.15;
+
+  const base=orbit.find(o=>o.kind==='moonbase'&&o.built);
+  if(base&&res.pow>0){
+    base.fireT=(base.fireT||0)+dt;
+    if(base.fireT>=ORBITALS.moonbase.every){
+      base.fireT=0;
+      // parte dal suolo: preferisce la rampa, altrimenti una struttura tua
+      const padTile = FC.mine.find(t=>t.building==='pad')
+                   || FC.mine.find(t=>t.building==='depot') || FC.mine[0];
+      if(padTile){
+        markLaunch(padTile);
+        const takesColonist = pop>3 && moonCrew.length<8;
+        const m=shuttleMesh(); scene.add(m);
+        m.position.copy(surfacePos(padTile,0.4));
+        moonRuns.push({mesh:m,t:0,phase:'up',tile:padTile,crew:takesColonist});
+        if(takesColonist){
+          // cercava solo kind==='worker': se in quel momento tutti i coloni
+          // erano assegnati come idle/lancieri/arcieri non ne trovava nessuno,
+          // eppure scalava "pop" lo stesso, sfasando il conteggio.
+          const i=units.findIndex(u=>isPerson(u)&&u.stage!=='child'&&!u.wounded);
+          if(i>=0){ pop=Math.max(1,pop-1); killUnit(units[i],i); trimWorkers(); syncJobs(); }
+        }
+        toast('Razzo lunare in partenza da '+BUILDINGS[padTile.building].name+
+              (takesColonist?', con un colono a bordo.':'.'));
+      }
+    }
+  }
+
+  for(let i=moonRuns.length-1;i>=0;i--){
+    const r=moonRuns[i];
+    r.t+=dt*(r.phase==='up'?0.5:0.22);
+    const k=Math.min(1,r.t);
+    if(r.phase==='up'){
+      // accensione: sale dal pianeta prima di puntare la luna
+      const dir=r.tile.center;
+      r.mesh.position.copy(dir.clone().multiplyScalar(tileRadius(r.tile)+0.4+k*k*14));
+      r.mesh.quaternion.setFromUnitVectors(UP,dir);
+      r.mesh.traverse(o=>{ if(o.userData&&o.userData.flame) o.scale.setScalar(1+Math.random()*0.6); });
+      if(k>=1){ r.phase='out'; r.t=0; r.from=r.mesh.position.clone(); }
+    } else if(r.phase==='out'){
+      r.mesh.position.lerpVectors(r.from,moon.position,k);
+      r.mesh.lookAt(moon.position);
+      if(k>=1){
+        r.phase='back'; r.t=0;
+        if(r.crew) landOnMoon();
+      }
+    } else {
+      const home=surfacePos(r.tile,0.4);
+      r.mesh.position.lerpVectors(moon.position,home,k);
+      r.mesh.lookAt(home);
+      if(k>=1){
+        scene.remove(r.mesh); moonRuns.splice(i,1);
+        const got=moonYield();
+        res.mat=Math.min(capacity(),res.mat+got);
+        toast('Rientro dalla luna: +'+got+' materiali'+
+              (moonCrew.length?' ('+moonCrew.length+' coloni lunari al lavoro)':'')+'.');
+        refreshHUD();
+      }
+    }
+  }
+}
+/* un anello che pulsa sulla casella da cui parte il razzo, così si vede */
+function markLaunch(tile){
+  const g=new THREE.Group();
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.62,.07,8,20),
+    new THREE.MeshBasicMaterial({color:0x50d2ff,transparent:true}));
+  orientTo(g,tile,.06); ring.rotation.x=Math.PI/2; g.add(ring);
+  const col=new THREE.Mesh(new THREE.CylinderGeometry(.55,.55,3.4,12,1,true),
+    new THREE.MeshBasicMaterial({color:0x50d2ff,transparent:true,side:THREE.DoubleSide}));
+  col.position.y=1.7; g.add(col);
+  addFX(g,2.6,k=>{
+    ring.material.opacity=k; col.material.opacity=k*0.35;
+    ring.scale.setScalar(1+(1-k)*0.7);
+  });
+}
+function landOnMoon(){
+  const s=suitMesh();
+  const rnd=mulberry32(moonCrew.length*77+13);
+  const d=randomUnit(rnd);
+  s.position.copy(d.clone().multiplyScalar(2.45));
+  s.quaternion.setFromUnitVectors(UP,d);
+  moon.add(s);                 // figlio della luna: le orbita insieme
+  moonCrew.push(s);
+  toast('Un colono ha messo piede sulla luna.');
+}
+function orbitalPos(i,total,t){
+  const a=(i/Math.max(1,total))*Math.PI*2 + t*0.12;
+  const tilt=0.42;
+  const rr=R+9;
+  return new THREE.Vector3(Math.cos(a)*rr, Math.sin(a)*rr*Math.sin(tilt), Math.sin(a)*rr*Math.cos(tilt));
+}
+function addOrbital(kind){
+  const m=orbitalMesh(kind);
+  orbitGroup.add(m);
+  // sale dal pianeta invece di apparire già in orbita
+  orbit.push({kind, mesh:m, built:false, rise:0, fireT:0});
+}
+function stepOrbit(dt,clock){
+  if(!orbitGroup) return;
+  orbit.forEach((o,i)=>{
+    const target=orbitalPos(i,orbit.length,clock);
+    if(!o.built){
+      o.rise=Math.min(1,o.rise+dt*0.35);
+      o.mesh.position.copy(target.clone().multiplyScalar(0.35+0.65*o.rise));
+      o.mesh.scale.setScalar(0.35+0.65*o.rise);
+      if(o.rise>=1){ o.built=true; toast(ORBITALS[o.kind].name+' operativa in orbita.'); refreshHUD(); }
+    } else {
+      o.mesh.position.copy(target);
+    }
+    o.mesh.lookAt(0,0,0);
+  });
+}
+
+/* il razzo, separato: compare solo quando la rampa lancia */
+function rocketMesh(){
+  const g=new THREE.Group();
+  const b=new THREE.Mesh(new THREE.ConeGeometry(.24,1.05,7),mat(0xf2f4f8)); b.position.y=.65; g.add(b);
+  const f=new THREE.Mesh(new THREE.ConeGeometry(.16,.34,7),mat(0xff7a3c)); f.position.y=.06; f.rotation.x=Math.PI; g.add(f);
+  return g;
+}
+/* navetta che porta i predoni: scende, li sbarca, risale */
+function dropshipMesh(){
+  const g=new THREE.Group();
+  const h=new THREE.Mesh(new THREE.CylinderGeometry(.1,.62,.5,6),mat(0x3a1c52)); h.position.y=.3; g.add(h);
+  const r=new THREE.Mesh(new THREE.TorusGeometry(.55,.06,5,12),mat(0x9b3fd4)); r.position.y=.18; r.rotation.x=Math.PI/2; g.add(r);
+  const e=new THREE.Mesh(new THREE.OctahedronGeometry(.16),mat(0xd96bff)); e.position.y=.62; g.add(e);
+  return g;
+}
+
+function orientTo(obj,tile,lift=0){
+  obj.position.copy(surfacePos(tile,lift));
+  obj.quaternion.setFromUnitVectors(UP,tile.center);
+}
+
+/* ── cantiere: l'edificio nasce come impalcatura ─────────────── */
+function siteMesh(){
+  const g=new THREE.Group();
+  for(const [x,z] of [[.3,.3],[-.3,.3],[.3,-.3],[-.3,-.3]]){
+    const p=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,.5),
+      new THREE.MeshPhongMaterial({color:0xc7a06a,flatShading:true,shininess:0}));
+    p.position.set(x,.25,z); g.add(p);
+  }
+  return g;
+}
+function blockMesh(hex){
+  return new THREE.Mesh(new THREE.BoxGeometry(.17,.17,.17),mat(hex));
+}
+function startSite(tile,kind,owner,size){
+  const B=BUILDINGS[kind];
+  tile.size=size||1;
+  if(!B.blocks){ finish(tile,kind,owner); return; }
+  openSite(tile,kind,owner,B.blocks*tile.size,false);
+}
+/* un'impalcatura sulla casella: per una costruzione nuova, per un
+   ampliamento (upgrade) o quando si ricarica una partita salvata */
+function openSite(tile,kind,owner,need,upgrade){
+  const old=buildMeshes.get(tile.id);
+  if(old) planetGroup.remove(old);
+  tile.building=kind; tile.owner=owner;
+  tile.hp=1; tile.hpMax=BUILDINGS[kind].hp*sizeOf(tile);
+  tile.site={kind, need, have:0, stack:[], upgrade:!!upgrade};
+  const g=siteMesh(); orientTo(g,tile);
+  g.scale.setScalar(0.9+0.14*sizeOf(tile));
+  planetGroup.add(g);
+  buildMeshes.set(tile.id,g);
+  bumpWalk();
+}
+/* i blocchetti già consegnati restano impilati, si vede il progresso */
+function addBlockToSite(tile){
+  const s=tile.site; if(!s) return;
+  s.have++;
+  // prima il cantiere restava a 1 punto integrità fino alla fine: un predone
+  // di passaggio lo cancellava anche a un blocco dal completamento
+  tile.hp=Math.max(tile.hp, tile.hpMax*s.have/s.need);
+  const g=buildMeshes.get(tile.id);
+  if(g){
+    const b=blockMesh(0xb8925e);
+    const n=s.stack.length;
+    b.position.set(((n%2)-.5)*.22, .09+Math.floor(n/2)*.19, ((Math.floor(n/2)%2)-.5)*.22);
+    g.add(b); s.stack.push(b);
+  }
+  if(s.have>=s.need){
+    const was=s.upgrade;
+    finish(tile, s.kind, tile.owner);
+    if(tile.owner==='you'){
+      trimWorkers(); syncJobs();
+      if(s.kind!=='road'&&s.kind!=='wall') toast(BUILDINGS[s.kind].name+(was?' ampliata a '+sizeOf(tile)+'×.':' completata.'));
+    }
+  }
+}
+/* costruzione completata: l'impalcatura lascia il posto all'edificio */
+function finish(tile,kind,owner){
+  const old=buildMeshes.get(tile.id);
+  if(old) planetGroup.remove(old);
+  tile.building=kind; tile.owner=owner; tile.site=null;
+  if(!tile.size) tile.size=1;
+  tile.hp=(BUILDINGS[kind].hp||25)*tile.size; tile.hpMax=tile.hp; tile.spawnT=0; tile.shipT=0;
+  const mesh=buildingMesh(kind);
+  // scarto contenuto: si nota che è più grande senza debordare dalla casella
+  mesh.scale.setScalar(0.86+0.15*tile.size);
+  orientTo(mesh,tile);
+  planetGroup.add(mesh);
+  buildMeshes.set(tile.id,mesh);
+  bumpWalk();
+  if(selected===tile) setInspector(tile);
+}
+function destroyBuilding(tile){
+  const mesh=buildMeshes.get(tile.id);
+  if(mesh) planetGroup.remove(mesh);
+  buildMeshes.delete(tile.id);
+  const was=BUILDINGS[tile.building].name, mine=tile.owner==='you';
+  const set=tile.settlement;
+  tile.building=null; tile.owner=null; tile.workers=0; tile.hp=0; tile.hpMax=0;
+  tile.settlement=null; tile.site=null;
+  tile.size=1;
+  bumpWalk(); syncJobs(); refreshHUD();
+  if(selected===tile) setInspector(tile);
+  if(mine) toast(was+': distrutta.');
+  if(set) checkConquest(set);
+}
+
+/* ═══════════════ unità ═══════════════ */
+function unitMesh(kind){
+  const U=UNITS[kind], g=new THREE.Group();
+  let body;
+  if(kind==='guardian'){
+    body=new THREE.Mesh(new THREE.CylinderGeometry(.14,.18,.42,6),mat(U.color)); body.position.y=.21; g.add(body);
+    const h=new THREE.Mesh(new THREE.OctahedronGeometry(.11),mat(0xfff0d0)); h.position.y=.5; g.add(h);
+  } else if(kind==='raider'){
+    const base=new THREE.Mesh(new THREE.ConeGeometry(.24,.2,5),mat(0x4a1d68));
+    base.position.y=.1; base.rotation.x=Math.PI; g.add(base);
+    body=new THREE.Mesh(new THREE.OctahedronGeometry(.19),mat(U.color)); body.position.y=.3; g.add(body);
+    for(let i=0;i<3;i++){ const a=i/3*Math.PI*2;
+      const sp=new THREE.Mesh(new THREE.ConeGeometry(.055,.26,4),mat(0xd96bff));
+      sp.position.set(Math.cos(a)*.17,.42,Math.sin(a)*.17);
+      sp.rotation.z=-Math.cos(a)*.6; sp.rotation.x=Math.sin(a)*.6; g.add(sp); }
+  } else if(kind==='caravan'){
+    body=new THREE.Mesh(new THREE.BoxGeometry(.26,.2,.34),mat(U.color)); body.position.y=.16; g.add(body);
+    for(const x of [-.14,.14]){
+      const wheel=new THREE.Mesh(new THREE.TorusGeometry(.08,.025,4,8),mat(0x6b5238));
+      wheel.position.set(x,.08,0); wheel.rotation.y=Math.PI/2; g.add(wheel);
+    }
+    const load=new THREE.Mesh(new THREE.BoxGeometry(.18,.14,.24),mat(0xb8925e));
+    load.position.y=.33; g.add(load);
+  } else {
+    body=new THREE.Mesh(new THREE.ConeGeometry(.13,.36,6),mat(U.color)); g.add(body);
+    if(kind==='spear'||kind==='soldier'){
+      const s=new THREE.Mesh(new THREE.CylinderGeometry(.022,.022,.44),mat(0xff7a3c));
+      s.position.set(.12,.12,0); g.add(s);
+    } else if(kind==='bow'){
+      const b=new THREE.Mesh(new THREE.TorusGeometry(.11,.02,4,8,Math.PI),mat(0xc7a06a));
+      b.position.set(.13,.1,0); b.rotation.z=Math.PI/2; g.add(b);
+    }
+  }
+  return {g,body};
+}
+function spawnUnit(kind,faction,tile){
+  const U=UNITS[kind], m=unitMesh(kind);
+  planetGroup.add(m.g);
+  const u={kind,faction,mesh:m.g,body:m.body,hp:U.hp,hpMax:U.hp,
+    from:tile,to:tile,t:1,speed:U.speed*(0.85+Math.random()*0.3),
+    job:null,deployed:false,settlement:null,
+    state:kind==='raider'?'landing':'ok',land:0,
+    mode:'idle',carry:null,site:null,workT:0,bob:Math.random()*6,
+    age:0, stage:'adult', wounded:false};
+  if(UNITS[kind].civil){ u.age=AGES.child.until+Math.floor(Math.random()*60); applyAge(u); }
+  units.push(u);
+  return u;
+}
+function killUnit(u,i){
+  dropCarry(u);
+  planetGroup.remove(u.mesh);
+  units.splice(i,1);
+}
+function dropCarry(u){
+  u.hasCargo=false;
+  if(u.carry){ u.mesh.remove(u.carry); u.carry=null; }
+}
+function takeCarry(u,hex){
+  dropCarry(u);
+  u.hasCargo=true;
+  if(!showCargo) return;                 // il carico esiste comunque, non si disegna
+  const b=blockMesh(hex);
+  b.position.set(0,.42,0);
+  u.mesh.add(b); u.carry=b;
+}
+function clearAllCargoMeshes(){
+  for(const u of units) if(u.carry){ u.mesh.remove(u.carry); u.carry=null; }
+}
+/* aspetto e capacità cambiano con l'età e con le ferite */
+function applyAge(u){
+  const st=stageAt(u.age);
+  u.stage=st;
+  u.mesh.scale.setScalar(AGES[st].scale);
+  if(u.body) u.body.material.color.setHex(
+    u.wounded ? 0xd98a8a : st==='elder' ? 0xcfc3b0 : UNITS[u.kind].color);
+}
+const isPerson = u => u.faction==='you'&&PEOPLE.includes(u.kind);
+const isLabor  = u => u.faction==='you'&&LABOR.includes(u.kind);
+const myPeople = () => units.filter(isPerson);
+const myLabor  = () => units.filter(isLabor);
+const myThralls= () => units.filter(u=>u.faction==='you'&&u.kind==='thrall');
+const demography=()=>{ const d={child:0,adult:0,elder:0};
+  for(const u of myPeople()) d[u.stage]++; return d; };
+const workPower = u => u.wounded ? 0 : (u.kind==='thrall' ? THRALL_WORK : AGES[u.stage].work);
+const workforce = () => myLabor().filter(u=>workPower(u)>0).length;
+/* quanto picchia davvero: i bambini no, gli anziani meno, la ricerca aiuta */
+function unitDamage(u){
+  let d=UNITS[u.kind].dmg;
+  if(!d) return 0;
+  if(u.kind==='thrall') return 0;   // non combattono: solo fuga, come in civilBrain
+  if(isPerson(u)){
+    if(u.stage==='child'||u.wounded) return 0;
+    if(u.stage==='elder') d*=0.6;
+  }
+  return d*(u.faction==='you'?techWar():1);
+}
+const myUnits  = () => units.filter(u=>u.faction==='you');
+const myCivil  = () => units.filter(u=>u.faction==='you'&&UNITS[u.kind].civil);
+const myTroops = () => units.filter(u=>u.faction==='you'&&!UNITS[u.kind].civil);
+const raiders  = () => units.filter(u=>u.faction==='raider');
+
+/* ═══════════════ economia e lavoro ═══════════════ */
+function capacity(){
+  let c=BASE_STORE;
+  for(const t of tiles) if(isMine(t)) c+=storeOf(t);
+  for(const o of orbit) if(o.built) c+=ORBITALS[o.kind].store||0;
+  return c;
+}
+/* lo specchio solare toglie il morso all'inverno */
+const seasonFood = () => hasOrbital('mirror')
+  ? Math.max(1.0, SEASONS[season].food) : SEASONS[season].food;
+/* ── taglia della struttura (1–3): più grande = più posti e più capienza ── */
+const sizeOf   = t => t.size||1;
+const jobsOf   = t => (BUILDINGS[t.building].jobs||0)*sizeOf(t);
+const housesOf = t => (BUILDINGS[t.building].houses||0)*sizeOf(t);
+const storeOf  = t => (BUILDINGS[t.building].store||0)*sizeOf(t);
+const workedTiles   = () => tiles.filter(t=>isMine(t)&&jobsOf(t)>0);
+/* quanto ci mette un colono a riempire un carico: d'inverno il doppio */
+const harvestTime = () => 7/Math.max(0.35, seasonFood());
+const assignedTotal = () => tiles.reduce((n,t)=>n+(isMine(t)?(t.workers||0):0),0);
+const buildersCount = () => myLabor().filter(u=>u.builder).length;
+const idleCount     = () => Math.max(0,workforce()-assignedTotal()-buildersCount());
+/* dove si portano i carichi: deposito o capanna più vicini */
+const storageTiles  = () => tiles.filter(t=>isMine(t)&&storeOf(t)>0);
+
+function rates(){
+  let food=FOOD_DRIP, matr=DRIP, pow=0, scir=0, houses=0, jobs=0, tribute=0;
+  const S=seasonFood()*(trait.harsh?0.85:1), P=techProd()*legacy(), d=demography();
+  let eat=d.child*AGES.child.eat+d.adult*AGES.adult.eat+d.elder*AGES.elder.eat;
+  for(const u of myTroops()) if(u.kind==='guardian') eat += 0.30;
+  eat += myThralls().length*THRALL_EAT;
+  for(const t of tiles){
+    if(!isMine(t)) continue;
+    const B=BUILDINGS[t.building], w=t.workers||0;
+    houses+=housesOf(t); jobs+=jobsOf(t);
+    const w2=(t.effWorkers!==undefined?t.effWorkers:w);
+    if(B.eats) food-=(B.eats.food||0)*w2;          // l'officina brucia cibo
+    if(B.per){
+      food+=(B.per.food||0)*w2*(B.noSeason?1:S)*P*(trait.food||1)*(boomT>0?1.4:1);
+      matr+=(B.per.mat||0)*(B.per.mat>0?w2*P*(trait.mat||1):w);
+      pow +=(B.per.pow||0)*w2*P*(trait.pow||1);
+      scir+=(B.per.sci||0)*w2*P;
+    }
+    if(B.drain) pow-=B.drain;
+  }
+  for(const o of orbit) if(o.built) pow-=ORBITALS[o.kind].drain||0;
+  for(const s of settlements) tribute += s.relation==='alleato' ? 0.6 : s.relation==='assoggettato' ? 1.4 : 0;
+  if(tiles.some(t=>isMine(t)&&t.building==='market'&&(t.workers||0)>0)) tribute*=1.6;
+  const block = pop>=houses ? 'servono letti' : (food-eat<=0 && res.food<=8) ? 'serve cibo'
+              : res.food<=8 ? 'scorte basse' : null;
+  return {food:food-eat, mat:matr+tribute, pow:pow-pop*USE, sci:scir, houses, jobs, demo:d, block};
+}
+
+function setWorkers(tile,delta){
+  if(!tile||!isMine(tile)) return;
+  const max=jobsOf(tile), now=tile.workers||0;
+  if(delta>0&&idleCount()<=0){ toast('Nessun colono libero.'); return; }
+  const next=Math.max(0,Math.min(max,now+delta));
+  if(next===now) return;
+  tile.workers=next; syncJobs(); setInspector(tile); refreshHUD();
+}
+function fillWorkers(tile){
+  if(!tile||!isMine(tile)) return;
+  const free=jobsOf(tile)-(tile.workers||0);
+  tile.workers=(tile.workers||0)+Math.min(free,idleCount());
+  syncJobs(); setInspector(tile); refreshHUD();
+}
+function trimWorkers(){
+  // il tetto sono le braccia disponibili (assoggettati compresi, bambini e
+  // feriti esclusi), non "pop": con dei thrall licenziava addetti a caso
+  let over=assignedTotal()-workforce();
+  if(over<=0) return;
+  for(const t of workedTiles().sort((a,b)=>(b.workers||0)-(a.workers||0))){
+    while(over>0&&t.workers>0){ t.workers--; over--; }
+    if(over<=0) break;
+  }
+}
+function syncJobs(){
+  const slots=[];
+  for(const t of workedTiles()){
+    t.effWorkers=0;
+    for(let i=0;i<(t.workers||0);i++) slots.push(t);
+  }
+  // bambini e feriti non lavorano: vengono saltati nell'assegnazione
+  let able=myLabor().filter(u=>workPower(u)>0)
+    .sort((a,b)=>(a.kind==='thrall'?1:0)-(b.kind==='thrall'?1:0));
+  // due portatori per ogni cantiere aperto, riservati prima di tutto il resto:
+  // senza questo nessuno porta i blocchi e i coloni sembrano vagare a caso
+  // il numero di portatori scala con quanto manca da consegnare, non è fisso a 2:
+  // un cantiere da 21 blocchi con due uomini era interminabile
+  let blocksLeft=0;
+  for(const t of FC.sites){
+    if(!t.site) continue;                     // completato in questo stesso frame
+    blocksLeft += Math.max(0, t.site.need-t.site.have);
+  }
+  const wanted=Math.min(6, Math.ceil(blocksLeft/4));
+  const needBuilders=Math.min(wanted, Math.max(0, able.length-1));
+  const crew=able.slice(0,needBuilders);
+  able=able.slice(needBuilders);
+  for(const u of crew){
+    u.builder=true;
+    if(u.job){ u.job=null; u.mode='idle'; dropCarry(u); }
+    if(u.kind!=='worker'&&u.kind!=='thrall') morph(u,'worker');
+  }
+  for(const u of able) u.builder=false;
+  const unable=myLabor().filter(u=>workPower(u)===0);
+  for(const u of unable){ if(u.job){ u.job=null; u.mode='idle'; dropCarry(u); } }
+  able.forEach((u,i)=>{
+    const t=slots[i]||null;
+    if(u.job!==t){ u.mode='idle'; u.workT=0; dropCarry(u); }
+    u.job=t;
+    let want='idle';
+    if(t) want=BUILDINGS[t.building].armory?(t.unit||'spear'):'worker';
+    // un assoggettato resta tale: lavora, ma non riceve armi
+    if(u.kind!=='thrall'&&want!==u.kind) morph(u,want);
+    if(t) t.effWorkers=(t.effWorkers||0)+workPower(u);
+  });
+  for(const u of unable) if(u.kind!=='idle'&&u.kind!=='thrall') morph(u,'idle');
+  refreshArmy();
+}
+function morph(u,kind){
+  const carried=!!u.hasCargo;
+  dropCarry(u);
+  planetGroup.remove(u.mesh);
+  const m=unitMesh(kind);
+  m.g.position.copy(u.mesh.position);
+  m.g.quaternion.copy(u.mesh.quaternion);
+  planetGroup.add(m.g);
+  u.mesh=m.g; u.body=m.body; u.kind=kind;
+  u.hpMax=UNITS[kind].hp; u.hp=Math.min(u.hp,u.hpMax)||u.hpMax;
+  u.speed=UNITS[kind].speed*(0.85+Math.random()*0.3);
+  if(carried&&UNITS[kind].civil) takeCarry(u,0xb8925e);
+}
+
+/* ogni tick i coloni invecchiano, guariscono, e prima o poi muoiono */
+function ageTick(){
+  let changed=false;
+  for(let i=units.length-1;i>=0;i--){
+    const u=units[i];
+    if(u.faction!=='you') continue;
+    if(!isPerson(u)&&u.kind!=='guardian'&&u.kind!=='thrall') continue;
+    if(isPerson(u)){
+      u.age++;
+      const st=stageAt(u.age);
+      if(u.age>=AGES.elder.until){
+        killUnit(u,i); pop=Math.max(0,pop-1); changed=true;
+        toast('Un anziano è morto di vecchiaia.');
+        continue;
+      }
+      if(st!==u.stage){ applyAge(u); changed=true;
+        if(st==='adult') toast('Un bambino è diventato adulto.'); }
+    }
+    // ferite: guarigione naturale lenta, molto più rapida vicino a un ospedale
+    // in un letto di casa si guarisce tre volte più in fretta
+    const inBed = u.from && isMine(u.from) && housesOf(u.from)>0;
+    if(u.wounded){
+      u.hp=Math.min(u.hpMax,u.hp+SELF_HEAL*(inBed?3:1));
+      if(u.hp>=u.hpMax*0.85){ u.wounded=false; applyAge(u); changed=true; }
+    } else if(u.hp<u.hpMax*WOUND_AT){
+      u.wounded=true; applyAge(u); changed=true;
+      toast('Un colono è rimasto ferito: portatelo in ospedale.');
+    }
+  }
+  if(changed){ trimWorkers(); syncJobs(); }
+}
+
+function economyTick(){
+  worldAge++;
+  ageTick();
+  // "pop" veniva aggiornato a mano in sei punti diversi e prima o poi si
+  // sfasava dai coloni reali: ora si riallinea alla fonte a ogni tick
+  pop=myPeople().length;
+  if(checkCollapse()) return;
+  if(boomT>0) boomT--;
+  randomEventTick();
+  const r=rates(), cap=capacity(), clamp=v=>Math.min(cap,Math.max(0,v));
+  res.food=clamp(res.food+r.food);
+  res.mat =clamp(res.mat +r.mat);
+  res.pow =clamp(res.pow +r.pow);
+
+  // ricerca
+  if(r.sci>0 && tech<3){
+    sci+=r.sci;
+    if(sci>=TECH_COST[tech+1]){ tech++; toast('Ricerca completata: livello '+tech+'. Rese e armi migliorate.'); }
+  }
+  // stagioni
+  seasonT++;
+  if(seasonT>=SEASON_LEN){
+    seasonT=0; season=(season+1)%SEASONS.length;
+    applySeason();
+    toast('È arrivato/a '+SEASONS[season].name+'.');
+  }
+  // popolazione
+  if(res.food>8&&pop<r.houses){
+    pop++;
+    const baby=spawnUnit('worker','you',randomHome());
+    baby.age=0; applyAge(baby);           // nasce bambino: non lavora ancora
+    syncJobs();
+    toast('È nato un colono.');
+  } else if(res.food<=0&&pop>1&&Math.random()<.3){
+    // solo un vero colono (non un assoggettato) conta come popolazione:
+    // prima si cercava un civile qualsiasi, e un assoggettato ucciso
+    // scalava "pop" senza che nessun colono fosse davvero mancante
+    const i=units.findIndex(isPerson);
+    if(i>=0){ pop--; killUnit(units[i],i); }
+    trimWorkers(); syncJobs();
+    toast('Il cibo è finito: un colono se n’è andato.');
+  }
+
+  sendCaravans();
+  if(!raidActive){ raidIn--; if(raidIn<=0){ spawnRaid();
+    raidIn=Math.round((120+(hasOrbital('eye')?ORBITALS.eye.delay:0))*(trait.raid?0.65:trait.calm?1.5:1)); } }
+  for(const s of settlements) rivalThink(s);
+  if(auto) autoThink();
+  refreshHUD(r);
+  // l'ispettore mostrava integrità e addetti fermi al momento del clic
+  if(selected) setInspector(selected);
+  autoSaveT++;
+}
+
+/* santuario e roccaforte */
+function structureTick(dt){
+  for(const t of FC.mine){
+    // la cache è di inizio frame: nel frattempo l'edificio può essere caduto
+    if(!t.building||t.site) continue;
+    const B=BUILDINGS[t.building];
+    if(!B) continue;
+    if(B.spawns && res.pow>0){
+      t.spawnT+=dt;
+      if(t.spawnT>=B.every){
+        t.spawnT=0;
+        const have=units.filter(u=>u.faction==='you'&&u.kind==='guardian').length;
+        const shrines=tiles.filter(x=>isMine(x)&&x.building==='shrine').length;
+        if(have<B.cap*Math.max(1,shrines)){
+          spawnUnit('guardian','you',t);
+          toast('Il santuario ha generato un guardiano.'); refreshHUD();
+        }
+      }
+    }
+    if(B.heal && (B.drain?res.pow>0:true) && (B.jobs?((t.workers||0)>0):true)){   // ora solo l'ospedale
+      const tp=surfacePos(t,.4);
+      for(const u of nearbyUnits(t,true)){
+        if(u.faction!=='you'||u.hp>=u.hpMax) continue;
+        if(tp.distanceTo(u.mesh.position)<B.range) u.hp=Math.min(u.hpMax,u.hp+B.heal*dt);
+      }
+    }
+  }
+}
+
+/* ═══════════════ spostamenti: nessuno cammina sull'acqua ═══════ */
+/* ── campo di distanze: una BFS per obiettivo, riusata da tutti ──
+   Il vecchio metodo goloso sceglieva il vicino più vicino "in linea d'aria":
+   davanti a un golfo o a una catena montuosa entrava in stallo e il colono
+   rimbalzava avanti e indietro all'infinito. Questo invece è esatto.        */
+let fieldCache=new Map(), foeCache=new Map();
+function bumpWalk(){ fieldCache.clear(); foeCache.clear(); }
+/* Per i tuoi coloni è una BFS semplice. Per i nemici è invece una Dijkstra
+   con le mura percorribili ma carissime (WALL_COST passi): così aggirano
+   la cinta se il giro vale meno di sfondarla, e sfondano solo quando il
+   muro è davvero la via più breve — cioè quando la cinta è chiusa.     */
+function distField(goal,foe){
+  const cache = foe?foeCache:fieldCache;
+  let f=cache.get(goal.id);
+  if(f) return f;
+  if(cache.size>40) cache.clear();
+  f=new Int32Array(tiles.length).fill(-1);
+  if(!foe){
+    f[goal.id]=0;
+    const q=[goal.id];
+    for(let h=0;h<q.length;h++){
+      const cur=q[h], d=f[cur];
+      for(const n of tiles[cur].neighbors){
+        if(f[n]!==-1||!walkable(tiles[n])) continue;
+        f[n]=d+1; q.push(n);
+      }
+    }
+  } else {
+    // coda a bucket: i costi sono interi piccoli, niente heap
+    const INF=0x3fffffff, dist=new Int32Array(tiles.length).fill(INF);
+    const maxD=tiles.length*(WALL_COST+1)+2;
+    const buckets=new Map();
+    const put=(id,d)=>{ let b=buckets.get(d); if(!b){b=[];buckets.set(d,b);} b.push(id); };
+    dist[goal.id]=0; put(goal.id,0);
+    for(let d=0; d<=maxD; d++){
+      const b=buckets.get(d);
+      if(!b) continue;
+      buckets.delete(d);
+      for(const cur of b){
+        if(dist[cur]!==d) continue;
+        for(const n of tiles[cur].neighbors){
+          const t=tiles[n];
+          if(!walkable(t)) continue;
+          const nd=d+(blocksFoe(t)?WALL_COST:1);
+          if(nd<dist[n]){ dist[n]=nd; put(n,nd); }
+        }
+      }
+    }
+    for(let i=0;i<tiles.length;i++) f[i]=dist[i]===INF?-1:dist[i];
+  }
+  cache.set(goal.id,f);
+  return f;
+}
+const reachable=(from,goal)=>!!goal&&distField(goal)[from.id]>=0;
+
+function stepToward(from,goal,fly,foe){
+  if(fly){
+    let best=from, bd=from.center.dot(goal.center);
+    for(const n of from.neighbors){
+      const d=tiles[n].center.dot(goal.center);
+      if(d>bd){ bd=d; best=tiles[n]; }
+    }
+    return best;
+  }
+  const f=distField(goal,foe), here=f[from.id];
+  if(here<0){   // obiettivo irraggiungibile via terra: resta dov'è
+    return from;
+  }
+  let best=from, bd=here;
+  for(const n of from.neighbors){
+    const d=f[n];
+    if(d>=0&&d<bd){ bd=d; best=tiles[n]; }
+  }
+  return best;
+}
+function nearestTile(from,test){
+  let best=null,bd=-2;
+  for(const t of tiles){
+    if(!test(t)) continue;
+    const d=from.center.dot(t.center);
+    if(d>bd){ bd=d; best=t; }
+  }
+  return best;
+}
+function hostile(a,b){
+  if(a.faction===b.faction) return false;
+  if(a.faction==='raider'||b.faction==='raider') return true;
+  const set=a.faction==='rival'?a.settlement:b.settlement;
+  return !!set&&set.relation==='ostile';
+}
+function nearestFoeUnit(u,wide){
+  let best=null,bd=1e9;
+  for(const o of nearbyUnits(u.from,wide!==false)){
+    if(!hostile(u,o)||o.state==='landing') continue;
+    const d=u.mesh.position.distanceToSquared(o.mesh.position);
+    if(d<bd){ bd=d; best=o; }
+  }
+  return best;
+}
+/* ── cache di frame ────────────────────────────────────────────
+   Prima ogni unità scandiva tutte le 1212 caselle a ogni fotogramma per
+   trovare magazzino, cantiere o nemico: con 90 coloni erano ~27 milioni di
+   operazioni al secondo. Ora le liste si costruiscono UNA volta per frame
+   e i nemici si cercano solo nelle caselle adiacenti.               */
+const FC={mine:[],storage:[],sites:[],turrets:[],rtowers:[],defense:[],walls:[],rivalB:[],
+          raiders:[],beds:[],bucket:new Map()};
+function rebuildFrameCache(){
+  FC.mine.length=0; FC.storage.length=0; FC.sites.length=0; FC.turrets.length=0;
+  FC.rtowers.length=0; FC.defense.length=0; FC.beds.length=0; FC.walls.length=0; FC.rivalB.length=0;
+  for(const t of tiles){
+    if(t.site&&t.owner==='you'){ FC.sites.push(t); continue; }
+    if(!t.building) continue;
+    if(t.building==='rtower'&&t.settlement) FC.rtowers.push(t);
+    if(t.owner==='rival') FC.rivalB.push(t);
+    if(t.owner!=='you') continue;
+    FC.mine.push(t);
+    if(BUILDINGS[t.building].wall) FC.walls.push(t);
+    if(storeOf(t)>0) FC.storage.push(t);
+    if(housesOf(t)>0) FC.beds.push(t);
+    if(t.building==='turret') FC.turrets.push(t);
+    if(t.building==='armory'||t.building==='shrine'||t.building==='fort'||
+       t.building==='hut'||t.building==='block') FC.defense.push(t);
+  }
+  FC.raiders.length=0;
+  FC.bucket.clear();
+  for(const u of units){
+    if(u.faction==='raider') FC.raiders.push(u);
+    let a=FC.bucket.get(u.from.id);
+    if(!a){ a=[]; FC.bucket.set(u.from.id,a); }
+    a.push(u);
+  }
+}
+function nearestOf(from,list,filter){
+  let best=null,bd=-2;
+  for(const t of list){
+    if(filter&&!filter(t)) continue;
+    const d=from.center.dot(t.center);
+    if(d>bd){ bd=d; best=t; }
+  }
+  return best;
+}
+/* unità nelle vicinanze: casella propria + anello di vicini (due per gli arcieri) */
+let _stamp=0;
+function nearbyUnits(tile,wide){
+  const out=[]; _stamp++;
+  const add=id=>{
+    const a=FC.bucket.get(id); if(!a) return;
+    for(const u of a) if(u._s!==_stamp){ u._s=_stamp; out.push(u); }
+  };
+  add(tile.id);
+  for(const n of tile.neighbors){
+    add(n);
+    if(wide) for(const m of tiles[n].neighbors) add(m);
+  }
+  return out;
+}
+
+const nearestStorage = from =>
+     nearestOf(from,FC.storage,t=>reachable(from,t))
+  || nearestOf(from,FC.mine,t=>reachable(from,t))
+  || nearestOf(from,FC.mine);
+/* FC.sites è la fotografia di inizio fotogramma: un cantiere può essersi
+   completato (o essere stato demolito) subito dopo. Chi la usa deve sempre
+   riverificare t.site, altrimenti si legge da null — è lo stesso errore che
+   aveva già colpito structureTick.                                       */
+const openSites = () => FC.sites.filter(t=>t.site);
+const reachableSites = from => FC.sites.filter(t=>t.site&&reachable(from,t));
+
+/* ═══════════════ logistica: chi porta cosa, e dove ═══════════ */
+function civilBrain(u,dt){
+  // 0. milizia: se un nemico è a tiro, il colono molla tutto e lo affronta.
+  //    Fa poco danno, ma dieci coloni valgono un lanciere.
+  const canFight = !u.wounded && u.stage!=='child' && u.kind!=='thrall';
+  let foe=null, bd=canFight?MILITIA_RANGE:FLEE_RANGE;
+  for(const o of nearbyUnits(u.from,true)){
+    if(!hostile(u,o)||o.state==='landing') continue;
+    const d=u.mesh.position.distanceTo(o.mesh.position);
+    if(d<bd){ bd=d; foe=o; }
+  }
+  if(foe){
+    dropCarry(u); u.mode='idle';
+    // adulti sani: milizia. Bambini, feriti e assoggettati: al riparo.
+    if(canFight) return foe.from;
+    const refuge = nearestOf(u.from,FC.mine,t=>!!BUILDINGS[t.building].shelter)
+                || nearestOf(u.from,FC.beds,t=>reachable(u.from,t));
+    if(refuge&&refuge!==u.from) return refuge;
+    const away=u.from.neighbors.map(n=>tiles[n]).filter(walkable)
+      .sort((a,b)=>a.center.dot(foe.from.center)-b.center.dot(foe.from.center));
+    if(away.length) return away[0];
+  }
+  // 0a. durante un'incursione, chi non sa difendersi corre al rifugio
+  if(FC.raiders.length&&(u.stage==='child'||u.wounded)){
+    dropCarry(u); u.mode='idle';
+    const f=nearestOf(u.from,FC.mine,t=>!!BUILDINGS[t.building].shelter);
+    if(f) return f;
+  }
+  // 0b. ferito: smette tutto e cerca l'ospedale più vicino
+  if(u.wounded){
+    dropCarry(u); u.mode='idle';
+    return nearestOf(u.from,FC.mine,t=>!!BUILDINGS[t.building].heal)||u.from;
+  }
+  // 1. senza incarico: fa il portatore per i cantieri aperti
+  if(!u.job){
+    if(u.site&&!u.site.site){ u.site=null; }   // il cantiere è finito mentre arrivava
+    if(u.mode==='fetch'||u.mode==='deliver'){
+      if(!u.site||!u.site.site){ u.mode='idle'; dropCarry(u); }
+    }
+    if(u.mode==='idle'){
+      const site=reachableSites(u.from)
+        .sort((a,b)=>b.center.dot(u.from.center)-a.center.dot(u.from.center))[0];
+      if(site){ u.site=site; u.mode='fetch'; return nearestStorage(u.from); }
+      // niente da costruire: si raduna al villaggio invece di girare a vuoto
+      return nearestOf(u.from,FC.beds,t=>reachable(u.from,t))
+          || nearestOf(u.from,FC.mine,t=>reachable(u.from,t));
+    }
+    if(u.mode==='fetch'){
+      const st=nearestStorage(u.from);
+      if(!st) { u.mode='idle'; return null; }
+      if(u.from===st){ takeCarry(u,0xb8925e); u.mode='deliver'; return u.site; }
+      return st;
+    }
+    if(u.mode==='deliver'){
+      if(u.from===u.site){
+        dropCarry(u);
+        addBlockToSite(u.site);
+        u.mode=u.site && u.site.site ? 'fetch' : 'idle';
+        return null;
+      }
+      return u.site;
+    }
+    return null;
+  }
+  // 2. con un incarico: lavora sul posto e ogni tanto porta il raccolto
+  const B=BUILDINGS[u.job.building];
+  if(u.mode==='haul'){
+    const st=nearestStorage(u.from);
+    if(!st||u.from===st){ dropCarry(u); u.mode='work'; u.workT=0; return u.job; }
+    return st;
+  }
+  if(u.mode!=='work'){ u.mode='work'; u.workT=0; }
+  if(u.from!==u.job) return u.job;
+  // fermo sull'edificio: sta lavorando
+  u.workT+=dt;
+  if(B.ships && u.workT>harvestTime()){
+    u.workT=0;
+    takeCarry(u, B.ships==='food'?0xa8c14e:0x9aa4b2);
+    u.mode='haul';
+    return nearestStorage(u.from);
+  }
+  return u.job;
+}
+
+function goalTile(u,dt){
+  if(u.faction==='raider'){
+    // saccheggiano il bersaglio più vicino, tuo o dei clan: non ce l'hanno
+    // con te in particolare, ce l'hanno col pianeta
+    const mine=nearestOf(u.from,FC.mine), theirs=nearestOf(u.from,FC.rivalB);
+    if(mine&&theirs)
+      return u.from.center.dot(mine.center)>=u.from.center.dot(theirs.center)?mine:theirs;
+    return mine||theirs||nearestOf(u.from,FC.sites,t=>!!t.site)||u.from;
+  }
+  if(u.faction==='rival'){
+    const set=u.settlement;
+    if(u.kind==='caravan') return caravanGoal(u);
+    if(FC.raiders.length){
+      let best=null,bd=-2;
+      for(const e of FC.raiders){ const d=u.from.center.dot(e.from.center);
+        if(d>bd){ bd=d; best=e.from; } }
+      if(best) return best;
+    }
+    if(set&&set.relation==='ostile') return nearestOf(u.from,FC.mine);
+    return set?set.core:u.from;
+  }
+  if(UNITS[u.kind].civil) return civilBrain(u,dt);
+
+  // SCHIERATE: marciano sull'obiettivo, ignorando le scaramucce a casa
+  if(u.deployed&&army.target&&army.target.relation==='ostile'){
+    const foe=nearestFoeUnit(u);
+    if(foe&&u.mesh.position.distanceTo(foe.mesh.position)<4) return foe.from;
+    const t=nearestTile(u.from,x=>x.settlement===army.target&&!!x.building);
+    if(t) return t;
+  }
+  // NON SCHIERATE: restano di guardia e ingaggiano solo chi entra in casa
+  const foe=nearestFoeUnit(u);
+  if(foe){
+    const atHome=nearestTile(foe.from,t=>isMine(t));
+    const near=atHome&&foe.from.center.dot(atHome.center)>0.90;
+    if(near||foe.faction==='raider') return foe.from;
+  }
+  // se dei predoni sono a terra, li intercetta anche se non sono adiacenti
+  if(FC.raiders.length){
+    let best=null,bd=-2;
+    for(const e of FC.raiders){ const d=u.from.center.dot(e.from.center);
+      if(d>bd){ bd=d; best=e.from; } }
+    if(best) return best;
+  }
+  return nearestOf(u.from,FC.defense);
+}
+
+function stepUnits(dt){
+  rebuildFrameCache();
+  for(const u of units){
+    if(u.state==='landing'){ u.mesh.scale.setScalar(.55+.45*Math.min(1,u.land)); continue; }
+    const fly=false;   // i predoni ora camminano: se volassero le mura non conterebbero
+    // l'obiettivo si ricalcola all'arrivo su una nuova casella o ogni ~0,3 s,
+    // non a ogni fotogramma: è qui che se ne andavano le prestazioni
+    u.think=(u.think||0)-dt;
+    if(u.goal===undefined||u.lastFrom!==u.from||u.think<=0){
+      u.goal=goalTile(u,dt); u.lastFrom=u.from; u.think=0.25+Math.random()*0.2;
+    }
+    const goal=u.goal;
+    const parked = goal && goal===u.from && u.to===u.from;
+
+    if(parked){
+      // fermo al lavoro: leggera oscillazione, così si vede che è attivo
+      u.bob+=dt*3;
+      const dir=u.from.center;
+      u.mesh.position.copy(dir.clone().multiplyScalar(
+        tileRadius(u.from)+0.17+(u.job?Math.abs(Math.sin(u.bob))*0.05:0)));
+      u.mesh.quaternion.setFromUnitVectors(UP,dir);
+      continue;
+    }
+    // solo strade finite: un cantiere ha già building==='road' e dava il bonus
+    const road=t=>t.building==='road'&&!t.site;
+    const onRoad=road(u.from)||road(u.to);
+    u.t+=dt*u.speed*(onRoad?1.6:1);
+    if(u.t>=1){
+      u.t=0; u.from=u.to;
+      if(goal&&goal!==u.from) u.to=stepToward(u.from,goal,fly,u.faction!=='you');
+      else {
+        const opts=u.from.neighbors.map(i=>tiles[i]).filter(t=>fly||walkable(t));
+        u.to=(goal===u.from)?u.from:(opts.length?opts[Math.floor(Math.random()*opts.length)]:u.from);
+      }
+    }
+    const dir=u.from.center.clone().lerp(u.to.center,u.t).normalize();
+    const r=THREE.MathUtils.lerp(tileRadius(u.from),tileRadius(u.to),u.t);
+    u.mesh.position.copy(dir.clone().multiplyScalar(r+(fly?0.35:0.17)));
+    u.mesh.quaternion.setFromUnitVectors(UP,dir);
+  }
+}
+
+/* ═══════════════ combattimento ═══════════════ */
+function damageBuilding(tile,dmg){
+  tile.hp-=dmg;
+  if(tile.hp<=0) destroyBuilding(tile);
+}
+/* chi è al riparo nella roccaforte non viene colpito */
+/* Insieme delle caselle protette, ricostruito UNA volta per frame.
+   Controllarlo a ogni singolo colpo, come faceva la versione di Gemini,
+   riportava decine di migliaia di distanze al frame in mischia.        */
+const shelterTiles=new Set(), wallTiles=new Set();
+function rebuildProtection(){
+  shelterTiles.clear(); wallTiles.clear();
+  for(const t of FC.mine){
+    const B=BUILDINGS[t.building];
+    if(B&&B.shelter){
+      shelterTiles.add(t.id);
+      for(const n of t.neighbors) shelterTiles.add(n);
+    }
+  }
+  for(const t of FC.walls){
+    wallTiles.add(t.id);
+    for(const n of t.neighbors) wallTiles.add(n);
+  }
+}
+const sheltered = u => u.faction==='you' &&
+  (u.stage==='child'||u.wounded||u.kind==='thrall') && shelterTiles.has(u.from.id);
+const behindWalls = u => u.faction==='you' && wallTiles.has(u.from.id);
+function resolveCombat(dt){
+  if(beams) beams.clear();
+  rebuildProtection();
+  for(const u of units){
+    if(u.state==='landing') continue;
+    const U=UNITS[u.kind], dmg=unitDamage(u);
+    if(!dmg) continue;
+    for(const o of nearbyUnits(u.from, U.range>1.5)){
+      if(o.state==='landing'||!hostile(u,o)) continue;
+      if(u.mesh.position.distanceTo(o.mesh.position)<U.range){
+        if(sheltered(o)) continue;
+        o.hp-=(u.faction!=='you'&&behindWalls(o)?dmg*0.6:dmg)*dt;   // 40% in meno dietro le mura
+        if(U.range>2&&beams){
+          const g=new THREE.BufferGeometry().setFromPoints([u.mesh.position.clone(),o.mesh.position.clone()]);
+          beams.add(new THREE.Line(g,new THREE.LineBasicMaterial({color:0x9fe3bd})));
+        }
+        break;
+      }
+    }
+  }
+  for(const u of units){
+    if(u.state==='landing') continue;
+    const t=u.from, dmg=unitDamage(u);
+    if(!dmg||!t.building) continue;
+    if(u.faction==='raider'&&(t.owner==='you'||t.owner==='rival')) damageBuilding(t,dmg*dt);
+    else if(u.faction!=='you'&&t.owner==='you') damageBuilding(t,dmg*dt);
+    // la mura che sbarra il passo successivo viene abbattuta
+    if(u.faction!=='you'&&u.to&&u.to!==t&&blocksFoe(u.to)) damageBuilding(u.to,dmg*dt);
+    if(u.faction==='you'&&t.owner==='rival'&&t.settlement&&t.settlement.relation==='ostile')
+      damageBuilding(t,dmg*dt);
+  }
+  for(const t of FC.turrets){
+    if(res.pow<=0||t.building!=='turret') continue;
+    const B=BUILDINGS.turret, tp=surfacePos(t,.4);
+    for(const o of nearbyUnits(t,true)){
+      if(o.state==='landing') continue;
+      const foe=o.faction==='raider'||
+        (o.faction==='rival'&&o.settlement&&o.settlement.relation==='ostile');
+      if(!foe) continue;
+      if(tp.distanceTo(o.mesh.position)<B.range){
+        o.hp-=B.dps*techWar()*dt;
+        if(beams){
+          const g=new THREE.BufferGeometry().setFromPoints([tp,o.mesh.position.clone()]);
+          beams.add(new THREE.Line(g,new THREE.LineBasicMaterial({color:0xff7a3c})));
+        }
+        break;
+      }
+    }
+  }
+  // torri dei clan: difendono il loro territorio da predoni e da te, se in guerra
+  for(const t of FC.rtowers){
+    if(t.building!=='rtower'||!t.settlement) continue;
+    const B=BUILDINGS.rtower, tp=surfacePos(t,.4);
+    for(const o of nearbyUnits(t,true)){
+      if(o.state==='landing') continue;
+      const foe = o.faction==='raider' ||
+        (o.faction==='you'&&t.settlement.relation==='ostile');
+      if(!foe||tp.distanceTo(o.mesh.position)>=B.range) continue;
+      o.hp-=B.dps*dt;
+      if(beams) beams.add(new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([tp,o.mesh.position.clone()]),
+        new THREE.LineBasicMaterial({color:0xe0616b})));
+      break;
+    }
+  }
+  // cannone orbitale: un colpo alla volta, dall'alto
+  for(const o of orbit){
+    if(!o.built||o.kind!=='cannon'||res.pow<=0) continue;
+    let best=null,bd=1e9;
+    for(const e of units){
+      if(e.faction!=='raider'||e.state==='landing') continue;
+      const d=o.mesh.position.distanceTo(e.mesh.position);
+      if(d<bd){ bd=d; best=e; }
+    }
+    if(best){
+      best.hp-=ORBITALS.cannon.dps*techWar()*dt;
+      if(beams) beams.add(new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([o.mesh.position.clone(),best.mesh.position.clone()]),
+        new THREE.LineBasicMaterial({color:0xffc46b})));
+    }
+  }
+  for(let i=units.length-1;i>=0;i--){
+    const u=units[i];
+    if(u.hp>0) continue;
+    const wasMine=u.faction==='you', kind=u.kind, set=u.settlement;
+    killUnit(u,i);
+    if(wasMine){
+      // guardiani e assoggettati non sono "pop": non vanno scalati dalla popolazione
+      if(kind!=='guardian'&&kind!=='thrall'){ pop=Math.max(1,pop-1); trimWorkers(); }
+      syncJobs();
+      toast('Hai perso '+(kind==='guardian'?'un guardiano.':kind==='thrall'?'un assoggettato.':'un combattente.'));
+      refreshHUD();
+    }
+    if(set) checkConquest(set);
+  }
+  if(raidActive&&raiders().length===0){ raidActive=false; toast('Incursione respinta.'); refreshHUD(); }
+}
+
+/* ═══════════════ incursioni: la navetta li sbarca ═══════════ */
+function spawnRaid(){
+  const n=Math.min(9,1+Math.floor(worldIndex/2)+Math.floor(raidNo/3));
+  const spots=tiles.filter(t=>!t.building&&BIOMES[t.biome].build);
+  if(!spots.length) return;
+  const site=spots[Math.floor(Math.random()*spots.length)];
+  const ship=dropshipMesh();
+  planetGroup.add(ship);
+  props.push({mesh:ship, tile:site, phase:'down', t:0, payload:n});
+  raidNo++; raidActive=true;
+  toast('Navetta nemica in avvicinamento: '+n+(n===1?' predone.':' predoni.'));
+}
+/* navette e razzi: le cose non compaiono e non spariscono dal nulla */
+function stepProps(dt){
+  for(let i=props.length-1;i>=0;i--){
+    const p=props[i];
+    p.t+=dt*(p.phase==='wait'?1:0.55);
+    const dir=p.tile.center;
+    if(p.phase==='down'){
+      const k=Math.min(1,p.t);
+      p.mesh.position.copy(dir.clone().multiplyScalar(tileRadius(p.tile)+0.5+(1-k)*26));
+      p.mesh.quaternion.setFromUnitVectors(UP,dir);
+      if(k>=1){
+        p.phase='wait'; p.t=0;
+        for(let k2=0;k2<p.payload;k2++){
+          const u=spawnUnit('raider','raider',p.tile);
+          u.state='ok'; u.mesh.scale.setScalar(1);
+        }
+      }
+    } else if(p.phase==='wait'){
+      if(p.t>1.4){ p.phase='up'; p.t=0; }
+    } else {
+      const k=Math.min(1,p.t);
+      p.mesh.position.copy(dir.clone().multiplyScalar(tileRadius(p.tile)+0.5+k*26));
+      if(k>=1){ planetGroup.remove(p.mesh); props.splice(i,1); }
+    }
+  }
+  if(launching){
+    launching.t+=dt*0.5;
+    const dir=launching.tile.center, k=launching.t;
+    launching.mesh.position.copy(dir.clone().multiplyScalar(tileRadius(launching.tile)+0.1+k*k*40));
+    launching.mesh.quaternion.setFromUnitVectors(UP,dir);
+    if(k>=1){ planetGroup.remove(launching.mesh); launching=null; nextWorld(); }
+  }
+}
+
+/* ═══════════════ diplomazia e conquista ═══════════════ */
+const ALLY_COST={mat:40,food:20};
+const canAlly = s => s.relation==='neutrale'&&res.mat>=ALLY_COST.mat&&res.food>=ALLY_COST.food;
+function allyWith(s){
+  if(!canAlly(s)) return;
+  res.mat-=ALLY_COST.mat; res.food-=ALLY_COST.food;
+  s.relation='alleato';
+  toast(s.name+' accetta il dono: alleanza stretta.'); refreshHUD();
+}
+function declareWar(s){
+  if(s.relation==='conquistato') return;
+  s.relation='ostile'; army.target=s;
+  if(army.size===0) army.size=myTroops().length;
+  applyDeploy();
+  toast('Guerra dichiarata a '+s.name+'.'); refreshHUD();
+}
+function recall(){
+  army.target=null;
+  for(const u of myTroops()) u.deployed=false;
+  toast('Truppe richiamate a difesa.'); refreshHUD();
+}
+/* Assoggettare invece di radere al suolo: le loro strutture restano in piedi
+   e versano un tributo, e i superstiti passano a lavorare per te.        */
+const canSubjugate = s => (s.relation==='ostile') &&
+  !tiles.some(t=>t.settlement===s&&t.building==='keep') &&
+  tiles.some(t=>t.settlement===s&&t.building) &&
+  !units.some(u=>u.settlement===s);
+function subjugate(s){
+  if(!canSubjugate(s)) return;
+  s.relation='assoggettato';
+  const camps=tiles.filter(t=>t.settlement===s&&t.building).length;
+  const n=Math.min(6,Math.max(1,Math.floor(camps*0.7)));
+  const home=tiles.find(t=>t.settlement===s&&t.building)||s.core;
+  for(let i=0;i<n;i++){
+    const u=spawnUnit('thrall','you',home);
+    u.stage='adult'; u.age=AGES.child.until;
+  }
+  if(army.target===s) recall();
+  syncJobs();
+  toast(s.name+' è assoggettato: '+n+' lavoratori e 1,4 materiali di tributo.');
+  refreshHUD();
+}
+
+function checkConquest(s){
+  if(s.relation==='conquistato'||s.relation==='assoggettato') return;
+  if(tiles.some(t=>t.settlement===s&&t.building)) return;
+  s.relation='conquistato';
+  for(let i=units.length-1;i>=0;i--) if(units[i].settlement===s) killUnit(units[i],i);
+  // unico punto del codice dove il bottino non era clampato alla capienza:
+  // dopo una conquista le scorte potevano superare il tetto mostrato in HUD
+  const cap=capacity();
+  res.mat=Math.min(cap,res.mat+60); res.food=Math.min(cap,res.food+30);
+  if(army.target===s) recall();
+  toast(s.name+' è caduto. Bottino: 60 materiali, 30 cibo.'); refreshHUD();
+}
+
+/* ═══════════════ i rivali crescono da soli ═══════════════ */
+/* I clan hanno la loro economia: il reddito cresce con le strutture, quindi
+   l'espansione è composta. Il vecchio tetto fisso a 9 li congelava. */
+const RIVAL_COST={camp:26, rfarm:34, rtower:46, keep:50};
+function rivalThink(s){
+  if(s.relation==='conquistato') return;
+  if(s.relation==='assoggettato'){ return; }   // non crescono più: lavorano per te
+  const owned=tiles.filter(t=>t.settlement===s&&t.building);
+  const has=k=>owned.filter(t=>t.building===k).length;
+
+  // reddito: base + strutture + campi. Un alleato investe meno nell'espansione.
+  const income=(0.5+owned.length*0.22+has('rfarm')*0.55)*(s.relation==='alleato'?0.6:1);
+  s.mat+=income;
+  s.thinkT++;
+  if(s.thinkT<5) return;
+  s.thinkT=0;
+  if(!owned.length) return;
+
+  // il tetto cresce col tempo e col mondo: l'unico limite vero resta la
+  // terra libera intorno a loro. Se li ignori, si prendono il pianeta.
+  const cap=12+worldIndex*6+Math.floor(worldAge/150);
+  const troops=units.filter(u=>u.settlement===s).length;
+
+  // 1. senza roccaforte non c'è clan: la ricostruiscono per prima cosa
+  if(!has('keep')&&s.mat>=RIVAL_COST.keep){
+    s.mat-=RIVAL_COST.keep; finish(owned[0],'keep','rival'); return;
+  }
+  // 2. scelgono cosa serve: prima i campi (reddito), poi le torri, poi terreno
+  let want='camp';
+  if(has('rfarm')<Math.ceil(owned.length/3)) want='rfarm';
+  else if(has('rtower')<Math.floor(owned.length/4)) want='rtower';
+  const cost=RIVAL_COST[want];
+  if(s.mat>=cost&&owned.length<cap){
+    const cand=[];
+    for(const t of owned) for(const n of t.neighbors){
+      const x=tiles[n];
+      if(BIOMES[x.biome].build&&!x.building) cand.push(x);
+    }
+    if(cand.length){
+      const spot=cand[Math.floor(Math.random()*cand.length)];
+      s.mat-=cost;
+      finish(spot,want,'rival'); spot.settlement=s; s.tiles.push(spot);
+      return;
+    }
+  }
+  // 3. se non c'è più spazio o soldi per costruire, addestrano
+  if(s.mat>=20&&troops<Math.ceil(owned.length*0.8)+2){
+    s.mat-=20;
+    const home=owned[Math.floor(Math.random()*owned.length)];
+    spawnUnit('soldier','rival',home).settlement=s;
+  }
+}
+
+/* ═══════════════ carattere dei mondi ed eredità ═══════════════
+   Ogni pianeta ha un tratto che ne cambia l'economia, e ogni mondo
+   colonizzato lascia un bonus permanente: così andare avanti ha un senso
+   misurabile invece di essere solo un nuovo terreno da riempire.     */
+const TRAITS = [
+  {id:'fertile', name:'Terre fertili',   note:'+30% cibo',        food:1.30},
+  {id:'ricco',   name:'Vene profonde',   note:'+35% materiali',   mat:1.35},
+  {id:'gelido',  name:'Inverni lunghi',  note:'stagioni più dure', harsh:true},
+  {id:'ventoso', name:'Cieli tempestosi',note:'+40% energia',     pow:1.40},
+  {id:'ostile',  name:'Rotta dei predoni',note:'incursioni più fitte', raid:true},
+  {id:'quieto',  name:'Angolo tranquillo',note:'incursioni rade',  calm:true}
+];
+let trait=TRAITS[0];
+const legacy = () => 1 + 0.06*(worldIndex-1);   // +6% a tutto per mondo colonizzato
+
+/* ═══════════════ commercio e carovane ═══════════════ */
+const hasMarket = () => FC.mine.some(t=>t.building==='market'&&(t.workers||0)>0);
+/* una carovana parte dal clan alleato, cammina fino a un tuo magazzino e scarica */
+function caravanGoal(u){
+  if(u.delivered) return u.settlement?u.settlement.core:u.from;
+  const st=nearestStorage(u.from);
+  if(st&&u.from===st){
+    const bonus=hasMarket()?1.6:1;
+    const mat=Math.round(u.load*bonus), food=Math.round(u.load*0.5*bonus);
+    res.mat=Math.min(capacity(),res.mat+mat);
+    res.food=Math.min(capacity(),res.food+food);
+    u.delivered=true; dropCarry(u);
+    toast('Carovana di '+(u.settlement?u.settlement.name:'un alleato')+': +'+mat+' materiali, +'+food+' cibo.');
+    refreshHUD();
+  }
+  return st||u.from;
+}
+function sendCaravans(){
+  for(const s of settlements){
+    if(s.relation!=='alleato'&&s.relation!=='assoggettato') continue;
+    s.tradeT=(s.tradeT||0)+1;
+    const every=s.relation==='alleato'?35:50;
+    if(s.tradeT<every) continue;
+    s.tradeT=0;
+    const home=tiles.find(t=>t.settlement===s&&t.building);
+    if(!home||!FC.storage.length) continue;
+    const u=spawnUnit('caravan','rival',home);
+    u.settlement=s; u.load=s.relation==='alleato'?22:14; u.delivered=false; u.lifeT=0;
+    takeCarry(u,0xd9a441);
+  }
+  // le carovane che hanno consegnato tornano a casa e spariscono
+  for(let i=units.length-1;i>=0;i--){
+    const u=units[i];
+    if(u.kind!=='caravan') continue;
+    u.lifeT=(u.lifeT||0)+1;
+    if(u.lifeT>160||(u.delivered&&u.settlement&&u.from===u.settlement.core)) killUnit(u,i);
+  }
+}
+/* scambio immediato al mercato: cibo contro materiali, o viceversa */
+function tradeWith(s,dir){
+  if(!hasMarket()){ toast('Serve un mercato con un addetto.'); return; }
+  if(s.relation!=='alleato'&&s.relation!=='assoggettato'){ toast('Serve un accordo con questo clan.'); return; }
+  if(dir==='buy'){
+    if(res.food<40){ toast('Servono 40 cibo.'); return; }
+    res.food-=40; res.mat=Math.min(capacity(),res.mat+32);
+    toast('Scambiati 40 cibo per 32 materiali.');
+  } else {
+    if(res.mat<40){ toast('Servono 40 materiali.'); return; }
+    res.mat-=40; res.food=Math.min(capacity(),res.food+32);
+    toast('Scambiati 40 materiali per 32 cibo.');
+  }
+  refreshHUD();
+}
+
+/* ═══════════════ poteri del giocatore ═══════════════ */
+function setPower(p){
+  activePower = activePower===p ? null : p;
+  for(const k in POWERS) $('p-'+k).classList.toggle('pwr-on', activePower===k);
+  if(activePower) toast(POWERS[p].icon+' '+POWERS[p].label+': clicca un punto del pianeta.');
+}
+function addFX(obj,life,update,onEnd){ planetGroup.add(obj); activeFX.push({obj,life,max:life,update,onEnd}); }
+function stepFX(dt){
+  for(let i=activeFX.length-1;i>=0;i--){
+    const fx=activeFX[i];
+    fx.life-=dt;
+    const k=Math.max(0,fx.life/fx.max);
+    if(fx.update) fx.update(k);
+    if(fx.life<=0){
+      fx.obj.traverse(o=>{ if(o.geometry) o.geometry.dispose(); });
+      planetGroup.remove(fx.obj); activeFX.splice(i,1);
+      if(fx.onEnd) fx.onEnd();
+    }
+  }
+}
+
+/* ═══════════════ eventi casuali ═══════════════
+   Ogni 90–170 s (non durante un'incursione) succede qualcosa che la
+   colonia non ha scelto: va gestito, non solo subito.               */
+const EVENTS=['meteor','plague','refugees','harvest'];
+function randomEventTick(){
+  if(worldAge<60||raidActive) return;
+  if(--eventIn>0) return;
+  eventIn=90+Math.floor(Math.random()*80);
+  fireEvent(EVENTS[Math.floor(Math.random()*EVENTS.length)]);
+}
+function fireEvent(kind){
+  if(kind==='meteor'){
+    // tre impatti: uno vicino alla colonia, due a caso. Danneggiano ciò che
+    // colpiscono ma lasciano frammenti di minerale da raccogliere
+    const land=tiles.filter(t=>BIOMES[t.biome].build);
+    const home=playerBuildings();
+    const hits=[];
+    if(home.length){
+      const h=home[Math.floor(Math.random()*home.length)];
+      const n=h.neighbors.map(i=>tiles[i]).filter(t=>BIOMES[t.biome].build);
+      hits.push(n.length?n[Math.floor(Math.random()*n.length)]:h);
+    }
+    while(hits.length<3&&land.length) hits.push(land[Math.floor(Math.random()*land.length)]);
+    hits.forEach((t,i)=>meteor(t,0.9+i*0.45));
+    logEvent('☄ Pioggia di meteoriti in arrivo: tre impatti.');
+  } else if(kind==='plague'){
+    const healthy=myPeople().filter(u=>!u.wounded&&u.stage!=='child');
+    if(!healthy.length){ eventIn=20; return; }
+    // un ospedale funzionante dimezza il contagio
+    const clinic=FC.mine.some(t=>t.building==='clinic'&&(t.workers||0)>0);
+    const n=Math.max(1,Math.ceil(healthy.length*(clinic?0.1:0.22)));
+    for(let i=0;i<n;i++){
+      const u=healthy.splice(Math.floor(Math.random()*healthy.length),1)[0];
+      if(!u) break;
+      u.hp=u.hpMax*0.3; u.wounded=true; applyAge(u);
+    }
+    trimWorkers(); syncJobs();
+    logEvent('🦠 Epidemia: '+n+(n===1?' colono si è ammalato':' coloni si sono ammalati')+
+      (clinic?' (l\'ospedale ha contenuto il contagio).':'. Un ospedale con addetti la conterrebbe.'));
+  } else if(kind==='refugees'){
+    const free=rates().houses-myPeople().length;
+    const n=Math.min(3,free);
+    if(n<=0){ logEvent('🧳 Dei profughi sono passati oltre: non c\'erano letti liberi.'); return; }
+    for(let i=0;i<n;i++) spawnUnit('worker','you',randomHome());   // arrivano adulti
+    pop=myPeople().length;
+    syncJobs();
+    logEvent('🧳 Sono arrivati '+n+(n===1?' profugo: ora è un colono.':' profughi: ora sono coloni.'));
+  } else if(kind==='harvest'){
+    boomT=35;
+    logEvent('🌾 Annata eccezionale: +40% cibo dai campi per 35 secondi.');
+  }
+  refreshHUD();
+}
+function meteor(tile,delay){
+  const sky=tile.center.clone().multiplyScalar(R+30), ground=surfacePos(tile,0.2);
+  const g=new THREE.Group();
+  const rock=new THREE.Mesh(new THREE.IcosahedronGeometry(.32,0),
+    new THREE.MeshBasicMaterial({color:0xffa060}));
+  const trail=new THREE.Mesh(new THREE.ConeGeometry(.28,2.2,6,1,true),
+    new THREE.MeshBasicMaterial({color:0xff7a3c,transparent:true,opacity:.55}));
+  trail.position.y=1.2; rock.add(trail);
+  rock.quaternion.setFromUnitVectors(UP,tile.center);
+  rock.position.copy(sky); g.add(rock);
+  const life=delay+0.8;
+  addFX(g,life,k=>{
+    const p=Math.min(1,Math.max(0,(1-k)*life-delay)/0.8);
+    rock.visible=(1-k)*life>=delay;
+    rock.position.lerpVectors(sky,ground,p*p);
+  },()=>impact(tile));
+}
+function impact(tile){
+  // lampo d'impatto
+  const flash=new THREE.Mesh(new THREE.SphereGeometry(.9,10,8),
+    new THREE.MeshBasicMaterial({color:0xffd08a,transparent:true}));
+  flash.position.copy(surfacePos(tile,0.2));
+  const g=new THREE.Group(); g.add(flash);
+  addFX(g,0.6,k=>{ flash.material.opacity=k; flash.scale.setScalar(1+(1-k)*2); });
+  if(tile.building){
+    const mine=tile.owner==='you';
+    damageBuilding(tile,35);
+    if(mine&&tile.building) toast('Un meteorite ha colpito '+BUILDINGS[tile.building].name+'.');
+  }
+  for(const u of nearbyUnits(tile,false)) if(u.state!=='landing') u.hp-=6;
+  // i frammenti valgono solo se un magazzino è a portata di passo:
+  // un sasso caduto dall'altra parte del mondo non lo raccoglie nessuno
+  if(BIOMES[tile.biome].build&&FC.storage.length&&haulSteps(tile)<=12){
+    res.mat=Math.min(capacity(),res.mat+12);
+    toast('☄ Frammenti di meteorite raccolti: +12 materiali.');
+  }
+}
+function castPower(kind,tile){
+  const P=POWERS[kind];
+  if(res.pow<P.cost){ toast('Energia insufficiente: servono '+P.cost+'.'); return; }
+  res.pow-=P.cost;
+  const target=surfacePos(tile,0.2);
+
+  if(kind==='bolt'){
+    const sky=tile.center.clone().multiplyScalar(R+24), pts=[sky];
+    for(let i=1;i<9;i++){
+      const p=sky.clone().lerp(target,i/9);
+      p.add(new THREE.Vector3((Math.random()-.5)*2.4,(Math.random()-.5)*2.4,(Math.random()-.5)*2.4));
+      pts.push(p);
+    }
+    pts.push(target);
+    const g=new THREE.Group();
+    const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+      new THREE.LineBasicMaterial({color:0xa8f5ff,transparent:true}));
+    const spark=new THREE.Mesh(new THREE.SphereGeometry(.7,8,6),
+      new THREE.MeshBasicMaterial({color:0xffffff,transparent:true}));
+    spark.position.copy(target); g.add(line); g.add(spark);
+    addFX(g,0.3,k=>{ line.material.opacity=k; spark.material.opacity=k*.8; spark.scale.setScalar(1+(1-k)*3); });
+    let hit=0;
+    for(const o of nearbyUnits(tile,true)){
+      if(o.state==='landing') continue;
+      if(o.faction==='raider'||(o.faction==='rival'&&o.settlement&&o.settlement.relation==='ostile')){
+        o.hp-=P.dmg; hit++;
+      }
+    }
+    toast(hit?'Fulmine: '+hit+(hit===1?' nemico folgorato.':' nemici folgorati.'):'Fulmine a vuoto.');
+
+  } else if(kind==='rain'){
+    const pts=[];
+    for(let i=0;i<40;i++) pts.push(target.clone().add(
+      new THREE.Vector3((Math.random()-.5)*3.2, Math.random()*4+1, (Math.random()-.5)*3.2)));
+    const cloud=new THREE.Points(new THREE.BufferGeometry().setFromPoints(pts),
+      new THREE.PointsMaterial({color:0x70c0ff,size:.35,transparent:true}));
+    const g=new THREE.Group(); g.add(cloud);
+    addFX(g,1.6,k=>{ cloud.material.opacity=k; cloud.position.y-=.05; });
+    res.food=Math.min(capacity(),res.food+P.food);
+    for(const u of units) if(u.job&&BUILDINGS[u.job.building].ships==='food') u.workT+=harvestTime()*0.5;
+    toast('Pioggia fertile: +'+P.food+' cibo, raccolti accelerati.');
+
+  } else {
+    const cyl=new THREE.Mesh(new THREE.CylinderGeometry(P.range/2,P.range/2,9,16,1,true),
+      new THREE.MeshBasicMaterial({color:0xffea78,transparent:true,side:THREE.DoubleSide}));
+    cyl.position.copy(target);
+    cyl.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),tile.center);
+    const g=new THREE.Group(); g.add(cyl);
+    addFX(g,0.9,k=>{ cyl.material.opacity=k*.45; cyl.scale.x=cyl.scale.z=1+(1-k)*.4; });
+    let healed=0;
+    for(const u of units){
+      if(u.faction!=='you'||u.mesh.position.distanceTo(target)>=P.range) continue;
+      u.hp=u.hpMax;
+      if(u.wounded){ u.wounded=false; applyAge(u); }
+      healed++;
+    }
+    if(healed) syncJobs();
+    toast('Cura solare: '+healed+' rimessi in forze.');
+  }
+  refreshHUD();
+}
+
+/* ═══════════════ modalità automatica ═══════════════ */
+/* Quanto è lontano un punto dal magazzino più vicino, in passi reali.
+   Serve a non aprire cantieri dall'altra parte del continente. */
+function haulSteps(t){
+  const st=nearestOf(t,FC.storage);
+  if(!st) return 99;
+  const d=distField(st)[t.id];
+  return d<0?99:d;
+}
+function autoThink(){
+  const r=rates();
+  if(idleCount()>0){
+    const open=workedTiles().filter(t=>(t.workers||0)<jobsOf(t));
+    const pref=r.food<0.6?['farm','fishery','mine','lab','plant','armory']
+             : raidActive?['armory','farm','fishery','mine','plant','lab']
+                         :['farm','fishery','mine','plant','lab','armory','fort'];
+    open.sort((a,b)=>pref.indexOf(a.building)-pref.indexOf(b.building));
+    for(const t of open)
+      while((t.workers||0)<jobsOf(t)&&idleCount()>0) t.workers++;
+    syncJobs();
+  }
+
+  const have=k=>tiles.filter(t=>(isMine(t)||t.site)&&(t.building===k)).length;
+  let want=null;
+  if(r.food<0.4) want='farm';
+  else if(pop>=r.houses-1) want = res.mat>60 ? 'block' : 'hut';
+  else if(have('mine')===0) want='mine';
+  else if(r.pow<0.3) want='plant';
+  else if(res.mat>capacity()*0.85) want='depot';
+  else if(have('armory')===0&&worldIndex>1) want='armory';
+  else if(myPeople().some(u=>u.wounded)&&have('clinic')===0) want='clinic';
+  else if(have('turret')<1+Math.floor(raidNo/3)) want='turret';
+  else if(have('lab')===0&&res.mat>110) want='lab';
+  else if(have('shrine')===0&&res.mat>120) want='shrine';
+  else if(have('fort')===0&&res.mat>160) want='fort';
+  else if(have('market')===0&&settlements.some(s=>s.relation==='alleato')) want='market';
+  else if(have('green')===0&&SEASONS[season].food<0.8&&res.mat>90) want='green';
+  else if(have('workshop')===0&&res.food>capacity()*0.6) want='workshop';
+  else if(have('wall')<Math.min(8,Math.floor(pop/3))) want='wall';
+  else if(r.food<1.2) want='farm';
+  else if(idleCount()>0) want='mine';
+
+  // non apre più cantieri di quanti la manodopera ne possa servire
+  const maxSites=Math.max(1,Math.min(3,Math.floor(workforce()/4)));
+  if(want&&openSites().length<maxSites){
+    const B=BUILDINGS[want];
+    // taglia scelta in base a quanto è ricca e popolosa la colonia
+    let sz=1;
+    if(B.jobs>0||B.houses){
+      if(res.mat>(B.cost.mat||0)*4&&pop>14) sz=3;
+      else if(res.mat>(B.cost.mat||0)*2.5&&pop>8) sz=2;
+    }
+    while(sz>1&&(res.mat<(B.cost.mat||0)*sz||res.pow<(B.cost.pow||0)*sz)) sz--;
+    if(res.mat>=(B.cost.mat||0)*sz&&res.pow>=(B.cost.pow||0)*sz){
+      const spot=pickSpot(want,sz);
+      if(spot){
+        res.mat-=(B.cost.mat||0)*sz; res.pow-=(B.cost.pow||0)*sz;
+        startSite(spot,want,'you',sz);
+      }
+    }
+  }
+  // se un deposito è troppo lontano dai cantieri, ne piazza uno in mezzo
+  if(!openSites().length&&FC.mine.length>6&&res.mat>60){
+    const far=FC.mine.filter(t=>BUILDINGS[t.building].ships&&haulSteps(t)>6);
+    if(far.length>=2&&!tiles.some(t=>t.site&&t.site.kind==='depot')){
+      const spot=pickSpot('depot',1);
+      if(spot&&res.mat>=BUILDINGS.depot.cost.mat){
+        res.mat-=BUILDINGS.depot.cost.mat;
+        startSite(spot,'depot','you',1);
+      }
+    }
+  }
+  for(const s of settlements) if(canAlly(s)&&res.mat>110) allyWith(s);
+}
+/* Prima sceglieva a caso tra le caselle confinanti, e la colonia si sfilacciava.
+   Ora ogni candidata riceve un punteggio: quanti tuoi edifici tocca, quanto è
+   vicina al centro della colonia, e un bonus se è servita da una strada.
+   Le mura fanno il contrario: le vuoi sul bordo, non in mezzo alle case.    */
+function colonyCenter(){
+  const mine=playerBuildings();
+  if(!mine.length) return null;
+  const c=new THREE.Vector3();
+  for(const t of mine) c.add(t.center);
+  return c.normalize();
+}
+function pickSpot(kind,size){
+  size=size||1;
+  const B=BUILDINGS[kind];
+  const ok=t=>tileAllows(t,kind,size);
+  const mine=playerBuildings();
+  if(!mine.length){ const any=tiles.filter(ok); return any.length?any[0]:null; }
+  const centre=colonyCenter();
+  const own=new Set(mine.map(t=>t.id));
+
+  let best=null, bestScore=-1e9;
+  for(const t of tiles){
+    if(!ok(t)) continue;
+    let adj=0, road=0;
+    for(const n of t.neighbors){
+      if(own.has(n)) adj++;
+      if(tiles[n].building==='road') road++;
+    }
+    if(adj===0) continue;                       // mai staccata dalla colonia
+    const near=t.center.dot(centre);            // 1 = cuore della colonia
+    // penalizza i posti lontani dal magazzino: i blocchi vanno portati a piedi
+    const haul = B.blocks ? Math.min(12,haulSteps(t)) : 0;
+    let score = B.wall ? (6-adj)*2 + (1-near)*8
+                       : adj*3 + near*10 + road*1.5 - haul*0.9;
+    score += Math.random()*0.8;                 // rompe i pareggi senza sparpagliare
+    if(score>bestScore){ bestScore=score; best=t; }
+  }
+  if(best) return best;
+  const any=tiles.filter(ok).sort((a,b)=>b.center.dot(centre)-a.center.dot(centre));
+  return any[0]||null;
+}
+
+/* ═══════════════ interfaccia ═══════════════ */
+const $=id=>document.getElementById(id);
+const fmt=n=>Math.floor(n).toString();
+const sign=n=>(n>=0?'+':'')+n.toFixed(1);
+let openCat=null;
+
+function refreshHUD(r){
+  r=r||rates();
+  $('s-food').textContent=fmt(res.food);
+  $('s-mat').textContent =fmt(res.mat)+'/'+capacity();
+  $('s-pow').textContent =fmt(res.pow);
+  $('s-pop').textContent =pop;
+  $('s-war').textContent =myTroops().length;
+  const d=r.demo||demography();
+  $('s-demo').textContent=d.child+'·'+d.adult+'·'+d.elder;
+  const hurt=myPeople().filter(u=>u.wounded).length;
+  $('r-hurt').textContent=hurt?hurt+' ferit'+(hurt===1?'o':'i'):'';
+  $('r-hurt').className='rate'+(hurt?' neg':'');
+  $('s-build').textContent=buildersCount();
+  $('s-orbit').textContent=orbit.filter(o=>o.built).length+
+    (orbit.some(o=>!o.built)?' (+1)':'');
+  const set=(el,v)=>{const e=$(el);e.textContent=sign(v);e.className='rate'+(v<0?' neg':'');};
+  set('r-food',r.food); set('r-mat',r.mat); set('r-pow',r.pow);
+  const idle=idleCount();
+  $('r-pop').textContent=pop+'/'+r.houses+' posti · '+idle+' liber'+(idle===1?'o':'i')+
+    (r.block?' · '+r.block:'');
+  $('r-pop').className='rate'+((idle>0||r.block)?' neg':'');
+  $('s-raid').textContent=raidActive?'in corso':Math.max(0,raidIn)+'s';
+  $('r-raid').textContent=raidActive?raiders().length+' nemici':'';
+  $('r-raid').className='rate'+(raidActive||raidIn<15?' neg':'');
+  $('s-season').textContent=SEASONS[season].name+(boomT>0?' · abbondanza '+boomT+'s':'');
+  $('s-tech').textContent='liv. '+tech;
+  $('r-tech').textContent = tech>0
+    ? '+'+Math.round((techProd()-1)*100)+'% rese, +'+Math.round((techWar()-1)*100)+'% danno'+
+      (tech<3?' · '+Math.floor(sci)+'/'+TECH_COST[tech+1]:'')
+    : Math.floor(sci)+'/'+TECH_COST[1]+' al 1° livello';
+  $('s-thrall').textContent=myThralls().length;
+  refreshTray(); refreshArmy();
+}
+
+function setInspector(tile){
+  const box=$('inspector');
+  if(!tile){ box.classList.remove('on'); clearRange(); return; }
+  const B=BIOMES[tile.biome];
+  $('i-title').innerHTML='<span class="swatch" style="background:#'+
+    B.top.toString(16).padStart(6,'0')+'"></span>'+B.label;
+  const crew=$('i-crew'), kinds=$('i-kinds'), demoRow=$('i-demorow'), disb=$('i-disbandrow');
+  crew.style.display='none'; kinds.style.display='none'; demoRow.style.display='none';
+  disb.style.display='none'; $('i-cargorow').style.display='none';
+  $('i-uprow').style.display='none';
+  if(tile.owner==='you') demoRow.style.display='block';
+  if(isMine(tile)){
+    const B=BUILDINGS[tile.building], up=$('i-upgrade'), rp=$('i-repair');
+    const canUp=sizeOf(tile)<3&&B.blocks>0&&tile.building!=='road';
+    up.style.display=canUp?'':'none';
+    if(canUp){
+      up.textContent='amplia a '+(sizeOf(tile)+1)+'× · '+(B.cost.mat||0)+'m'+(B.cost.pow?' '+B.cost.pow+'e':'');
+      up.disabled=raidActive||res.mat<(B.cost.mat||0)||res.pow<(B.cost.pow||0);
+      up.title=raidActive?'Non durante un\'incursione':'Torna cantiere per '+B.blocks+' blocchi, poi rende di più (U)';
+    }
+    const hurt=tile.hp<tile.hpMax-0.5;
+    rp.style.display=hurt?'':'none';
+    if(hurt){ const c=repairCost(tile); rp.textContent='ripara · '+c+'m'; rp.disabled=res.mat<c; }
+    if(canUp||hurt) $('i-uprow').style.display='flex';
+  }
+
+  if(tile.site){
+    const D=BUILDINGS[tile.site.kind];
+    $('i-body').textContent=(tile.site.upgrade?'Ampliamento a ':'Cantiere ')+sizeOf(tile)+'×: '+D.name+
+      ' — '+tile.site.have+'/'+tile.site.need+' blocchi consegnati · integrità '+
+      Math.round(tile.hp)+'/'+tile.hpMax+'. I coloni liberi fanno la spola dal magazzino.';
+  } else if(tile.building){
+    const D=BUILDINGS[tile.building];
+    const who=tile.owner==='rival'?(tile.settlement?tile.settlement.name:'rivale'):'tua';
+    $('i-body').textContent=D.name+' '+sizeOf(tile)+'× ('+who+') — '+D.effect+
+      (tile.hpMax?'  ·  '+Math.max(0,Math.round(tile.hp))+'/'+tile.hpMax+' integrità':'');
+    if(tile.owner==='you'&&jobsOf(tile)>0){
+      const w=tile.workers||0;
+      const eff=Math.round((tile.effWorkers||0)*10)/10;
+      $('i-count').textContent=w+'/'+jobsOf(tile);
+      if(eff!==w) $('i-count').textContent+=' ('+eff+' effettivi)';
+      $('i-minus').disabled=w<=0;
+      $('i-plus').disabled =w>=jobsOf(tile)||idleCount()<=0;
+      $('i-fill').disabled =w>=jobsOf(tile)||idleCount()<=0;
+      crew.style.display='flex';
+      if(D.launch){
+        padCargoMat=Math.min(padCargoMat,cargoMax('mat'));
+        padCargoFood=Math.min(padCargoFood,cargoMax('food'));
+        $('cm-amt').textContent=padCargoMat;
+        $('cf-amt').textContent=padCargoFood;
+        $('cm-minus').disabled=padCargoMat<=0;
+        $('cm-plus').disabled=padCargoMat>=cargoMax('mat');
+        $('cf-minus').disabled=padCargoFood<=0;
+        $('cf-plus').disabled=padCargoFood>=cargoMax('food');
+        $('c-launch').disabled=!!launching||w<=0;
+        $('c-launch').title=w<=0?'Serve almeno un addetto alla rampa':
+          'All\'arrivo i magazzini tengono '+ARRIVAL_CAP+' per risorsa';
+        $('i-cargorow').style.display='flex';
+      }
+      if(D.armory){
+        kinds.style.display='flex';
+        if(w>0) disb.style.display='block';
+        for(const b of kinds.children) b.classList.toggle('on',b.dataset.kind===(tile.unit||'spear'));
+      }
+    }
+  } else {
+    $('i-body').textContent = BIOMES[tile.biome].water
+      ? 'Mare aperto. Ci puoi costruire un molo o una peschiera.'
+      : BIOMES[tile.biome].build ? 'Libera. Apri un catalogo e scegli cosa costruirci.'
+                                 : 'Qui non si può costruire.';
+  }
+  box.classList.add('on');
+}
+
+const canAfford=B=>(!B.cost.mat||res.mat>=B.cost.mat)&&(!B.cost.pow||res.pow>=B.cost.pow);
+function tileAllows(tile,key){
+  if(!tile||tile.building||tile.site) return false;
+  const B=BUILDINGS[key], bio=BIOMES[tile.biome];
+  if(B.water ? !bio.water : !bio.build) return false;
+  return !B.needs||B.needs.includes(tile.biome);
+}
+function refreshTray(){
+  const cats=$('cats'), tray=$('tray');
+  if(!cats.dataset.built){
+    for(const c of CATALOGS){
+      const b=document.createElement('button');
+      b.textContent=c.label; b.dataset.cat=c.id;
+      b.addEventListener('click',()=>{ openCat=openCat===c.id?null:c.id; refreshTray(); });
+      cats.appendChild(b);
+    }
+    cats.dataset.built='1';
+  }
+  for(const b of cats.children) b.classList.toggle('on',b.dataset.cat===openCat);
+  // BUG: questa riga stava DOPO due return anticipati, quindi bastava aprire
+  // il catalogo Orbita (o chiudere tutto) e 2×/3× sparivano per sempre.
+  $('sizes').classList.toggle('on', !!openCat && openCat!=='orbita');
+
+  tray.classList.toggle('on',!!openCat);
+  if(!openCat){ tray.innerHTML=''; tray.dataset.cat=''; return; }
+
+  if(openCat==='orbita'){
+    if(tray.dataset.cat!=='orbita'){
+      tray.innerHTML=''; tray.dataset.cat='orbita';
+      for(const key in ORBITALS){
+        const O=ORBITALS[key];
+        const b=document.createElement('button');
+        b.className='card launch'; b.dataset.orb=key;
+        b.textContent=ICONS[key]||'●';
+        attachTip(b,O.name,O.cost.mat+' mat · '+O.cost.pow+' en',O.effect);
+        b.addEventListener('click',()=>buildOrbital(key));
+        tray.appendChild(b);
+      }
+    }
+    for(const b of tray.children){
+      const k=b.dataset.orb, O=ORBITALS[k];
+      const need=!O.hub&&!hasOrbital('station');
+      b.disabled = hasOrbital(k)||orbit.some(o=>o.kind===k)||need||
+                   res.mat<O.cost.mat||res.pow<O.cost.pow;
+      b.title = need ? 'Serve prima la Stazione orbitale' : '';
+    }
+    return;
+  }
+
+  if(tray.dataset.cat!==openCat){
+    tray.innerHTML=''; tray.dataset.cat=openCat;
+    for(const key in BUILDINGS){
+      const B=BUILDINGS[key];
+      if(B.rivalOnly||B.cat!==openCat) continue;
+      const b=document.createElement('button');
+      b.className='card'+(B.launch?' launch':'');
+      b.dataset.key=key;
+      b.textContent=ICONS[key]||'●';
+      b.dataset.mat=B.cost.mat||0; b.dataset.pow=B.cost.pow||0; b.dataset.bl=B.blocks;
+      attachTip(b,B.name,'',B.effect);
+      b.addEventListener('click',()=>construct(key));
+      tray.appendChild(b);
+    }
+  }
+  for(const b of tray.children){
+    const B=BUILDINGS[b.dataset.key];
+    const m=(+b.dataset.mat)*buildSize, p=(+b.dataset.pow)*buildSize, bl=(+b.dataset.bl)*buildSize;
+    b._tipCost=m+' mat'+(p?' · '+p+' en':'')+' · '+bl+' blocchi'+(buildSize>1?'  ·  taglia '+buildSize+'×':'');
+    b.disabled=!selected||!tileAllows(selected,b.dataset.key)||!canAffordSize(B);
+  }
+}
+const canAffordSize=B=>res.mat>=(B.cost.mat||0)*buildSize&&res.pow>=(B.cost.pow||0)*buildSize;
+
+function refreshArmy(){
+  const troops=myTroops();
+  army.size=Math.min(army.size,troops.length);
+  $('a-size').textContent=army.size+'/'+troops.length;
+  $('a-minus').disabled=army.size<=0;
+  $('a-plus').disabled =army.size>=troops.length;
+  const list=$('a-list');
+  if(!settlements.length){
+    if(list.dataset.sig!=='none'){
+      list.dataset.sig='none';
+      list.innerHTML='<p style="margin:0;font-size:12px;color:var(--ink-dim)">'+
+        'Nessun popolo su questo mondo. I vicini compaiono dal secondo pianeta.</p>';
+    }
+    return;
+  }
+  // Prima la lista si ricostruiva da zero a ogni secondo: un clic che cadeva
+  // a cavallo del ridisegno finiva su un pulsante già rimosso e si perdeva.
+  // Ora si ridisegna solo se cambia qualcosa che si vede.
+  const noTroops=myTroops().length===0, mk=hasMarket();
+  const sig=JSON.stringify(settlements.map(s=>[s.name,s.relation,
+    tiles.filter(t=>t.settlement===s&&t.building).length,
+    units.filter(u=>u.settlement===s).length,
+    canAlly(s),canSubjugate(s),army.target===s,
+    mk&&res.food>=40,mk&&res.mat>=40,noTroops]));
+  if(list.dataset.sig===sig) return;
+  list.dataset.sig=sig;
+  list.innerHTML='';
+  for(const s of settlements){
+    const alive=tiles.filter(t=>t.settlement===s&&t.building).length;
+    const guards=units.filter(u=>u.settlement===s).length;
+    const d=document.createElement('div'); d.className='settle';
+    d.innerHTML='<div class="nm">'+s.name+'<span class="rel '+s.relation+'">'+s.relation+'</span></div>'+
+      '<div class="meta">'+alive+' strutture · '+guards+' soldati</div>';
+    const acts=document.createElement('div'); acts.className='acts';
+    if(s.relation!=='conquistato'&&s.relation!=='assoggettato'){
+      const a=document.createElement('button');
+      a.textContent='alleati ('+ALLY_COST.mat+'m)';
+      a.disabled=!canAlly(s);
+      a.addEventListener('click',()=>allyWith(s));
+      acts.appendChild(a);
+      if(canSubjugate(s)){
+        const sub=document.createElement('button');
+        sub.textContent='assoggetta';
+        sub.addEventListener('click',()=>subjugate(s));
+        acts.appendChild(sub);
+      }
+      if(s.relation==='alleato'){
+        const b1=document.createElement('button');
+        b1.textContent='40 cibo → 32 mat';
+        b1.disabled=!hasMarket()||res.food<40;
+        b1.addEventListener('click',()=>tradeWith(s,'buy'));
+        acts.appendChild(b1);
+        const b2=document.createElement('button');
+        b2.textContent='40 mat → 32 cibo';
+        b2.disabled=!hasMarket()||res.mat<40;
+        b2.addEventListener('click',()=>tradeWith(s,'sell'));
+        acts.appendChild(b2);
+      }
+      const w=document.createElement('button'); w.className='war';
+      w.textContent=army.target===s?'richiama':'attacca';
+      w.disabled=myTroops().length===0&&army.target!==s;
+      w.addEventListener('click',()=>army.target===s?recall():declareWar(s));
+      acts.appendChild(w);
+    } else {
+      const a=document.createElement('button');
+      a.textContent=s.relation==='assoggettato'?'assoggettato · tributo 1,4':'conquistato';
+      a.disabled=true;
+      acts.appendChild(a);
+    }
+    d.appendChild(acts); list.appendChild(d);
+  }
+}
+
+/* etichetta che segue il mouse: il nome sta fuori dal pulsante, così le
+   icone restano piccole anche con venti edifici in catalogo */
+function attachTip(el,name,cost,effect){
+  el._tipName=name; el._tipCost=cost; el._tipEffect=effect;
+  el.addEventListener('mouseenter',()=>showTip(el));
+  el.addEventListener('mousemove',()=>placeTip(el));
+  el.addEventListener('mouseleave',hideTip);
+  el.addEventListener('focus',()=>showTip(el));
+  el.addEventListener('blur',hideTip);
+}
+function showTip(el){
+  const t=$('tip');
+  t.innerHTML='<b>'+el._tipName+'</b>'+
+    (el._tipCost?'<span class="c">'+el._tipCost+'</span>':'')+
+    '<span class="e">'+el._tipEffect+'</span>';
+  t.classList.add('on'); placeTip(el);
+}
+function placeTip(el){
+  const t=$('tip'), r=el.getBoundingClientRect();
+  t.style.left=Math.min(innerWidth-260,Math.max(8,r.left+r.width/2-125))+'px';
+  t.style.top=(r.top-t.offsetHeight-10)+'px';
+}
+function hideTip(){ $('tip').classList.remove('on'); }
+
+let toastTimer;
+function toast(msg,ev){
+  if(quiet) return;                      // durante il caricamento di una partita
+  eventLog.push({t:worldAge,w:worldIndex,msg,ev:!!ev});
+  if(eventLog.length>120) eventLog.shift();
+  if(logOpen) renderLog();
+  const el=$('toast'); el.textContent=msg; el.classList.add('on');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('on'),ev?4200:2600);
+}
+const logEvent=msg=>toast(msg,true);
+function renderLog(){
+  const list=$('log-list'), mmss=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+  list.innerHTML='';
+  for(let i=eventLog.length-1;i>=0;i--){
+    const e=eventLog[i], li=document.createElement('li');
+    if(e.ev) li.className='ev';
+    const tm=document.createElement('time'); tm.textContent=mmss(e.t);
+    tm.title='mondo n° '+e.w;
+    const tx=document.createElement('span'); tx.textContent=e.msg;
+    li.append(tm,tx); list.appendChild(li);
+  }
+  $('log-count').textContent=eventLog.length+' voci';
+}
+function toggleLog(){
+  logOpen=!logOpen;
+  $('log').classList.toggle('on',logOpen); $('b-log').classList.toggle('on',logOpen);
+  if(logOpen) renderLog();
+}
+
+/* ═══════════════ pausa e velocità ═══════════════ */
+function setSpeed(m){
+  if(m>0) lastSpeed=m;
+  speedMul=m;
+  for(const x of $('speeds').children) x.classList.toggle('on',+x.dataset.mul===m);
+}
+const togglePause=()=>setSpeed(speedMul>0?0:lastSpeed);
+
+/* ═══════════════ ampliare e riparare ═══════════════
+   Ampliare non è istantaneo: la struttura torna cantiere per la sola
+   parte nuova, e intanto non produce. Riparare costa materiali in
+   proporzione al danno.                                               */
+const canUpgrade=t=>!!t&&isMine(t)&&sizeOf(t)<3&&
+  BUILDINGS[t.building].blocks>0&&t.building!=='road'&&!raidActive;
+function upgradeBuilding(tile){
+  if(!tile||!isMine(tile)) return;
+  if(raidActive){ toast('Non si amplia durante un\'incursione.'); return; }
+  if(!canUpgrade(tile)) return;
+  const B=BUILDINGS[tile.building], cm=B.cost.mat||0, cp=B.cost.pow||0;
+  if(res.mat<cm||res.pow<cp){
+    toast('Per ampliare servono '+cm+' materiali'+(cp?' e '+cp+' energia':'')+'.'); return;
+  }
+  res.mat-=cm; res.pow-=cp;
+  const hp=tile.hp;
+  tile.size=sizeOf(tile)+1;
+  openSite(tile,tile.building,'you',B.blocks,true);
+  tile.hp=hp;                             // l'edificio esistente non torna a 1
+  trimWorkers(); syncJobs(); setInspector(tile); refreshHUD();
+  toast(B.name+': ampliamento a '+tile.size+'× — servono '+B.blocks+' blocchi.');
+}
+function repairCost(t){
+  const B=BUILDINGS[t.building], miss=1-t.hp/t.hpMax;
+  return Math.max(1,Math.ceil((B.cost.mat||6)*sizeOf(t)*0.4*miss));
+}
+function repairBuilding(tile){
+  if(!tile||!isMine(tile)||tile.hp>=tile.hpMax) return;
+  const c=repairCost(tile);
+  if(res.mat<c){ toast('Per riparare servono '+c+' materiali.'); return; }
+  res.mat-=c; tile.hp=tile.hpMax;
+  setInspector(tile); refreshHUD();
+  toast(BUILDINGS[tile.building].name+' riparata per '+c+' materiali.');
+}
+
+/* ═══════════════ salvataggio ═══════════════
+   Tutto in localStorage, in chiaro. È voluto: è il punto di partenza per
+   un caso di studio sulla fiducia nel client (modificare il salvataggio
+   a mano è il primo "cheat" che chiunque prova).                       */
+const SAVE_KEY='tiny-planet-colony-save-v1';
+function snapshot(){
+  const si=s=>s?settlements.indexOf(s):-1;
+  return {v:1, when:Date.now(), worldIndex, worldSeed, trait:trait.id,
+    res:{...res}, pop, sci, tech, season, seasonT, raidIn, raidNo, worldAge, dayT,
+    eventIn, boomT, padCargoMat, padCargoFood,
+    army:{size:army.size, target:si(army.target)},
+    settlements:settlements.map(s=>({name:s.name, core:s.core.id, relation:s.relation,
+      mat:s.mat, thinkT:s.thinkT, tradeT:s.tradeT||0})),
+    tiles:tiles.filter(t=>t.building).map(t=>({id:t.id, b:t.building, o:t.owner, sz:sizeOf(t),
+      hp:t.hp, w:t.workers||0, un:t.unit, set:si(t.settlement), sp:t.spawnT||0,
+      st:t.site?{need:t.site.need, have:t.site.have, up:!!t.site.upgrade}:null})),
+    units:units.map(u=>({k:u.kind, f:u.faction, at:u.from.id, hp:u.hp, age:u.age,
+      wd:!!u.wounded, set:si(u.settlement), dep:!!u.deployed,
+      load:u.load, dl:!!u.delivered, life:u.lifeT||0})),
+    orbit:orbit.map(o=>o.kind), moonCrew:moonCrew.length};
+}
+function saveGame(silent){
+  if(launching||gameOver) return;           // a metà volo o a colonia perduta non si salva
+  try{
+    localStorage.setItem(SAVE_KEY,JSON.stringify(snapshot()));
+    if(!silent) toast('Partita salvata.');
+  }catch(e){ if(!silent) toast('Salvataggio non riuscito: il browser blocca la memoria locale.'); }
+}
+function readSave(){
+  try{ const raw=localStorage.getItem(SAVE_KEY); return raw?JSON.parse(raw):null; }
+  catch(e){ return null; }
+}
+function loadGame(){
+  const d=readSave();
+  if(!d||d.v!==1){ toast('Nessuna partita salvata in questo browser.'); return; }
+  try{ restore(d); }
+  catch(e){ fail('Il salvataggio è danneggiato: '+e.message); return; }
+  toast('Partita ripresa: mondo n° '+worldIndex+'.');
+}
+function restore(d){
+  quiet=true;
+  try{
+    worldIndex=d.worldIndex; worldSeed=d.worldSeed;
+    generateWorld(worldSeed);
+    // via ciò che generateWorld ha messo: capanna, fattoria, clan, coloni
+    for(const u of units) planetGroup.remove(u.mesh);
+    units=[];
+    for(const t of tiles){
+      if(!t.building) continue;
+      const m=buildMeshes.get(t.id); if(m) planetGroup.remove(m);
+      buildMeshes.delete(t.id);
+      Object.assign(t,{building:null,owner:null,site:null,workers:0,hp:0,hpMax:0,settlement:null,size:1});
+    }
+    trait=TRAITS.find(x=>x.id===d.trait)||trait;
+    settlements=d.settlements.map(s=>({name:s.name, core:tiles[s.core], relation:s.relation,
+      tiles:[], mat:s.mat, thinkT:s.thinkT, tradeT:s.tradeT}));
+    for(const e of d.tiles){
+      const t=tiles[e.id];
+      if(!t||!BUILDINGS[e.b]) continue;
+      t.size=e.sz||1;
+      if(e.st){
+        openSite(t,e.b,e.o,e.st.need,e.st.up);
+        for(let i=0;i<Math.min(e.st.have,e.st.need-1);i++) addBlockToSite(t);
+        t.hp=Math.max(1,Math.min(t.hpMax,e.hp));
+      } else {
+        finish(t,e.b,e.o);
+        t.hp=Math.max(1,Math.min(t.hpMax,e.hp));
+      }
+      t.workers=Math.min(e.w,jobsOf(t)); t.unit=e.un||'spear'; t.spawnT=e.sp;
+      if(e.set>=0&&settlements[e.set]){ t.settlement=settlements[e.set]; settlements[e.set].tiles.push(t); }
+    }
+    for(const e of d.units){
+      const at=tiles[e.at];
+      if(!at||!UNITS[e.k]) continue;
+      const u=spawnUnit(e.k,e.f,at);
+      u.state='ok'; u.mesh.scale.setScalar(1);
+      u.hp=Math.min(u.hpMax,e.hp); u.age=e.age; u.wounded=e.wd;
+      if(isPerson(u)||u.kind==='thrall') applyAge(u);
+      u.settlement=e.set>=0?settlements[e.set]||null:null;
+      u.deployed=e.dep;
+      if(e.k==='caravan'){ u.load=e.load; u.delivered=e.dl; u.lifeT=e.life; if(!e.dl) takeCarry(u,0xd9a441); }
+    }
+    Object.assign(res,d.res);
+    pop=myPeople().length; sci=d.sci; tech=d.tech; season=d.season; seasonT=d.seasonT;
+    raidIn=d.raidIn; raidNo=d.raidNo; worldAge=d.worldAge; dayT=d.dayT;
+    eventIn=d.eventIn; boomT=d.boomT; padCargoMat=d.padCargoMat; padCargoFood=d.padCargoFood;
+    army.size=d.army.size; army.target=d.army.target>=0?settlements[d.army.target]||null:null;
+    for(const k of d.orbit){ addOrbital(k); const o=orbit[orbit.length-1]; o.built=true; o.rise=1; }
+    for(let i=0;i<d.moonCrew;i++) landOnMoon();
+    raidActive=units.some(u=>u.faction==='raider');
+    document.getElementById('w-count').textContent=
+      (worldIndex===1?'primo mondo':'mondo n° '+worldIndex)+' · '+trait.name+' ('+trait.note+')'+
+      (worldIndex>1?' · eredità +'+Math.round((legacy()-1)*100)+'%':'');
+    rebuildFrameCache(); bumpWalk(); trimWorkers(); syncJobs();
+    applySeason(); nightOn=null;
+    $('a-list').dataset.sig='';
+  } finally { quiet=false; }
+  refreshHUD();
+}
+
+/* ═══════════════ colonia perduta ═══════════════ */
+function checkCollapse(){
+  if(myPeople().length>0||myThralls().length>0) return false;
+  gameOver=true;
+  $('over-body').textContent='Non resta nessuno a portare avanti il villaggio. Hai raggiunto il mondo n° '+
+    worldIndex+' e il livello di ricerca '+tech+'.';
+  $('over').classList.add('on');
+  $('over-restart').focus();
+  return true;
+}
+function restartGame(){
+  $('over').classList.remove('on');
+  gameOver=false;
+  worldIndex=1; worldSeed=Date.now()%99999;
+  res={food:22,mat:60,pow:12}; pop=3; sci=0; tech=0; eventIn=110; boomT=0;
+  generateWorld(worldSeed); applySeason(); refreshHUD();
+  toast('Una nuova colonia atterra su '+NAMES[0]+'.');
+}
+
+/* ordinare una costruzione apre un cantiere: i materiali si pagano subito,
+   i blocchi devono arrivare a piedi */
+function construct(key){
+  const B=BUILDINGS[key];
+  if(!selected||!tileAllows(selected,key)||!canAffordSize(B)) return;
+  const s=buildSize;
+  res.mat-=(B.cost.mat||0)*s; res.pow-=(B.cost.pow||0)*s;
+  startSite(selected,key,'you',s);
+  setInspector(selected); refreshHUD();
+  toast('Cantiere '+s+'× aperto: servono '+(B.blocks*s)+' blocchi dal magazzino.');
+}
+/* mandare in orbita: parte subito, ma ci mette qualche secondo a salire */
+function buildOrbital(kind){
+  const O=ORBITALS[kind];
+  if(hasOrbital(kind)||orbit.some(o=>o.kind===kind)) return;
+  if(!O.hub&&!hasOrbital('station')){ toast('Serve prima la Stazione orbitale.'); return; }
+  if(res.mat<O.cost.mat||res.pow<O.cost.pow) return;
+  res.mat-=O.cost.mat; res.pow-=O.cost.pow;
+  addOrbital(kind);
+  toast(O.name+': lancio in corso.');
+  refreshHUD();
+}
+
+/* demolire: restituisce metà dei materiali spesi */
+function demolish(tile){
+  if(!tile||tile.owner!=='you') return;
+  const kind=tile.site?tile.site.kind:tile.building;
+  const B=BUILDINGS[kind];
+  const back=Math.floor((B.cost.mat||0)*sizeOf(tile)*0.5);
+  res.mat=Math.min(capacity(),res.mat+back);
+  destroyBuilding(tile);
+  toast(B.name+' demolita. Recuperati '+back+' materiali.');
+}
+
+/* la rampa non teletrasporta: il razzo parte davvero */
+function launchFrom(tile){
+  padCargoMat =Math.min(padCargoMat, cargoMax('mat'));
+  padCargoFood=Math.min(padCargoFood,cargoMax('food'));
+  res.mat-=padCargoMat; res.food-=padCargoFood;   // sottratti dalle scorte qui
+  const m=rocketMesh(); orientTo(m,tile);
+  planetGroup.add(m);
+  launching={mesh:m, tile, t:0};
+  toast('Decollo: '+padCargoMat+' materiali e '+padCargoFood+' cibo a bordo.');
+  refreshHUD();
+}
+function nextWorld(){
+  worldIndex++; worldSeed=(worldSeed*1103515245+12345)%2147483647;
+  res.mat=padCargoMat; res.food=padCargoFood; res.pow=12;   // sbarca solo il carico
+  pop=Math.max(3,Math.floor(pop/2));
+  generateWorld(worldSeed); applySeason(); refreshHUD();
+  toast('Atterrati su '+NAMES[(worldIndex-1)%NAMES.length]+'.');
+}
+
+/* comandi */
+$('i-minus').addEventListener('click',()=>setWorkers(selected,-1));
+$('i-plus') .addEventListener('click',()=>setWorkers(selected,1));
+$('i-fill') .addEventListener('click',()=>fillWorkers(selected));
+$('i-demolish').addEventListener('click',()=>demolish(selected));
+$('i-disband').addEventListener('click',()=>{
+  if(!selected||!selected.building||!BUILDINGS[selected.building].armory) return;
+  const n=selected.workers||0;
+  selected.workers=0; syncJobs(); setInspector(selected); refreshHUD();
+  toast(n+(n===1?' soldato torna':' soldati tornano')+' a fare il colono.');
+});
+for(const b of $('i-kinds').children)
+  b.addEventListener('click',()=>{
+    if(!selected||!selected.building||!BUILDINGS[selected.building].armory) return;
+    selected.unit=b.dataset.kind; syncJobs(); setInspector(selected); refreshHUD();
+  });
+$('a-minus').addEventListener('click',()=>{army.size=Math.max(0,army.size-1);applyDeploy();});
+$('a-plus') .addEventListener('click',()=>{army.size=Math.min(myTroops().length,army.size+1);applyDeploy();});
+function applyDeploy(){
+  const troops=myTroops();
+  troops.forEach((u,i)=>u.deployed=!!army.target&&i<army.size);
+  refreshArmy();
+}
+for(const b of $('sizes').querySelectorAll('button'))
+  b.addEventListener('click',()=>{
+    buildSize=+b.dataset.size;
+    for(const x of $('sizes').querySelectorAll('button')) x.classList.toggle('on',x===b);
+    refreshTray();
+
+  });
+/* All'atterraggio ci sono solo la capanna e la scorta base: tutto ciò che
+   supera quella capienza veniva tagliato in silenzio al primo tick. */
+const ARRIVAL_CAP=BASE_STORE+BUILDINGS.hut.store;
+const cargoMax=k=>Math.min(ARRIVAL_CAP,Math.floor(res[k]));
+$('cm-minus').addEventListener('click',()=>{ padCargoMat=Math.max(0,padCargoMat-20); setInspector(selected); });
+$('cm-plus') .addEventListener('click',()=>{ padCargoMat=Math.min(cargoMax('mat'),padCargoMat+20); setInspector(selected); });
+$('cf-minus').addEventListener('click',()=>{ padCargoFood=Math.max(0,padCargoFood-20); setInspector(selected); });
+$('cf-plus') .addEventListener('click',()=>{ padCargoFood=Math.min(cargoMax('food'),padCargoFood+20); setInspector(selected); });
+for(const k in POWERS) $('p-'+k).addEventListener('click',()=>setPower(k));
+$('b-day').addEventListener('click',()=>{
+  dayCycle=!dayCycle;
+  $('b-day').classList.toggle('on',dayCycle);
+  toast(dayCycle?'Ciclo giorno/notte attivo.':'Luce fissa: pieno giorno.');
+});
+$('c-launch').addEventListener('click',()=>{
+  if(!selected||launching||!isMine(selected)||!BUILDINGS[selected.building].launch) return;
+  if(!(selected.workers>0)){ toast('Serve almeno un addetto alla rampa.'); return; }
+  launchFrom(selected);
+});
+$('b-cargo').addEventListener('click',()=>{
+  showCargo=!showCargo;
+  $('b-cargo').classList.toggle('on',showCargo);
+  if(!showCargo) clearAllCargoMeshes();
+  toast(showCargo?'Carichi visibili.':'Carichi nascosti: il trasporto continua, non si disegna.');
+});
+$('b-auto').addEventListener('click',()=>{
+  auto=!auto; $('b-auto').classList.toggle('on',auto);
+  toast(auto?'Modalità automatica: i coloni si organizzano da soli.':'Modalità automatica disattivata.');
+});
+for(const b of $('speeds').children)
+  b.addEventListener('click',()=>setSpeed(+b.dataset.mul));
+$('b-save').addEventListener('click',()=>saveGame(false));
+$('b-load').addEventListener('click',loadGame);
+$('b-log').addEventListener('click',toggleLog);
+$('i-upgrade').addEventListener('click',()=>upgradeBuilding(selected));
+$('i-repair').addEventListener('click',()=>repairBuilding(selected));
+$('over-restart').addEventListener('click',restartGame);
+
+/* scorciatoie: le azioni più frequenti senza dover inseguire i pulsanti */
+function deselect(){
+  selected=null; setInspector(null); refreshTray();
+  if(marker){ planetGroup.remove(marker); marker=null; }
+}
+addEventListener('keydown',e=>{
+  if(gameOver||e.altKey) return;
+  const k=e.key.toLowerCase();
+  if((e.ctrlKey||e.metaKey)&&k==='s'){ e.preventDefault(); saveGame(false); return; }
+  if(e.ctrlKey||e.metaKey) return;
+  if(k===' '){
+    e.preventDefault();
+    if(document.activeElement&&document.activeElement.tagName==='BUTTON') document.activeElement.blur();
+    togglePause();
+  }
+  else if(k==='1') setSpeed(1);
+  else if(k==='2') setSpeed(2);
+  else if(k==='3') setSpeed(4);
+  else if(k==='a') $('b-auto').click();
+  else if(k==='f') setPower('bolt');
+  else if(k==='r') setPower('rain');
+  else if(k==='c') setPower('heal');
+  else if(k==='u') upgradeBuilding(selected);
+  else if(k==='l') toggleLog();
+  else if(k==='escape'){ if(activePower) setPower(activePower); else deselect(); }
+});
+
+/* ═══════════════ camera e input ═══════════════ */
+let theta=0.7, phi=1.15, dist=36, dragging=false, lastX=0, lastY=0, moved=0, autoSpin=true;
+function updateCamera(){
+  camera.position.set(dist*Math.sin(phi)*Math.cos(theta),dist*Math.cos(phi),dist*Math.sin(phi)*Math.sin(theta));
+  camera.lookAt(0,0,0);
+}
+const el=renderer.domElement;
+el.addEventListener('pointerdown',e=>{el.setPointerCapture(e.pointerId);
+  dragging=true;lastX=e.clientX;lastY=e.clientY;moved=0;autoSpin=false;});
+el.addEventListener('pointermove',e=>{
+  if(!dragging) return;
+  const dx=e.clientX-lastX, dy=e.clientY-lastY;
+  lastX=e.clientX; lastY=e.clientY; moved+=Math.abs(dx)+Math.abs(dy);
+  theta-=dx*0.006; phi=Math.min(Math.PI-0.12,Math.max(0.12,phi-dy*0.006));
+  updateCamera();
+});
+el.addEventListener('pointerup',e=>{dragging=false; if(moved<5) pick(e.clientX,e.clientY);});
+el.addEventListener('wheel',e=>{
+  e.preventDefault();
+  dist=Math.min(80,Math.max(18,dist+Math.sign(e.deltaY)*2.2));
+  updateCamera();
+},{passive:false});
+
+const ray=new THREE.Raycaster(), ndc=new THREE.Vector2();
+function pick(cx,cy){
+  ndc.x=(cx/innerWidth)*2-1; ndc.y=-(cy/innerHeight)*2+1;
+  ray.setFromCamera(ndc,camera);
+  const hit=ray.intersectObject(terrainMesh)[0];
+  if(!hit){
+    if(!activePower){ selected=null; setInspector(null); refreshTray(); }
+    return;
+  }
+  const tile=tiles[faceToTile[hit.faceIndex]];
+  if(activePower){ castPower(activePower,tile); setPower(activePower); return; }
+  selected=tile;
+  setInspector(selected); refreshTray(); updateRangeVisual(selected);
+  if(marker) planetGroup.remove(marker);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.5,.05,6,16),
+    new THREE.MeshBasicMaterial({color:0xff7a3c}));
+  orientTo(ring,selected,.03); ring.rotateX(Math.PI/2);
+  planetGroup.add(ring); marker=ring;
+}
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+/* ═══════════════ avvio e loop ═══════════════ */
+try{
+  generateWorld(worldSeed);
+  applySeason();
+  updateCamera();
+  refreshHUD();
+  const prev=readSave();
+  if(prev&&prev.v===1) toast('C\'è una partita salvata (mondo n° '+prev.worldIndex+'): premi «carica» per riprenderla.');
+}catch(e){ fail(e.message+'\n'+(e.stack||'').split('\n')[1]); }
+
+let last=performance.now(), acc=0, frames=0, fpsAcc=0, fps=0;
+(function loop(now){
+  requestAnimationFrame(loop);
+  const raw=Math.min(0.05,(now-last)/1000); last=now;
+  const dt=raw*speedMul;
+  try{
+    if(autoSpin){ theta+=dt*0.04; updateCamera(); }
+    stepDay(dt);
+    stepUnits(dt);
+    stepProps(dt);
+    stepOrbit(dt, now/1000);
+    stepFX(dt);
+    stepMoon(dt, now/1000);
+    ringPaint+=raw;
+    if(ringPaint>=0.16){ ringPaint=0; updateRings(); }
+    seasonPaint+=raw;
+    if(seasonPaint>=0.25){ seasonPaint=0; applySeason(); }   // sfumatura continua
+    resolveCombat(dt);
+    structureTick(dt);
+    acc+=dt;
+    // prima: acc=0 buttava via il resto, a 4× si perdeva fino al 20% dei tick
+    while(acc>=1&&!gameOver){ acc-=1; economyTick(); }
+    if(autoSaveT>=30){ autoSaveT=0; saveGame(true); }
+    renderer.render(scene,camera);
+  }catch(e){ fail(e.message+'\n'+(e.stack||'').split('\n')[1]); return; }
+
+  frames++; fpsAcc+=raw;
+  if(fpsAcc>=0.5){
+    fps=Math.round(frames/fpsAcc); frames=0; fpsAcc=0;
+    $('diag').textContent=fps+' fps · '+renderer.info.render.triangles.toLocaleString('it')+
+      ' triangoli · '+tiles.length+' caselle · '+units.length+' unità · '+speedMul+'×';
+    if(renderer.info.render.triangles===0)
+      fail('WebGL non disegna nulla: probabile accelerazione hardware disattivata.');
+  }
+})(last);
+</script>
+</body>
+</html>

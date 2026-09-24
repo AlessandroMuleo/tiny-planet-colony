@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Colonia — pianeta minuscolo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+@@CSS@@
+</style>
+</head>
+<body>
+<div id="stage"></div>
+
+<div class="hud">
+  <div class="stat"><b id="s-food">0</b><span>cibo</span><span class="rate" id="r-food"></span></div>
+  <div class="stat"><b id="s-mat">0</b><span>materiali</span><span class="rate" id="r-mat"></span></div>
+  <div class="stat"><b id="s-pow">0</b><span>energia</span><span class="rate" id="r-pow"></span></div>
+  <div class="stat"><b id="s-pop">0</b><span>coloni</span><span class="rate" id="r-pop"></span></div>
+  <div class="stat"><b id="s-demo">0·0·0</b><span>bimbi·adulti·anziani</span><span class="rate" id="r-hurt"></span></div>
+  <div class="stat"><b id="s-build">0</b><span>al cantiere</span></div>
+  <div class="stat"><b id="s-war">0</b><span>truppe</span></div>
+  <div class="stat"><b id="s-orbit">0</b><span>in orbita</span></div>
+  <div class="stat"><b id="s-raid">—</b><span>incursione</span><span class="rate" id="r-raid"></span></div>
+  <div class="stat"><b id="s-season">—</b><span>stagione</span></div>
+  <div class="stat"><b id="s-tech">0</b><span>ricerca</span><span class="rate" id="r-tech"></span></div>
+  <div class="stat"><b id="s-thrall">0</b><span>assoggettati</span></div>
+  <div class="topright">
+    <div class="ctrl" id="powers">
+      <button id="p-bolt" title="Fulmine — 20 energia: 35 danni ai nemici nel punto colpito">⚡ 20</button>
+      <button id="p-rain" title="Pioggia — 15 energia: +30 cibo e raccolti accelerati">🌧 15</button>
+      <button id="p-heal" title="Cura solare — 15 energia: guarisce i tuoi nel raggio">✨ 15</button>
+    </div>
+    <div class="ctrl">
+      <button id="b-auto" title="I coloni costruiscono e si organizzano da soli">auto</button>
+      <button id="b-cargo" class="on" title="Mostra o nascondi i materiali trasportati">carichi</button>
+      <button id="b-day" class="on" title="Attiva o disattiva il ciclo giorno/notte">giorno/notte</button>
+    </div>
+    <div class="ctrl">
+      <button id="b-save" title="Salva la partita in questo browser (Ctrl+S). Salvataggio automatico ogni 30 s">salva</button>
+      <button id="b-load" title="Riprendi l'ultima partita salvata">carica</button>
+      <button id="b-log" title="Registro eventi e scorciatoie (L)">registro</button>
+    </div>
+    <div class="ctrl" id="speeds">
+      <button data-mul="0" title="Pausa (spazio)" aria-label="Pausa">⏸</button>
+      <button data-mul="1" class="on" title="Velocità normale (1)">1×</button>
+      <button data-mul="2" title="Velocità doppia (2)">2×</button>
+      <button data-mul="4" title="Velocità quadrupla (3)">4×</button>
+    </div>
+    <div class="world"><b id="w-name">—</b><span id="w-count"></span></div>
+  </div>
+</div>
+
+<div class="panel inspector" id="inspector">
+  <h2 id="i-title">—</h2>
+  <p id="i-body">—</p>
+  <div class="crew" id="i-crew">
+    <button class="step" id="i-minus" aria-label="Togli un addetto">−</button>
+    <span class="count" id="i-count">0/0</span>
+    <button class="step" id="i-plus" aria-label="Aggiungi un addetto">+</button>
+    <button class="fill" id="i-fill">al completo</button>
+  </div>
+  <div class="crew" id="i-cargorow" style="flex-direction:column;align-items:stretch;gap:6px">
+    <div style="font-size:11px;color:var(--ink-dim)">Carico per il nuovo mondo</div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:11px;min-width:52px;color:var(--ink-dim)">materiali</span>
+      <button class="step" id="cm-minus">−</button>
+      <span class="count" id="cm-amt">0</span>
+      <button class="step" id="cm-plus">+</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:11px;min-width:52px;color:var(--ink-dim)">cibo</span>
+      <button class="step" id="cf-minus">−</button>
+      <span class="count" id="cf-amt">0</span>
+      <button class="step" id="cf-plus">+</button>
+      <button class="fill" id="c-launch">lancia</button>
+    </div>
+  </div>
+  <div class="rowbtns" id="i-uprow">
+    <button class="fill" id="i-upgrade" title="Amplia la struttura (U)">amplia</button>
+    <button class="fill" id="i-repair">ripara</button>
+  </div>
+  <div class="demo" id="i-demorow">
+    <button class="fill danger" id="i-demolish">demolisci</button>
+  </div>
+  <div class="kinds" id="i-kinds">
+    <button data-kind="spear">lancieri</button>
+    <button data-kind="bow">arcieri</button>
+  </div>
+  <div class="demo" id="i-disbandrow">
+    <button class="fill" id="i-disband">congeda tutti → coloni</button>
+  </div>
+</div>
+
+<div class="panel army" id="army">
+  <h3>Esercito</h3>
+  <div class="force">
+    <span class="lbl">schierate all'attacco</span>
+    <button class="step" id="a-minus" aria-label="Meno truppe">−</button>
+    <span class="count" id="a-size">0/0</span>
+    <button class="step" id="a-plus" aria-label="Più truppe">+</button>
+  </div>
+  <div id="a-list"></div>
+</div>
+
+<div class="dock">
+  <div class="tray" id="tray"></div>
+  <div class="cats" id="sizes">
+    <span class="sizelbl">taglia</span>
+    <button data-size="1" class="on">1×</button>
+    <button data-size="2">2×</button>
+    <button data-size="3">3×</button>
+  </div>
+  <div class="cats" id="cats"></div>
+</div>
+<div class="panel log" id="log">
+  <h3><span>Registro</span><span id="log-count"></span></h3>
+  <div class="keys">
+    <kbd>spazio</kbd> pausa · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> velocità · <kbd>A</kbd> auto ·
+    <kbd>F</kbd> fulmine · <kbd>R</kbd> pioggia · <kbd>C</kbd> cura · <kbd>U</kbd> amplia ·
+    <kbd>Esc</kbd> annulla · <kbd>Ctrl+S</kbd> salva · <kbd>L</kbd> registro
+  </div>
+  <ol id="log-list"></ol>
+</div>
+<div class="over" id="over" role="dialog" aria-modal="true" aria-labelledby="over-title">
+  <div class="box">
+    <h2 id="over-title">La colonia è perduta</h2>
+    <p id="over-body">Non resta nessuno a portare avanti il villaggio.</p>
+    <button id="over-restart">ricomincia da capo</button>
+  </div>
+</div>
+<div class="tip" id="tip"></div>
+<div class="toast" id="toast"></div>
+<div class="err" id="err"></div>
+<div class="diag" id="diag">avvio…</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+@@JS@@
+</script>
+</body>
+</html>

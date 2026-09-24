@@ -1,0 +1,15 @@
+{
+  "name": "tiny-planet-colony",
+  "private": true,
+  "type": "module",
+  "description": "Colony sim su un pianeta minuscolo, in un solo file HTML con three.js",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "sim": "node test/sim.mjs",
+    "sim:quick": "node test/sim.mjs --ticks 300",
+    "test": "node tools/build.mjs && node test/sim.mjs --ticks 300"
+  },
+  "devDependencies": {
+    "three": "0.128.0"
+  }
+}

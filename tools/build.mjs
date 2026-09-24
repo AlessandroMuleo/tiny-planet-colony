@@ -1,0 +1,43 @@
+// Ricompone il gioco in un solo file HTML: shell + CSS + moduli JS in ordine.
+// I moduli sono script classici che condividono lo scope globale, come quando
+// stavano in un unico <script>: l'ordine dei file (prefisso numerico) conta.
+//
+//   node tools/build.mjs            → dist/tiny-planet-colony.html
+//   node tools/build.mjs --stdout   → stampa l'HTML invece di scriverlo
+
+import { readFileSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const src = join(root, 'src');
+
+export function jsFiles() {
+  return readdirSync(join(src, 'js')).filter(f => f.endsWith('.js')).sort();
+}
+
+export function bundleJs() {
+  return jsFiles().map(f => readFileSync(join(src, 'js', f), 'utf8')).join('');
+}
+
+export function build() {
+  const shell = readFileSync(join(src, 'shell.html'), 'utf8');
+  const css = readFileSync(join(src, 'style.css'), 'utf8');
+  const fill = (text, mark, body) => {
+    const line = mark + '\n';
+    if (text.split(line).length !== 2) throw new Error('segnaposto ' + mark + ' mancante o doppio');
+    return text.replace(line, () => body);
+  };
+  return fill(fill(shell, '@@CSS@@', css), '@@JS@@', bundleJs());
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const html = build();
+  if (process.argv.includes('--stdout')) process.stdout.write(html);
+  else {
+    mkdirSync(join(root, 'dist'), { recursive: true });
+    writeFileSync(join(root, 'dist', 'tiny-planet-colony.html'), html);
+    console.log('dist/tiny-planet-colony.html · ' + jsFiles().length + ' moduli · ' +
+      (html.length / 1024).toFixed(0) + ' KB');
+  }
+}

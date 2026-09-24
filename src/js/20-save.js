@@ -1,0 +1,100 @@
+   Tutto in localStorage, in chiaro. È voluto: è il punto di partenza per
+   un caso di studio sulla fiducia nel client (modificare il salvataggio
+   a mano è il primo "cheat" che chiunque prova).                       */
+const SAVE_KEY='tiny-planet-colony-save-v1';
+function snapshot(){
+  const si=s=>s?settlements.indexOf(s):-1;
+  return {v:1, when:Date.now(), worldIndex, worldSeed, trait:trait.id,
+    res:{...res}, pop, sci, tech, season, seasonT, raidIn, raidNo, worldAge, dayT,
+    eventIn, boomT, padCargoMat, padCargoFood,
+    army:{size:army.size, target:si(army.target)},
+    settlements:settlements.map(s=>({name:s.name, core:s.core.id, relation:s.relation,
+      mat:s.mat, thinkT:s.thinkT, tradeT:s.tradeT||0})),
+    tiles:tiles.filter(t=>t.building).map(t=>({id:t.id, b:t.building, o:t.owner, sz:sizeOf(t),
+      hp:t.hp, w:t.workers||0, un:t.unit, set:si(t.settlement), sp:t.spawnT||0,
+      st:t.site?{need:t.site.need, have:t.site.have, up:!!t.site.upgrade}:null})),
+    units:units.map(u=>({k:u.kind, f:u.faction, at:u.from.id, hp:u.hp, age:u.age,
+      wd:!!u.wounded, set:si(u.settlement), dep:!!u.deployed,
+      load:u.load, dl:!!u.delivered, life:u.lifeT||0})),
+    orbit:orbit.map(o=>o.kind), moonCrew:moonCrew.length};
+}
+function saveGame(silent){
+  if(launching||gameOver) return;           // a metà volo o a colonia perduta non si salva
+  try{
+    localStorage.setItem(SAVE_KEY,JSON.stringify(snapshot()));
+    if(!silent) toast('Partita salvata.');
+  }catch(e){ if(!silent) toast('Salvataggio non riuscito: il browser blocca la memoria locale.'); }
+}
+function readSave(){
+  try{ const raw=localStorage.getItem(SAVE_KEY); return raw?JSON.parse(raw):null; }
+  catch(e){ return null; }
+}
+function loadGame(){
+  const d=readSave();
+  if(!d||d.v!==1){ toast('Nessuna partita salvata in questo browser.'); return; }
+  try{ restore(d); }
+  catch(e){ fail('Il salvataggio è danneggiato: '+e.message); return; }
+  toast('Partita ripresa: mondo n° '+worldIndex+'.');
+}
+function restore(d){
+  quiet=true;
+  try{
+    worldIndex=d.worldIndex; worldSeed=d.worldSeed;
+    generateWorld(worldSeed);
+    // via ciò che generateWorld ha messo: capanna, fattoria, clan, coloni
+    for(const u of units) planetGroup.remove(u.mesh);
+    units=[];
+    for(const t of tiles){
+      if(!t.building) continue;
+      const m=buildMeshes.get(t.id); if(m) planetGroup.remove(m);
+      buildMeshes.delete(t.id);
+      Object.assign(t,{building:null,owner:null,site:null,workers:0,hp:0,hpMax:0,settlement:null,size:1});
+    }
+    trait=TRAITS.find(x=>x.id===d.trait)||trait;
+    settlements=d.settlements.map(s=>({name:s.name, core:tiles[s.core], relation:s.relation,
+      tiles:[], mat:s.mat, thinkT:s.thinkT, tradeT:s.tradeT}));
+    for(const e of d.tiles){
+      const t=tiles[e.id];
+      if(!t||!BUILDINGS[e.b]) continue;
+      t.size=e.sz||1;
+      if(e.st){
+        openSite(t,e.b,e.o,e.st.need,e.st.up);
+        for(let i=0;i<Math.min(e.st.have,e.st.need-1);i++) addBlockToSite(t);
+        t.hp=Math.max(1,Math.min(t.hpMax,e.hp));
+      } else {
+        finish(t,e.b,e.o);
+        t.hp=Math.max(1,Math.min(t.hpMax,e.hp));
+      }
+      t.workers=Math.min(e.w,jobsOf(t)); t.unit=e.un||'spear'; t.spawnT=e.sp;
+      if(e.set>=0&&settlements[e.set]){ t.settlement=settlements[e.set]; settlements[e.set].tiles.push(t); }
+    }
+    for(const e of d.units){
+      const at=tiles[e.at];
+      if(!at||!UNITS[e.k]) continue;
+      const u=spawnUnit(e.k,e.f,at);
+      u.state='ok'; u.mesh.scale.setScalar(1);
+      u.hp=Math.min(u.hpMax,e.hp); u.age=e.age; u.wounded=e.wd;
+      if(isPerson(u)||u.kind==='thrall') applyAge(u);
+      u.settlement=e.set>=0?settlements[e.set]||null:null;
+      u.deployed=e.dep;
+      if(e.k==='caravan'){ u.load=e.load; u.delivered=e.dl; u.lifeT=e.life; if(!e.dl) takeCarry(u,0xd9a441); }
+    }
+    Object.assign(res,d.res);
+    pop=myPeople().length; sci=d.sci; tech=d.tech; season=d.season; seasonT=d.seasonT;
+    raidIn=d.raidIn; raidNo=d.raidNo; worldAge=d.worldAge; dayT=d.dayT;
+    eventIn=d.eventIn; boomT=d.boomT; padCargoMat=d.padCargoMat; padCargoFood=d.padCargoFood;
+    army.size=d.army.size; army.target=d.army.target>=0?settlements[d.army.target]||null:null;
+    for(const k of d.orbit){ addOrbital(k); const o=orbit[orbit.length-1]; o.built=true; o.rise=1; }
+    for(let i=0;i<d.moonCrew;i++) landOnMoon();
+    raidActive=units.some(u=>u.faction==='raider');
+    document.getElementById('w-count').textContent=
+      (worldIndex===1?'primo mondo':'mondo n° '+worldIndex)+' · '+trait.name+' ('+trait.note+')'+
+      (worldIndex>1?' · eredità +'+Math.round((legacy()-1)*100)+'%':'');
+    rebuildFrameCache(); bumpWalk(); trimWorkers(); syncJobs();
+    applySeason(); nightOn=null;
+    $('a-list').dataset.sig='';
+  } finally { quiet=false; }
+  refreshHUD();
+}
+
+/* ═══════════════ colonia perduta ═══════════════ */
