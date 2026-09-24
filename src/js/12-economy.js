@@ -21,8 +21,19 @@ const idleCount     = () => Math.max(0,workforce()-assignedTotal()-buildersCount
 /* dove si portano i carichi: deposito o capanna più vicini */
 const storageTiles  = () => tiles.filter(t=>isMine(t)&&storeOf(t)>0);
 
+/* FC.mine è la fotografia di inizio fotogramma: un edificio può essere caduto
+   nel frattempo, quindi questi helper riverificano sempre con isMine */
+/* edifici attivi con una certa proprietà: con jobs, solo se hanno addetti */
+const activeFlag = f => FC.mine.some(t=>isMine(t)&&hasFlag(t,f)&&(!jobsOf(t)||(t.workers||0)>0));
+/* un pozzo a portata d'acqua */
+const wellNear = t => FC.mine.some(w=>isMine(w)&&hasFlag(w,'well')&&
+  surfacePos(w).distanceTo(surfacePos(t))<BUILDINGS[w.building].range);
+/* il cibo che i granai conservano; il resto marcisce piano (SPOIL a tick) */
+const SPOIL = 0.01, FRESH_BASE = 60;
+const granaryCover = () => FRESH_BASE+FC.mine.reduce((n,t)=>n+(isMine(t)?(BUILDINGS[t.building].granary||0)*sizeOf(t):0),0);
+
 function rates(){
-  let food=FOOD_DRIP, matr=DRIP, pow=0, scir=0, houses=0, jobs=0, tribute=0;
+  let food=FOOD_DRIP, matr=DRIP, pow=0, scir=0, barr=0, houses=0, jobs=0, tribute=0;
   const S=seasonFood()*(trait.harsh?0.85:1), P=techProd()*legacy(), d=demography();
   // eat: quanto mangiano i civili, che vanno da soli al magazzino (qui serve
   // solo a mostrare il saldo nell'HUD). upkeep: le razioni di soldati e
@@ -39,12 +50,15 @@ function rates(){
     const B=BUILDINGS[t.building], w=t.workers||0;
     houses+=housesOf(t); jobs+=jobsOf(t);
     const w2=(t.effWorkers!==undefined?t.effWorkers:w);
-    if(B.eats) food-=(B.eats.food||0)*w2;          // l'officina brucia cibo
+    if(B.eats){                                     // l'officina brucia cibo, la fonderia materiali
+      food-=(B.eats.food||0)*w2; matr-=(B.eats.mat||0)*w2;
+    }
     if(B.per){
       food+=(B.per.food||0)*w2*(B.noSeason?1:S)*P*(trait.food||1)*(boomT>0?1.4:1);
       matr+=(B.per.mat||0)*(B.per.mat>0?w2*P*(trait.mat||1):w);
       pow +=(B.per.pow||0)*w2*P*(trait.pow||1);
       scir+=(B.per.sci||0)*w2*P;
+      barr+=(B.per.bar||0)*w2*P;
     }
     if(B.drain) pow-=B.drain;
   }
@@ -53,8 +67,9 @@ function rates(){
   if(tiles.some(t=>isMine(t)&&BUILDINGS[t.building].trade&&(t.workers||0)>0)) tribute*=1.6;
   const block = pop>=houses ? 'servono letti' : (food-eat-upkeep<=0 && res.food<=8) ? 'serve cibo'
               : res.food<=8 ? 'scorte basse' : null;
-  return {food:food-eat-upkeep, stock:food-upkeep, mat:matr+tribute, pow:pow-pop*USE, sci:scir,
-    houses, jobs, demo:d, block};
+  const spoil=Math.max(0,res.food-granaryCover())*SPOIL;
+  return {food:food-eat-upkeep-spoil, stock:food-upkeep-spoil, spoil, mat:matr+tribute, pow:pow-pop*USE,
+    sci:scir, bar:barr, houses, jobs, demo:d, block};
 }
 /* chi produce davvero: solo chi è al lavoro (o sta portando il raccolto).
    Un colono che mangia, dorme o scappa non rende, e l'umore pesa sulla resa. */
@@ -64,7 +79,9 @@ function dutyTick(){
     if(u.faction!=='you'||!u.job||!isMine(u.job)) continue;
     if(hasNeeds(u)&&u.act!=='work') continue;
     const k=skillKey(u.job);
-    u.job.effWorkers=(u.job.effWorkers||0)+workPower(u)*moodWork(u)*skillMul(u,k);
+    // sulla sabbia, senza un pozzo vicino, si rende il 40% in meno
+    const dry=u.job.biome==='sand'&&!wellNear(u.job)?0.6:1;
+    u.job.effWorkers=(u.job.effWorkers||0)+workPower(u)*moodWork(u)*skillMul(u,k)*dry;
     if(hasNeeds(u)) practice(u,k,1);
   }
 }
@@ -233,6 +250,7 @@ function economyTick(){
   res.food=clamp(res.food+r.stock);      // i civili mangiano da soli, al magazzino
   res.mat =clamp(res.mat +r.mat);
   res.pow =clamp(res.pow +r.pow);
+  res.bar =clamp((res.bar||0)+r.bar);
 
   // ricerca
   if(r.sci>0 && tech<3){
@@ -258,7 +276,11 @@ function economyTick(){
   // (needsTick, in 15-colonists.js)
 
   sendCaravans();
-  if(!raidActive){ raidIn--; if(raidIn<=0){ spawnRaid();
+  // la torre di segnalazione avvista la navetta 25 secondi prima
+  if(!raidActive&&raidIn===26&&activeFlag('watch')){
+    raidWarned=true; logEvent('🔭 La torre avvista una navetta: incursione tra 25 secondi. Bambini al riparo!');
+  }
+  if(!raidActive){ raidIn--; if(raidIn<=0){ raidWarned=false; spawnRaid();
     raidIn=Math.round((120+(hasOrbital('eye')?ORBITALS.eye.delay:0))*(trait.raid?0.65:trait.calm?1.5:1)); } }
   for(const s of settlements) rivalThink(s);
   diplomacyTick();

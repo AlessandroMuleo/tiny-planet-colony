@@ -28,12 +28,18 @@ function govContext(){
     threat: Math.min(1,(raidNo+1)/6)*(raidIn<40||raidActive?1:0.7),
     wounded: myPeople().filter(u=>u.wounded).length,
     allies: settlements.some(s=>s.relation==='alleato'||s.relation==='assoggettato'),
-    winter: SEASONS[season].food<0.8};
+    winter: SEASONS[season].food<0.8,
+    spoil: r.spoil,
+    moodAvg: (()=>{ const m=units.filter(u=>hasNeeds(u)&&u.needs); return m.length?m.reduce((s,u)=>s+u.needs.mood,0)/m.length:0.6; })(),
+    children: myPeople().filter(u=>u.stage==='child').length,
+    dryJobs: FC.mine.filter(t=>isMine(t)&&t.biome==='sand'&&jobsOf(t)>0&&!wellNear(t)).length,
+    // lingotti: servono per torrette, ambasciata e rampa
+    wantBars: (tech>=1||raidNo>=2||settlements.length>0)&&(res.bar||0)<40};
 }
 /* considerazioni che ricorrono */
 const gAfford = key => consider('si può pagare', c=>{
-  const B=BUILDINGS[key], m=B.cost.mat||0, p=B.cost.pow||0;
-  return Math.min(m?res.mat/m:1, p?res.pow/p:1);
+  const cost=BUILDINGS[key].cost;
+  return Math.min(...COST_KEYS.map(k=>cost[k]?(res[k]||0)/cost[k]:1));
 }, CURVES.linear(0.7,0.3));
 const gNone = (key,n=1) => consider('ne mancano', c=>1-c.count(key)/n, CURVES.step(.01));
 /* i disoccupati non sono una condizione ma un bonus: moltiplicarli come le
@@ -90,6 +96,24 @@ const GOV_PROJECTS={
   fort:    {label:'Roccaforte', weight:0.55, considerations:[
     consider('minaccia', c=>c.threat), gNone('fort'),
     consider('colonia ricca', c=>res.mat/160, CURVES.logistic(.85,10)), gAfford('fort')]},
+  foundry: {label:'Fonderia', weight:withJobs(0.75), considerations:[
+    consider('servono lingotti', c=>is(c.wantBars)), gNone('foundry'),
+    consider('materiali per fonderli', c=>res.mat/100, CURVES.logistic(.6,8)), gAfford('foundry')]},
+  granary: {label:'Granaio', weight:0.9, considerations:[
+    consider('cibo che marcisce', c=>c.spoil/2, CURVES.logistic(.4,8)), gAfford('granary')]},
+  well:    {label:'Pozzo', weight:0.8, considerations:[
+    consider('lavori all\'asciutto', c=>c.dryJobs/2, CURVES.linear(1,0)), gAfford('well')]},
+  tavern:  {label:'Taverna', weight:0.7, considerations:[
+    consider('umore basso', c=>1-c.moodAvg, CURVES.logistic(.45,10)), gNone('tavern', 1+Math.floor(pop/60)),
+    gAfford('tavern')]},
+  school:  {label:'Scuola', weight:0.6, considerations:[
+    consider('bambini', c=>c.children/8, CURVES.linear(1,0)), gNone('school'), gAfford('school')]},
+  memorial:{label:'Memoriale', weight:0.6, considerations:[
+    consider('lutto', c=>grief*2, CURVES.linear(1,0)), gNone('memorial'), gAfford('memorial')]},
+  embassy: {label:'Ambasciata', weight:0.6, considerations:[
+    consider('ci sono clan', c=>is(settlements.some(s=>!settled(s)))), gNone('embassy'), gAfford('embassy')]},
+  watch:   {label:'Torre di segnalazione', weight:0.6, considerations:[
+    consider('minaccia', c=>c.threat), gNone('watch'), gAfford('watch')]},
   market:  {label:'Mercato', weight:0.6, considerations:[
     consider('alleati', c=>is(c.allies)), gNone('market'), gAfford('market')]}
 };
@@ -122,7 +146,8 @@ function govStaff(c){
     food: 0.4+0.6*clamp01(1-c.foodDays/80)+(c.r.food<0?0.4:0),
     mat:  0.3+0.6*clamp01(1-res.mat/Math.min(c.cap,220)),
     pow:  0.3+0.7*clamp01(0.6-c.r.pow),
-    sci:  tech<3?0.45:0.05
+    sci:  tech<3?0.45:0.05,
+    bar:  c.wantBars?0.6:0.1
   };
   const score=t=>{
     const B=BUILDINGS[t.building];
@@ -153,17 +178,14 @@ function autoThink(){
       const want=best.action, B=BUILDINGS[want];
       // taglia scelta in base a quanto è ricca e popolosa la colonia
       let sz=1;
-      if(B.jobs>0||B.houses){
-        if(res.mat>(B.cost.mat||0)*4&&pop>14) sz=3;
-        else if(res.mat>(B.cost.mat||0)*2.5&&pop>8) sz=2;
+      if((B.jobs>0||B.houses||B.granary)&&!B.fixed){
+        if(canPay(B.cost,4)&&pop>14) sz=3;
+        else if(canPay(B.cost,2.5)&&pop>8) sz=2;
       }
-      while(sz>1&&(res.mat<(B.cost.mat||0)*sz||res.pow<(B.cost.pow||0)*sz)) sz--;
-      if(res.mat>=(B.cost.mat||0)*sz&&res.pow>=(B.cost.pow||0)*sz){
+      while(sz>1&&!canPay(B.cost,sz)) sz--;
+      if(canPay(B.cost,sz)){
         const spot=pickSpot(want,sz);
-        if(spot){
-          res.mat-=(B.cost.mat||0)*sz; res.pow-=(B.cost.pow||0)*sz;
-          startSite(spot,want,'you',sz);
-        }
+        if(spot){ pay(B.cost,sz); startSite(spot,want,'you',sz); }
       }
       // altrimenti si aspetta: il progetto migliore resta quello, si risparmia
     }

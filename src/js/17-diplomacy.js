@@ -187,7 +187,7 @@ const canGift = s => !settled(s)&&s.relation!=='ostile'&&(s.giftT||0)<=0&&
 function giftTo(s){
   if(!canGift(s)) return;
   res.mat-=GIFT_COST.mat; res.food-=GIFT_COST.food; s.giftT=30;
-  shiftGoodwill(s,25*personalityOf(s).gift,'dono');
+  shiftGoodwill(s,25*personalityOf(s).gift*(activeFlag('embassy')?1.5:1),'dono');
   // aiutare un clan in guerra irrita il suo nemico
   for(const o of settlements) if(o!==s&&atWar(s,o)) shiftGoodwill(o,-10,'hai aiutato '+s.name);
   toast(s.name+' accetta il dono ('+Math.round(s.goodwill)+').'); refreshHUD();
@@ -214,10 +214,11 @@ function setTie(a,b,v){
   const w = a.wars[b.name] ? v<=TRUCE_AT : v<=WAR_AT;
   a.wars[b.name]=w; b.wars[a.name]=w;
 }
-const canMediate = (a,b) => atWar(a,b)&&res.mat>=MEDIATE_COST.mat;
+const mediateCost = () => MEDIATE_COST.mat*(activeFlag('embassy')?0.5:1);
+const canMediate = (a,b) => atWar(a,b)&&res.mat>=mediateCost();
 function mediate(a,b){
   if(!canMediate(a,b)) return;
-  res.mat-=MEDIATE_COST.mat;
+  res.mat-=mediateCost();
   setTie(a,b,tie(a,b)+45);
   shiftGoodwill(a,10,'mediazione'); shiftGoodwill(b,10,'mediazione');
   toast('Mediazione tra '+a.name+' e '+b.name+(atWar(a,b)?': la guerra continua.':': tregua firmata.')); refreshHUD();
@@ -278,6 +279,8 @@ function diplomacyTick(){
     // deriva verso il carattere naturale
     const diff=P.natural-s.goodwill;
     s.goodwill+=Math.sign(diff)*Math.min(GOODWILL.DRIFT,Math.abs(diff));
+    // un'ambasciata aperta avvicina i clan da sola, fino a 50
+    if(activeFlag('embassy')&&s.goodwill<50) s.goodwill+=0.03;
     // costruire ai loro confini li irrita, di continuo
     let near=0;
     for(const t of FC.mine) for(const x of s.tiles) if(x.building&&t.center.dot(x.center)>0.985){ near++; break; }

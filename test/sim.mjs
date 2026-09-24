@@ -74,7 +74,7 @@ function __check(){
   if(pop !== P) bad.push('pop = ' + pop + ' ma i coloni sono ' + P);
 
   const cap = capacity();
-  for(const k of ['food','mat','pow']){
+  for(const k of ['food','mat','pow','bar']){
     if(!__fin(res[k])) bad.push('res.' + k + ' non è un numero: ' + res[k]);
     else if(res[k] < -1e-9) bad.push('res.' + k + ' negativa: ' + res[k].toFixed(2));
     else if(res[k] > cap + 1e-6) bad.push('res.' + k + ' = ' + res[k].toFixed(1) + ' oltre la capienza ' + cap);

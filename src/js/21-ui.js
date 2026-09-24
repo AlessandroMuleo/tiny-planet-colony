@@ -8,6 +8,7 @@ function refreshHUD(r){
   $('s-food').textContent=fmt(res.food);
   $('s-mat').textContent =fmt(res.mat)+'/'+capacity();
   $('s-pow').textContent =fmt(res.pow);
+  $('s-bar').textContent =fmt(res.bar||0);
   $('s-pop').textContent =pop;
   $('s-war').textContent =myTroops().length;
   const d=r.demo||demography();
@@ -20,6 +21,8 @@ function refreshHUD(r){
     (orbit.some(o=>!o.built)?' (+1)':'');
   const set=(el,v)=>{const e=$(el);e.textContent=sign(v);e.className='rate'+(v<0?' neg':'');};
   set('r-food',r.food); set('r-mat',r.mat); set('r-pow',r.pow);
+  $('r-bar').textContent=r.bar?sign(r.bar):''; $('r-bar').className='rate'+(r.bar<0?' neg':'');
+  $('r-food').title=r.spoil>0.05?'di cui '+r.spoil.toFixed(1)+' marcisce a ogni tick: servono granai':'';
   const idle=idleCount();
   const minds=units.filter(u=>hasNeeds(u)&&u.needs);
   const mood=minds.length?minds.reduce((s,u)=>s+u.needs.mood,0)/minds.length:0;
@@ -55,8 +58,8 @@ function setInspector(tile){
     const canUp=sizeOf(tile)<3&&B.blocks>0&&!B.fixed;
     up.style.display=canUp?'':'none';
     if(canUp){
-      up.textContent='amplia a '+(sizeOf(tile)+1)+'× · '+(B.cost.mat||0)+'m'+(B.cost.pow?' '+B.cost.pow+'e':'');
-      up.disabled=raidActive||res.mat<(B.cost.mat||0)||res.pow<(B.cost.pow||0);
+      up.textContent='amplia a '+(sizeOf(tile)+1)+'× · '+costText(B.cost);
+      up.disabled=raidActive||!canPay(B.cost);
       up.title=raidActive?'Non durante un\'incursione':'Torna cantiere per '+B.blocks+' blocchi, poi rende di più (U)';
     }
     const hurt=tile.hp<tile.hpMax-0.5;
@@ -142,7 +145,7 @@ function renderMinds(tile){
   $('i-minds').innerHTML=html;
 }
 
-const canAfford=B=>(!B.cost.mat||res.mat>=B.cost.mat)&&(!B.cost.pow||res.pow>=B.cost.pow);
+const canAfford=B=>canPay(B.cost);
 function tileAllows(tile,key){
   if(!tile||tile.building||tile.site) return false;
   const B=BUILDINGS[key], bio=BIOMES[tile.biome];
@@ -200,7 +203,7 @@ function refreshTray(){
       b.className='card'+(B.launch?' launch':'');
       b.dataset.key=key;
       b.textContent=ICONS[key]||'●';
-      b.dataset.mat=B.cost.mat||0; b.dataset.pow=B.cost.pow||0; b.dataset.bl=B.blocks;
+      b.dataset.bl=B.blocks;
       attachTip(b,B.name,'',B.effect);
       b.addEventListener('click',()=>construct(key));
       tray.appendChild(b);
@@ -208,12 +211,12 @@ function refreshTray(){
   }
   for(const b of tray.children){
     const B=BUILDINGS[b.dataset.key];
-    const m=(+b.dataset.mat)*buildSize, p=(+b.dataset.pow)*buildSize, bl=(+b.dataset.bl)*buildSize;
-    b._tipCost=m+' mat'+(p?' · '+p+' en':'')+' · '+bl+' blocchi'+(buildSize>1?'  ·  taglia '+buildSize+'×':'');
+    const bl=(+b.dataset.bl)*buildSize;
+    b._tipCost=costText(B.cost,buildSize)+' · '+bl+' blocchi'+(buildSize>1?'  ·  taglia '+buildSize+'×':'');
     b.disabled=!selected||!tileAllows(selected,b.dataset.key)||!canAffordSize(B);
   }
 }
-const canAffordSize=B=>res.mat>=(B.cost.mat||0)*buildSize&&res.pow>=(B.cost.pow||0)*buildSize;
+const canAffordSize=B=>canPay(B.cost,buildSize);
 
 function refreshArmy(){
   const troops=myTroops();
@@ -289,7 +292,7 @@ function refreshArmy(){
     for(const o of wars){
       if(s.name>o.name) continue;              // un pulsante per coppia
       const m=document.createElement('div'); m.className='acts';
-      btn(m,'media la pace con '+o.name+' ('+MEDIATE_COST.mat+'m)',canMediate(s,o),()=>mediate(s,o));
+      btn(m,'media la pace con '+o.name+' ('+mediateCost()+'m)',canMediate(s,o),()=>mediate(s,o));
       d.appendChild(m);
     }
     list.appendChild(d);
@@ -367,11 +370,9 @@ function upgradeBuilding(tile){
   if(!tile||!isMine(tile)) return;
   if(raidActive){ toast('Non si amplia durante un\'incursione.'); return; }
   if(!canUpgrade(tile)) return;
-  const B=BUILDINGS[tile.building], cm=B.cost.mat||0, cp=B.cost.pow||0;
-  if(res.mat<cm||res.pow<cp){
-    toast('Per ampliare servono '+cm+' materiali'+(cp?' e '+cp+' energia':'')+'.'); return;
-  }
-  res.mat-=cm; res.pow-=cp;
+  const B=BUILDINGS[tile.building];
+  if(!canPay(B.cost)){ toast('Per ampliare servono '+costText(B.cost)+'.'); return; }
+  pay(B.cost);
   const hp=tile.hp;
   tile.size=sizeOf(tile)+1;
   openSite(tile,tile.building,'you',B.blocks,true);

@@ -11,7 +11,7 @@ function restartGame(){
   $('over').classList.remove('on');
   gameOver=false;
   worldIndex=1; worldSeed=Date.now()%99999;
-  res={food:22,mat:60,pow:12}; pop=3; sci=0; tech=0; eventIn=110; boomT=0;
+  res={food:22,mat:60,pow:12,bar:0}; pop=3; sci=0; tech=0; eventIn=110; boomT=0;
   generateWorld(worldSeed); applySeason(); refreshHUD();
   toast('Una nuova colonia atterra su '+NAMES[0]+'.');
 }
@@ -22,7 +22,7 @@ function construct(key){
   const B=BUILDINGS[key];
   if(!selected||!tileAllows(selected,key)||!canAffordSize(B)) return;
   const s=buildSize;
-  res.mat-=(B.cost.mat||0)*s; res.pow-=(B.cost.pow||0)*s;
+  pay(B.cost,s);
   startSite(selected,key,'you',s);
   setInspector(selected); refreshHUD();
   toast('Cantiere '+s+'× aperto: servono '+(B.blocks*s)+' blocchi dal magazzino.');
@@ -63,7 +63,7 @@ function launchFrom(tile){
 }
 function nextWorld(){
   worldIndex++; worldSeed=(worldSeed*1103515245+12345)%2147483647;
-  res.mat=padCargoMat; res.food=padCargoFood; res.pow=12;   // sbarca solo il carico
+  res.mat=padCargoMat; res.food=padCargoFood; res.pow=12; res.bar=0;   // sbarca solo il carico
   pop=Math.max(3,Math.floor(pop/2));
   generateWorld(worldSeed); applySeason(); refreshHUD();
   toast('Atterrati su '+NAMES[(worldIndex-1)%NAMES.length]+'.');

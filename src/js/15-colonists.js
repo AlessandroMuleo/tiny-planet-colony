@@ -24,7 +24,7 @@ const eatRate = u => u.kind==='thrall' ? THRALL_EAT : AGES[u.stage].eat;
 const moodWork = u => hasNeeds(u) ? 0.6+0.8*needsOf(u).mood : 1;
 /* lutto della colonia: sale a ogni morte, scende da solo */
 let grief=0;
-const mourn = k => { grief=Math.min(1,grief+k); };
+const mourn = k => { grief=Math.min(1,grief+k*(activeFlag('memorial')?0.5:1)); };
 
 /* obiettivo dell'umore: da dove viene, voce per voce (lo mostra l'ispettore) */
 function moodFactors(u){
@@ -39,6 +39,7 @@ function moodFactors(u){
   if(pop>housesTotal()) f.push(['sovraffollamento', -0.1]);
   if(grief>0.05) f.push(['lutto', -0.3*grief]);
   if(boomT>0) f.push(['annata abbondante', 0.08]);
+  if(u.funT>0) f.push(['svago in taverna', 0.15]);
   if(u.kind==='thrall') f.push(['assoggettato', -0.2]);
   for(const id of u.traits||[]) if(PERSON_TRAITS[id].mood) f.push([PERSON_TRAITS[id].label, PERSON_TRAITS[id].mood]);
   return f;
@@ -51,7 +52,7 @@ const moodTarget = u => clamp01(moodFactors(u).reduce((s,[,v])=>s+v,0));
 /* un tick di bisogni per tutti; restituisce true se qualcuno se n'è andato */
 function needsTick(){
   let left=0, starved=0;
-  grief=Math.max(0,grief-0.01);
+  grief=Math.max(0,grief-(activeFlag('memorial')?0.02:0.01));
   for(let i=units.length-1;i>=0;i--){
     const u=units[i];
     if(!hasNeeds(u)) continue;
@@ -61,6 +62,9 @@ function needsTick(){
       n.rest=Math.min(1, n.rest+1/(u.bed&&u.from===u.bed?NEEDS.BED_REST:NEEDS.GROUND_REST));
     else n.rest=Math.max(0, n.rest-1/(NEEDS.AWAKE*traitMul(u,'awake')));
     n.mood+=(moodTarget(u)-n.mood)*NEEDS.MOOD_EASE;
+    if(u.funT>0) u.funT--;
+    // a scuola: il bambino studia il suo mestiere, e da adulto parte avvantaggiato
+    if(u.act==='study'&&u.from===u.goal&&u.stage==='child') practice(u,u.study||(u.study=pickStudy()),1.5);
     // gli assoggettati non se ne vanno: per loro le rivolte arriveranno con la diplomazia
     if(u.kind==='thrall'||myPeople().length<=1) continue;
     const hungry=n.food<=0&&Math.random()<NEEDS.STARVE_P;
@@ -117,7 +121,7 @@ function initPerson(u){
 
 /* abilità: si impara lavorando. A SKILL_HALF punti di esperienza la resa
    è +30%, e non supera mai il +60%: i primi tick valgono più degli ultimi */
-const SKILLS={food:'agricoltura', mat:'estrazione', pow:'energia', sci:'ricerca', build:'costruzione'};
+const SKILLS={food:'agricoltura', mat:'estrazione', pow:'energia', sci:'ricerca', bar:'fusione', build:'costruzione'};
 const SKILL_HALF=200;
 /* il mestiere di un edificio è la sua prima produzione positiva (l'armeria non ne ha) */
 const skillKey = t => {
@@ -132,6 +136,8 @@ function practice(u,k,amount){
   if(!k||!u.skills) return;
   u.skills[k]=skillXp(u,k)+amount*traitMul(u,'learn');
 }
+/* a scuola si studia un mestiere produttivo, scelto a caso per ogni bambino */
+const pickStudy = () => { const k=['food','mat','pow','sci']; return k[Math.floor(Math.random()*k.length)]; };
 /* il mestiere in cui il colono è più bravo, per l'ispettore */
 function bestSkill(u){
   let best=null, xp=0;
@@ -213,7 +219,7 @@ const COLONIST_ACTIONS = {
   }},
 
   shelter:{label:'al riparo', weight:W(0.95,'shelter'), considerations:[
-    consider('incursione',     c=>is(c.raid), CURVES.step(.5)),
+    consider('incursione',     c=>is(c.raid||raidWarned), CURVES.step(.5)),
     consider('indifeso',       c=>is(c.u.stage==='child'||c.u.wounded), CURVES.step(.5)),
     consider('c\'è un rifugio',c=>is(FC.mine.some(t=>BUILDINGS[t.building].shelter)), CURVES.step(.5))
   ], run:u=>nearestOf(u.from,FC.mine,t=>!!BUILDINGS[t.building].shelter)},
@@ -255,6 +261,26 @@ const COLONIST_ACTIONS = {
     if(u.from===spot) u.slept=u.bed?'bed':'ground';
     return spot;
   }},
+
+  relax:{label:'svago', weight:W(0.7,'relax'), considerations:[
+    consider('umore basso',    c=>1-c.n.mood, CURVES.logistic(.5,10)),
+    consider('taverna aperta', c=>is(activeFlag('tavern'))),
+    consider('non già svagato',c=>is(!(c.u.funT>0))),
+    consider('al sicuro',      c=>is(!c.raid))
+  ], run:u=>{
+    const t=nearestOf(u.from,FC.mine,x=>hasFlag(x,'tavern')&&(x.workers||0)>0&&reachable(u.from,x));
+    if(!t) { u.act=null; return u.from; }
+    if(u.from!==t) return t;
+    u.funT=90; u.act=null;              // una serata basta per un po'
+    return u.from;
+  }},
+
+  study:{label:'a scuola', weight:W(0.5,'study'), considerations:[
+    consider('è un bambino',   c=>is(c.u.stage==='child')),
+    consider('scuola aperta',  c=>is(activeFlag('school'))),
+    consider('è giorno',       c=>is(!c.night)),
+    consider('al sicuro',      c=>is(!c.raid))
+  ], run:u=>nearestOf(u.from,FC.mine,x=>hasFlag(x,'school')&&(x.workers||0)>0&&reachable(u.from,x))||u.from},
 
   work:{label:'lavorare', weight:W(0.6,'work'), considerations:[
     consider('ha un lavoro',   c=>is(c.u.job), CURVES.step(.5))

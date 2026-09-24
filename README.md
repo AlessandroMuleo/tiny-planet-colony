@@ -101,6 +101,13 @@ I clan hanno una benevolenza da −100 a +100 e una personalità. Mandano
 emissari con richieste a tempo, si fanno guerra tra loro, e gli assoggettati
 possono ribellarsi. I dettagli sono in [docs/diplomazia.md](docs/diplomazia.md).
 
+## Edifici
+
+Oltre a quelli di base ci sono fonderia (lingotti), granaio (il cibo
+marcisce), pozzo (acqua sulla sabbia), taverna, scuola, memoriale,
+ambasciata e torre di segnalazione. Cosa cambia ognuno è in
+[docs/edifici.md](docs/edifici.md).
+
 ## Aggiungere cose
 
 - **Un edificio:** una voce in `BUILDINGS` (02-data) e un modello in
