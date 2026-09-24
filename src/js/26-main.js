@@ -17,6 +17,7 @@ let last=performance.now(), acc=0, frames=0, fpsAcc=0, fps=0;
   const dt=raw*speedMul;
   try{
     if(autoSpin){ theta+=dt*0.04; updateCamera(); }
+    followTick(raw);
     stepDay(dt);
     stepUnits(dt);
     stepProps(dt);

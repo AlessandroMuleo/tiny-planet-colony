@@ -121,7 +121,8 @@ function setInspector(tile){
    ogni azione, la considerazione che la frena di più. È la risposta a
    "perché sta facendo questo?".                                       */
 function renderMinds(tile){
-  const here=units.filter(u=>hasNeeds(u)&&u.needs&&(u.from===tile||u.to===tile));
+  const here=units.filter(u=>hasNeeds(u)&&u.needs&&(u.from===tile||u.to===tile))
+    .sort((a,b)=>(b===followed)-(a===followed));      // il colono seguito in cima
   const pct=v=>Math.round(v*100);
   const bar=(label,v)=>'<span>'+label+'</span><div class="bar"><i class="'+(v<0.3?'low':'')+
     '" style="width:'+pct(v)+'%"></i></div>';
@@ -132,7 +133,7 @@ function renderMinds(tile){
     const sk=bestSkill(u);
     const tr=(u.traits||[]).map(id=>'<span title="'+PERSON_TRAITS[id].note+'">'+PERSON_TRAITS[id].label+'</span>').join(', ');
     const fr=friendsOf(u).map(v=>v.name).filter(Boolean);
-    html+='<div class="mind"><div class="who">'+(u.name||UNITS[u.kind].label)+' · '+AGES[u.stage].label+
+    html+='<div class="mind'+(u===followed?' followed':'')+'"><div class="who">'+(u===followed?'◎ ':'')+(u.name||UNITS[u.kind].label)+' · '+AGES[u.stage].label+
       (u.kind==='thrall'?' · assoggettato':'')+'<b>'+(cur?cur.label:'—')+'</b></div>'+
       ((tr||sk)?'<div class="traits">'+[tr, sk&&sk.bonus>=0.01?sk.label+' +'+Math.round(sk.bonus*100)+'%':''].filter(Boolean).join(' · ')+'</div>':'')+
       (fr.length?'<div class="traits">amici: '+fr.slice(0,3).join(', ')+(fr.length>3?'…':'')+'</div>':'')+

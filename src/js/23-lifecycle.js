@@ -153,6 +153,7 @@ $('over-restart').addEventListener('click',restartGame);
 
 /* scorciatoie: le azioni più frequenti senza dover inseguire i pulsanti */
 function deselect(){
+  followed=null;
   selected=null; setInspector(null); refreshTray();
   if(marker){ planetGroup.remove(marker); marker=null; }
 }

@@ -303,7 +303,7 @@ const results = await Promise.all(picked.map(({ sc, i }) => new Promise(done => 
   });
 })));
 let failed = results.filter(r => !report(r)).length;
-if (!ONLY) {
+if (!ONLY && TICKS >= 900) {        // in partite più corte molti eventi non fanno in tempo a capitare
   const all = results.flatMap(r => r.toasts || []);
   const missing = SUITE_EXPECT.filter(e => !all.some(t => t.includes(e)));
   if (missing.length) { failed++; console.log('✗ in nessuno scenario è comparso: ' + missing.map(m => '«' + m + '»').join(', ')); }

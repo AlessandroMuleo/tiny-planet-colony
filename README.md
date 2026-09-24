@@ -11,7 +11,9 @@ Logistica a blocchi, stagioni, ricerca, clan rivali, incursioni, spazio.
 Parametri dell'indirizzo, utili per condividere un pianeta:
 `?seed=4242` riapre lo stesso mondo, `&mondo=3` parte dal terzo (con i
 clan), `&auto` accende il governatore. Il pulsante «condividi» copia il
-link del pianeta in corso. `&difficolta=facile` o `difficile` cambia la
+link del pianeta in corso. Cliccando un colono la camera lo segue e
+l'ispettore lo mette in cima; Esc o un trascinamento della vista lo
+lasciano andare. `&difficolta=facile` o `difficile` cambia la
 forza delle incursioni (×0,7 / ×1,35), quanto in fretta vengono fame e
 sonno (×0,8 / ×1,2) e le scorte iniziali (×1,5 / ×0,7).
 
