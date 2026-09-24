@@ -43,7 +43,7 @@ function rates(){
   }
   for(const o of orbit) if(o.built) pow-=ORBITALS[o.kind].drain||0;
   for(const s of settlements) tribute += s.relation==='alleato' ? 0.6 : s.relation==='assoggettato' ? 1.4 : 0;
-  if(tiles.some(t=>isMine(t)&&t.building==='market'&&(t.workers||0)>0)) tribute*=1.6;
+  if(tiles.some(t=>isMine(t)&&BUILDINGS[t.building].trade&&(t.workers||0)>0)) tribute*=1.6;
   const block = pop>=houses ? 'servono letti' : (food-eat<=0 && res.food<=8) ? 'serve cibo'
               : res.food<=8 ? 'scorte basse' : null;
   return {food:food-eat, mat:matr+tribute, pow:pow-pop*USE, sci:scir, houses, jobs, demo:d, block};
@@ -227,11 +227,11 @@ function structureTick(dt){
       t.spawnT+=dt;
       if(t.spawnT>=B.every){
         t.spawnT=0;
-        const have=units.filter(u=>u.faction==='you'&&u.kind==='guardian').length;
-        const shrines=tiles.filter(x=>isMine(x)&&x.building==='shrine').length;
-        if(have<B.cap*Math.max(1,shrines)){
-          spawnUnit('guardian','you',t);
-          toast('Il santuario ha generato un guardiano.'); refreshHUD();
+        const have=units.filter(u=>u.faction==='you'&&u.kind===B.spawns).length;
+        const sources=tiles.filter(x=>isMine(x)&&BUILDINGS[x.building].spawns===B.spawns).length;
+        if(have<B.cap*Math.max(1,sources)){
+          spawnUnit(B.spawns,'you',t);
+          toast(B.spawnMsg); refreshHUD();
         }
       }
     }

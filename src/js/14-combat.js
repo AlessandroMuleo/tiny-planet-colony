@@ -56,8 +56,8 @@ function resolveCombat(dt){
       damageBuilding(t,dmg*dt);
   }
   for(const t of FC.turrets){
-    if(res.pow<=0||t.building!=='turret') continue;
-    const B=BUILDINGS.turret, tp=surfacePos(t,.4);
+    if(res.pow<=0||!hasFlag(t,'dps')||t.owner!=='you') continue;
+    const B=BUILDINGS[t.building], tp=surfacePos(t,.4);
     for(const o of nearbyUnits(t,true)){
       if(o.state==='landing') continue;
       const foe=o.faction==='raider'||
@@ -75,8 +75,8 @@ function resolveCombat(dt){
   }
   // torri dei clan: difendono il loro territorio da predoni e da te, se in guerra
   for(const t of FC.rtowers){
-    if(t.building!=='rtower'||!t.settlement) continue;
-    const B=BUILDINGS.rtower, tp=surfacePos(t,.4);
+    if(!hasFlag(t,'dps')||!t.settlement) continue;
+    const B=BUILDINGS[t.building], tp=surfacePos(t,.4);
     for(const o of nearbyUnits(t,true)){
       if(o.state==='landing') continue;
       const foe = o.faction==='raider' ||

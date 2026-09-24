@@ -10,6 +10,7 @@
 
 import { loadGame } from './headless.mjs';
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const arg = (name, def) => {
@@ -121,7 +122,10 @@ function __summary(){
     res: {food: Math.round(res.food), mat: Math.round(res.mat), pow: Math.round(res.pow)}, cap: capacity(),
     tech, buildings: playerBuildings().length, sites: tiles.filter(t => t.site && t.owner === 'you').length,
     raids: raidNo, units: units.length,
-    clans: settlements.map(s => s.name + ' ' + s.relation).join(', ')
+    clans: settlements.map(s => s.name + ' ' + s.relation).join(', '),
+    // stato esatto, per l'impronta: nessun arrotondamento
+    exact: JSON.stringify([res, sci, worldAge, units.map(u => u.kind + ':' + u.hp + ':' + u.from.id + ':' + u.mode),
+      tiles.filter(t => t.building).map(t => t.id + t.building + t.owner + t.hp + (t.workers || 0) + (t.site ? t.site.have : ''))])
   };
 }
 `;
@@ -152,7 +156,10 @@ function report(r) {
   const errors = r.issues.filter(i => i.level === 'errore');
   const warns = r.issues.filter(i => i.level === 'avviso');
   const ok = !r.crashed && !r.failures.length && !errors.length;
-  console.log(`${ok ? '✓' : '✗'} ${sc.name}  (seme ${sc.seed}, ${(r.ms / 1000).toFixed(1)} s)`);
+  // impronta della partita: con lo stesso seme, un refactor che non cambia
+  // il comportamento deve lasciarla identica
+  const print = s ? createHash('sha1').update(s.exact + '\n' + r.toasts.join('\n')).digest('hex').slice(0, 10) : '-';
+  console.log(`${ok ? '✓' : '✗'} ${sc.name}  (seme ${sc.seed}, ${(r.ms / 1000).toFixed(1)} s, impronta ${print})`);
   if (s) console.log(`   tick ${s.tick}${s.gameOver ? ' · COLONIA PERDUTA' : ''} · coloni ${s.pop} ` +
     `(${s.demo.child}b/${s.demo.adult}a/${s.demo.elder}v) · cibo ${s.res.food} mat ${s.res.mat} en ${s.res.pow} / ${s.cap}` +
     ` · edifici ${s.buildings} · cantieri ${s.sites} · ricerca ${s.tech} · incursioni ${s.raids}` +
@@ -183,6 +190,7 @@ if (one !== null) {
 
 const self = fileURLToPath(import.meta.url);
 const picked = SCENARIOS.map((sc, i) => ({ sc, i })).filter(x => x.sc.name.includes(ONLY));
+if (!picked.length) { console.log('Nessuno scenario contiene «' + ONLY + '».'); process.exit(1); }
 const t0 = Date.now();
 const results = await Promise.all(picked.map(({ sc, i }) => new Promise(done => {
   const child = spawn(process.execPath, [self, '--one', String(i), '--ticks', String(TICKS)]);

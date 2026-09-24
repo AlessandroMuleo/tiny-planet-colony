@@ -417,15 +417,26 @@ const BIOMES = {
 /* ── edifici ──────────────────────────────────────────────────────
    cat    = catalogo in cui compare
    blocks = blocchetti che i coloni devono trasportare al cantiere
-   ships  = quanti carichi di prodotto genera (animazione + resa)      */
+   ships  = quanti carichi di prodotto genera (animazione + resa)
+   Il comportamento sta nei campi, non in controlli sul nome sparsi nel
+   codice: un edificio nuovo si aggiunge qui e basta.
+   guard    = le truppe non schierate ci stanno di guardia
+   quiet    = il completamento non si annuncia (strade, mura)
+   fixed    = non si amplia
+   trade    = con addetti: tributi +60% e scambio con i clan
+   heal     = cura i feriti nel raggio (range)
+   dps      = spara da solo nel raggio: tuo contro i nemici, rivale contro chi è in guerra
+   spawns   = genera un'unità ogni "every" secondi, fino a "cap" per struttura
+   core     = cuore di un clan: finché regge, il clan non si assoggetta
+   launch   = da qui si parte per un nuovo mondo (e partono le navette lunari) */
 const BUILDINGS = {
-  hut:    {cat:'base', name:'Capanna',  cost:{mat:10},        blocks:3,  effect:'4 posti letto',        jobs:0, houses:4, hp:25, store:40},
-  block:  {cat:'base', name:'Alloggi',  cost:{mat:34},        blocks:7,  effect:'12 posti letto',       jobs:0, houses:12, hp:40, store:30},
+  hut:    {cat:'base', name:'Capanna',  cost:{mat:10},        blocks:3,  effect:'4 posti letto',        jobs:0, houses:4, hp:25, store:40, guard:true},
+  block:  {cat:'base', name:'Alloggi',  cost:{mat:34},        blocks:7,  effect:'12 posti letto',       jobs:0, houses:12, hp:40, store:30, guard:true},
   farm:   {cat:'base', name:'Fattoria', cost:{mat:14},        blocks:4,  effect:'1,3 cibo a testa',     jobs:2, per:{food:1.3}, ships:'food', hp:25},
   mine:   {cat:'base', name:'Miniera',  cost:{mat:18},        blocks:5,  effect:'0,8 materiali a testa',jobs:3, per:{mat:0.8}, ships:'mat', needs:['rock','soil'], hp:28},
   plant:  {cat:'base', name:'Centrale', cost:{mat:24},        blocks:6,  effect:'2 energia a testa',    jobs:2, per:{pow:2}, hp:28},
   depot:  {cat:'base', name:'Deposito', cost:{mat:22},        blocks:5,  effect:'+150 di capienza',     jobs:0, store:150, hp:30},
-  road:   {cat:'base', name:'Strada',   cost:{mat:4},         blocks:1,  effect:'chi ci passa va il 60% più veloce', jobs:0, road:true, hp:15},
+  road:   {cat:'base', name:'Strada',   cost:{mat:4},         blocks:1,  effect:'chi ci passa va il 60% più veloce', jobs:0, road:true, quiet:true, fixed:true, hp:15},
   workshop:{cat:'base',name:'Officina', cost:{mat:40},        blocks:7,  effect:'converte 1,6 cibo in 1,1 materiali a testa', jobs:3, per:{mat:1.1}, eats:{food:1.6}, ships:'mat', hp:32},
   green:  {cat:'base', name:'Serra',    cost:{mat:48,pow:20}, blocks:8,  effect:'1,5 cibo a testa, immune alle stagioni', jobs:2, per:{food:1.5}, ships:'food', noSeason:true, drain:0.6, hp:28},
   market: {cat:'base', name:'Mercato',  cost:{mat:38},        blocks:6,  effect:'+60% ai tributi e abilita lo scambio', jobs:1, trade:true, hp:30, store:60},
@@ -434,17 +445,18 @@ const BUILDINGS = {
   dock:   {cat:'acqua',name:'Molo',     cost:{mat:12},        blocks:3,  effect:'rende il mare percorribile', jobs:0, water:true, hp:20},
   fishery:{cat:'acqua',name:'Peschiera',cost:{mat:20},        blocks:4,  effect:'1,6 cibo a testa, sul mare', jobs:2, per:{food:1.6}, ships:'food', water:true, hp:22},
 
-  wall:   {cat:'difesa',name:'Mura',    cost:{mat:8},         blocks:2,  effect:'barriera: i nemici non la attraversano', jobs:0, wall:true, hp:120},
-  armory: {cat:'difesa',name:'Armeria', cost:{mat:30},        blocks:7,  effect:'addestra lancieri o arcieri', jobs:3, per:{mat:-0.3}, armory:true, hp:45},
+  wall:   {cat:'difesa',name:'Mura',    cost:{mat:8},         blocks:2,  effect:'barriera: i nemici non la attraversano', jobs:0, wall:true, quiet:true, hp:120},
+  armory: {cat:'difesa',name:'Armeria', cost:{mat:30},        blocks:7,  effect:'addestra lancieri o arcieri', jobs:3, per:{mat:-0.3}, armory:true, guard:true, hp:45},
   turret: {cat:'difesa',name:'Torretta',cost:{mat:40,pow:15}, blocks:8,  effect:'spara da sola sui nemici', jobs:0, drain:0.4, range:5.0, dps:3.5, hp:35},
-  shrine: {cat:'difesa',name:'Santuario',cost:{mat:45,pow:20},blocks:9,  effect:'un guardiano ogni 25s', jobs:0, drain:0.5, spawns:'guardian', every:25, cap:4, hp:40},
-  fort:   {cat:'difesa',name:'Roccaforte',cost:{mat:80,pow:25},blocks:12,effect:'rifugio per bambini e feriti durante le incursioni', jobs:2, drain:0.3, shelter:true, range:4.0, hp:150},
+  shrine: {cat:'difesa',name:'Santuario',cost:{mat:45,pow:20},blocks:9,  effect:'un guardiano ogni 25s', jobs:0, drain:0.5, spawns:'guardian', every:25, cap:4, guard:true, hp:40,
+          spawnMsg:'Il santuario ha generato un guardiano.'},
+  fort:   {cat:'difesa',name:'Roccaforte',cost:{mat:80,pow:25},blocks:12,effect:'rifugio per bambini e feriti durante le incursioni', jobs:2, drain:0.3, shelter:true, range:4.0, guard:true, hp:150},
 
   lab:    {cat:'scienza',name:'Centro ricerca',cost:{mat:55,pow:30}, blocks:9, effect:'0,9 ricerca a testa', jobs:2, per:{sci:0.9}, hp:35},
 
   pad:    {cat:'speciale',name:'Rampa di lancio', cost:{mat:70,pow:40}, blocks:14, effect:'parti per un nuovo mondo', jobs:4, launch:true, hp:50},
 
-  keep:   {cat:null, name:'Roccaforte rivale', cost:{}, blocks:0, effect:'cuore di un popolo rivale', jobs:0, hp:70, rivalOnly:true},
+  keep:   {cat:null, name:'Roccaforte rivale', cost:{}, blocks:0, effect:'cuore di un popolo rivale', jobs:0, hp:70, core:true, rivalOnly:true},
   camp:   {cat:null, name:'Accampamento',      cost:{}, blocks:0, effect:'insediamento rivale',      jobs:0, hp:32, rivalOnly:true},
   rfarm:  {cat:null, name:'Campi rivali',      cost:{}, blocks:0, effect:'nutre l\'espansione del clan', jobs:0, hp:26, rivalOnly:true},
   rtower: {cat:null, name:'Torre rivale',      cost:{}, blocks:0, effect:'difende il territorio del clan', jobs:0, hp:38, range:4.4, dps:2.8, rivalOnly:true}
@@ -566,6 +578,8 @@ let eventIn=110, boomT=0;       // eventi casuali: prossimo tra N tick; raccolto
 const tileRadius = t => R + BIOMES[t.biome].lift;
 const surfacePos = (t,lift=0) => t.center.clone().multiplyScalar(tileRadius(t)+lift);
 const isMine = t => t.building && t.owner==='you' && !t.site;
+/* la casella ha un edificio con questa proprietà (vedi BUILDINGS) */
+const hasFlag = (t,f) => !!(t.building && BUILDINGS[t.building][f]);
 /* Una struttura sta su una casella sola. La taglia resta, ma vale sui numeri
    — posti di lavoro, letti, capienza, integrità — non sull'area occupata:
    gli edifici che si mangiavano due anelli di caselle erano un pugno in un occhio. */
@@ -1142,7 +1156,7 @@ function stepMoon(dt,clock){
     if(base.fireT>=ORBITALS.moonbase.every){
       base.fireT=0;
       // parte dal suolo: preferisce la rampa, altrimenti una struttura tua
-      const padTile = FC.mine.find(t=>t.building==='pad')
+      const padTile = FC.mine.find(t=>hasFlag(t,'launch'))
                    || FC.mine.find(t=>t.building==='depot') || FC.mine[0];
       if(padTile){
         markLaunch(padTile);
@@ -1321,7 +1335,7 @@ function addBlockToSite(tile){
     finish(tile, s.kind, tile.owner);
     if(tile.owner==='you'){
       trimWorkers(); syncJobs();
-      if(s.kind!=='road'&&s.kind!=='wall') toast(BUILDINGS[s.kind].name+(was?' ampliata a '+sizeOf(tile)+'×.':' completata.'));
+      if(!BUILDINGS[s.kind].quiet) toast(BUILDINGS[s.kind].name+(was?' ampliata a '+sizeOf(tile)+'×.':' completata.'));
     }
   }
 }
@@ -1503,7 +1517,7 @@ function rates(){
   }
   for(const o of orbit) if(o.built) pow-=ORBITALS[o.kind].drain||0;
   for(const s of settlements) tribute += s.relation==='alleato' ? 0.6 : s.relation==='assoggettato' ? 1.4 : 0;
-  if(tiles.some(t=>isMine(t)&&t.building==='market'&&(t.workers||0)>0)) tribute*=1.6;
+  if(tiles.some(t=>isMine(t)&&BUILDINGS[t.building].trade&&(t.workers||0)>0)) tribute*=1.6;
   const block = pop>=houses ? 'servono letti' : (food-eat<=0 && res.food<=8) ? 'serve cibo'
               : res.food<=8 ? 'scorte basse' : null;
   return {food:food-eat, mat:matr+tribute, pow:pow-pop*USE, sci:scir, houses, jobs, demo:d, block};
@@ -1687,11 +1701,11 @@ function structureTick(dt){
       t.spawnT+=dt;
       if(t.spawnT>=B.every){
         t.spawnT=0;
-        const have=units.filter(u=>u.faction==='you'&&u.kind==='guardian').length;
-        const shrines=tiles.filter(x=>isMine(x)&&x.building==='shrine').length;
-        if(have<B.cap*Math.max(1,shrines)){
-          spawnUnit('guardian','you',t);
-          toast('Il santuario ha generato un guardiano.'); refreshHUD();
+        const have=units.filter(u=>u.faction==='you'&&u.kind===B.spawns).length;
+        const sources=tiles.filter(x=>isMine(x)&&BUILDINGS[x.building].spawns===B.spawns).length;
+        if(have<B.cap*Math.max(1,sources)){
+          spawnUnit(B.spawns,'you',t);
+          toast(B.spawnMsg); refreshHUD();
         }
       }
     }
@@ -1817,16 +1831,15 @@ function rebuildFrameCache(){
   for(const t of tiles){
     if(t.site&&t.owner==='you'){ FC.sites.push(t); continue; }
     if(!t.building) continue;
-    if(t.building==='rtower'&&t.settlement) FC.rtowers.push(t);
+    if(t.settlement&&BUILDINGS[t.building].dps) FC.rtowers.push(t);
     if(t.owner==='rival') FC.rivalB.push(t);
     if(t.owner!=='you') continue;
     FC.mine.push(t);
     if(BUILDINGS[t.building].wall) FC.walls.push(t);
     if(storeOf(t)>0) FC.storage.push(t);
     if(housesOf(t)>0) FC.beds.push(t);
-    if(t.building==='turret') FC.turrets.push(t);
-    if(t.building==='armory'||t.building==='shrine'||t.building==='fort'||
-       t.building==='hut'||t.building==='block') FC.defense.push(t);
+    if(BUILDINGS[t.building].dps) FC.turrets.push(t);
+    if(BUILDINGS[t.building].guard) FC.defense.push(t);
   }
   FC.raiders.length=0;
   FC.bucket.clear();
@@ -2027,8 +2040,8 @@ function stepUnits(dt){
       u.mesh.quaternion.setFromUnitVectors(UP,dir);
       continue;
     }
-    // solo strade finite: un cantiere ha già building==='road' e dava il bonus
-    const road=t=>t.building==='road'&&!t.site;
+    // solo strade finite: un cantiere ha già il tipo dell'edificio e dava il bonus
+    const road=t=>hasFlag(t,'road')&&!t.site;
     const onRoad=road(u.from)||road(u.to);
     u.t+=dt*u.speed*(onRoad?1.6:1);
     if(u.t>=1){
@@ -2105,8 +2118,8 @@ function resolveCombat(dt){
       damageBuilding(t,dmg*dt);
   }
   for(const t of FC.turrets){
-    if(res.pow<=0||t.building!=='turret') continue;
-    const B=BUILDINGS.turret, tp=surfacePos(t,.4);
+    if(res.pow<=0||!hasFlag(t,'dps')||t.owner!=='you') continue;
+    const B=BUILDINGS[t.building], tp=surfacePos(t,.4);
     for(const o of nearbyUnits(t,true)){
       if(o.state==='landing') continue;
       const foe=o.faction==='raider'||
@@ -2124,8 +2137,8 @@ function resolveCombat(dt){
   }
   // torri dei clan: difendono il loro territorio da predoni e da te, se in guerra
   for(const t of FC.rtowers){
-    if(t.building!=='rtower'||!t.settlement) continue;
-    const B=BUILDINGS.rtower, tp=surfacePos(t,.4);
+    if(!hasFlag(t,'dps')||!t.settlement) continue;
+    const B=BUILDINGS[t.building], tp=surfacePos(t,.4);
     for(const o of nearbyUnits(t,true)){
       if(o.state==='landing') continue;
       const foe = o.faction==='raider' ||
@@ -2241,7 +2254,7 @@ function recall(){
 /* Assoggettare invece di radere al suolo: le loro strutture restano in piedi
    e versano un tributo, e i superstiti passano a lavorare per te.        */
 const canSubjugate = s => (s.relation==='ostile') &&
-  !tiles.some(t=>t.settlement===s&&t.building==='keep') &&
+  !tiles.some(t=>t.settlement===s&&hasFlag(t,'core')) &&
   tiles.some(t=>t.settlement===s&&t.building) &&
   !units.some(u=>u.settlement===s);
 function subjugate(s){
@@ -2342,7 +2355,7 @@ let trait=TRAITS[0];
 const legacy = () => 1 + 0.06*(worldIndex-1);   // +6% a tutto per mondo colonizzato
 
 /* ═══════════════ commercio e carovane ═══════════════ */
-const hasMarket = () => FC.mine.some(t=>t.building==='market'&&(t.workers||0)>0);
+const hasMarket = () => FC.mine.some(t=>hasFlag(t,'trade')&&(t.workers||0)>0);
 /* una carovana parte dal clan alleato, cammina fino a un tuo magazzino e scarica */
 function caravanGoal(u){
   if(u.delivered) return u.settlement?u.settlement.core:u.from;
@@ -2418,16 +2431,12 @@ function stepFX(dt){
 
 /* ═══════════════ eventi casuali ═══════════════
    Ogni 90–170 s (non durante un'incursione) succede qualcosa che la
-   colonia non ha scelto: va gestito, non solo subito.               */
-const EVENTS=['meteor','plague','refugees','harvest'];
-function randomEventTick(){
-  if(worldAge<60||raidActive) return;
-  if(--eventIn>0) return;
-  eventIn=90+Math.floor(Math.random()*80);
-  fireEvent(EVENTS[Math.floor(Math.random()*EVENTS.length)]);
-}
-function fireEvent(kind){
-  if(kind==='meteor'){
+   colonia non ha scelto: va gestito, non solo subito.
+   Ogni evento è una voce della tabella: weight è quanto spesso esce
+   rispetto agli altri, run() lo fa accadere. Un evento nuovo si aggiunge
+   qui senza toccare il resto.                                        */
+const EVENTS={
+  meteor:{weight:1, run(){
     // tre impatti: uno vicino alla colonia, due a caso. Danneggiano ciò che
     // colpiscono ma lasciano frammenti di minerale da raccogliere
     const land=tiles.filter(t=>BIOMES[t.biome].build);
@@ -2441,11 +2450,12 @@ function fireEvent(kind){
     while(hits.length<3&&land.length) hits.push(land[Math.floor(Math.random()*land.length)]);
     hits.forEach((t,i)=>meteor(t,0.9+i*0.45));
     logEvent('☄ Pioggia di meteoriti in arrivo: tre impatti.');
-  } else if(kind==='plague'){
+  }},
+  plague:{weight:1, run(){
     const healthy=myPeople().filter(u=>!u.wounded&&u.stage!=='child');
-    if(!healthy.length){ eventIn=20; return; }
+    if(!healthy.length){ eventIn=20; return false; }
     // un ospedale funzionante dimezza il contagio
-    const clinic=FC.mine.some(t=>t.building==='clinic'&&(t.workers||0)>0);
+    const clinic=FC.mine.some(t=>hasFlag(t,'heal')&&(t.workers||0)>0);
     const n=Math.max(1,Math.ceil(healthy.length*(clinic?0.1:0.22)));
     for(let i=0;i<n;i++){
       const u=healthy.splice(Math.floor(Math.random()*healthy.length),1)[0];
@@ -2455,18 +2465,38 @@ function fireEvent(kind){
     trimWorkers(); syncJobs();
     logEvent('🦠 Epidemia: '+n+(n===1?' colono si è ammalato':' coloni si sono ammalati')+
       (clinic?' (l\'ospedale ha contenuto il contagio).':'. Un ospedale con addetti la conterrebbe.'));
-  } else if(kind==='refugees'){
+  }},
+  refugees:{weight:1, run(){
     const free=rates().houses-myPeople().length;
     const n=Math.min(3,free);
-    if(n<=0){ logEvent('🧳 Dei profughi sono passati oltre: non c\'erano letti liberi.'); return; }
+    if(n<=0){ logEvent('🧳 Dei profughi sono passati oltre: non c\'erano letti liberi.'); return false; }
     for(let i=0;i<n;i++) spawnUnit('worker','you',randomHome());   // arrivano adulti
     pop=myPeople().length;
     syncJobs();
     logEvent('🧳 Sono arrivati '+n+(n===1?' profugo: ora è un colono.':' profughi: ora sono coloni.'));
-  } else if(kind==='harvest'){
+  }},
+  harvest:{weight:1, run(){
     boomT=35;
     logEvent('🌾 Annata eccezionale: +40% cibo dai campi per 35 secondi.');
-  }
+  }}
+};
+/* estrazione pesata: con pesi tutti uguali coincide con la vecchia
+   scelta uniforme, e consuma un solo numero casuale */
+function pickEvent(){
+  const keys=Object.keys(EVENTS);
+  const total=keys.reduce((n,k)=>n+EVENTS[k].weight,0);
+  let r=Math.random()*total;
+  for(const k of keys){ r-=EVENTS[k].weight; if(r<0) return k; }
+  return keys[keys.length-1];
+}
+function randomEventTick(){
+  if(worldAge<60||raidActive) return;
+  if(--eventIn>0) return;
+  eventIn=90+Math.floor(Math.random()*80);
+  fireEvent(pickEvent());
+}
+function fireEvent(kind){
+  if(EVENTS[kind].run()===false) return;   // non è successo niente: HUD invariato
   refreshHUD();
 }
 function meteor(tile,delay){
@@ -2668,7 +2698,7 @@ function pickSpot(kind,size){
     let adj=0, road=0;
     for(const n of t.neighbors){
       if(own.has(n)) adj++;
-      if(tiles[n].building==='road') road++;
+      if(hasFlag(tiles[n],'road')) road++;
     }
     if(adj===0) continue;                       // mai staccata dalla colonia
     const near=t.center.dot(centre);            // 1 = cuore della colonia
@@ -2737,7 +2767,7 @@ function setInspector(tile){
   if(tile.owner==='you') demoRow.style.display='block';
   if(isMine(tile)){
     const B=BUILDINGS[tile.building], up=$('i-upgrade'), rp=$('i-repair');
-    const canUp=sizeOf(tile)<3&&B.blocks>0&&tile.building!=='road';
+    const canUp=sizeOf(tile)<3&&B.blocks>0&&!B.fixed;
     up.style.display=canUp?'':'none';
     if(canUp){
       up.textContent='amplia a '+(sizeOf(tile)+1)+'× · '+(B.cost.mat||0)+'m'+(B.cost.pow?' '+B.cost.pow+'e':'');
@@ -3010,7 +3040,7 @@ const togglePause=()=>setSpeed(speedMul>0?0:lastSpeed);
    parte nuova, e intanto non produce. Riparare costa materiali in
    proporzione al danno.                                               */
 const canUpgrade=t=>!!t&&isMine(t)&&sizeOf(t)<3&&
-  BUILDINGS[t.building].blocks>0&&t.building!=='road'&&!raidActive;
+  BUILDINGS[t.building].blocks>0&&!BUILDINGS[t.building].fixed&&!raidActive;
 function upgradeBuilding(tile){
   if(!tile||!isMine(tile)) return;
   if(raidActive){ toast('Non si amplia durante un\'incursione.'); return; }

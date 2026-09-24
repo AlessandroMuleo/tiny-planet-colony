@@ -97,7 +97,7 @@ function pickSpot(kind,size){
     let adj=0, road=0;
     for(const n of t.neighbors){
       if(own.has(n)) adj++;
-      if(tiles[n].building==='road') road++;
+      if(hasFlag(tiles[n],'road')) road++;
     }
     if(adj===0) continue;                       // mai staccata dalla colonia
     const near=t.center.dot(centre);            // 1 = cuore della colonia

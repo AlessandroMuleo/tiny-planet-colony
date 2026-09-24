@@ -109,16 +109,15 @@ function rebuildFrameCache(){
   for(const t of tiles){
     if(t.site&&t.owner==='you'){ FC.sites.push(t); continue; }
     if(!t.building) continue;
-    if(t.building==='rtower'&&t.settlement) FC.rtowers.push(t);
+    if(t.settlement&&BUILDINGS[t.building].dps) FC.rtowers.push(t);
     if(t.owner==='rival') FC.rivalB.push(t);
     if(t.owner!=='you') continue;
     FC.mine.push(t);
     if(BUILDINGS[t.building].wall) FC.walls.push(t);
     if(storeOf(t)>0) FC.storage.push(t);
     if(housesOf(t)>0) FC.beds.push(t);
-    if(t.building==='turret') FC.turrets.push(t);
-    if(t.building==='armory'||t.building==='shrine'||t.building==='fort'||
-       t.building==='hut'||t.building==='block') FC.defense.push(t);
+    if(BUILDINGS[t.building].dps) FC.turrets.push(t);
+    if(BUILDINGS[t.building].guard) FC.defense.push(t);
   }
   FC.raiders.length=0;
   FC.bucket.clear();

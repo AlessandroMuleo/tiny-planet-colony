@@ -49,7 +49,7 @@ function addBlockToSite(tile){
     finish(tile, s.kind, tile.owner);
     if(tile.owner==='you'){
       trimWorkers(); syncJobs();
-      if(s.kind!=='road'&&s.kind!=='wall') toast(BUILDINGS[s.kind].name+(was?' ampliata a '+sizeOf(tile)+'×.':' completata.'));
+      if(!BUILDINGS[s.kind].quiet) toast(BUILDINGS[s.kind].name+(was?' ampliata a '+sizeOf(tile)+'×.':' completata.'));
     }
   }
 }

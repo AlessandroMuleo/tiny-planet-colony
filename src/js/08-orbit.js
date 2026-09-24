@@ -89,7 +89,7 @@ function stepMoon(dt,clock){
     if(base.fireT>=ORBITALS.moonbase.every){
       base.fireT=0;
       // parte dal suolo: preferisce la rampa, altrimenti una struttura tua
-      const padTile = FC.mine.find(t=>t.building==='pad')
+      const padTile = FC.mine.find(t=>hasFlag(t,'launch'))
                    || FC.mine.find(t=>t.building==='depot') || FC.mine[0];
       if(padTile){
         markLaunch(padTile);

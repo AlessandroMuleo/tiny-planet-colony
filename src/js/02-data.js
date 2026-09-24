@@ -12,15 +12,26 @@ const BIOMES = {
 /* ── edifici ──────────────────────────────────────────────────────
    cat    = catalogo in cui compare
    blocks = blocchetti che i coloni devono trasportare al cantiere
-   ships  = quanti carichi di prodotto genera (animazione + resa)      */
+   ships  = quanti carichi di prodotto genera (animazione + resa)
+   Il comportamento sta nei campi, non in controlli sul nome sparsi nel
+   codice: un edificio nuovo si aggiunge qui e basta.
+   guard    = le truppe non schierate ci stanno di guardia
+   quiet    = il completamento non si annuncia (strade, mura)
+   fixed    = non si amplia
+   trade    = con addetti: tributi +60% e scambio con i clan
+   heal     = cura i feriti nel raggio (range)
+   dps      = spara da solo nel raggio: tuo contro i nemici, rivale contro chi è in guerra
+   spawns   = genera un'unità ogni "every" secondi, fino a "cap" per struttura
+   core     = cuore di un clan: finché regge, il clan non si assoggetta
+   launch   = da qui si parte per un nuovo mondo (e partono le navette lunari) */
 const BUILDINGS = {
-  hut:    {cat:'base', name:'Capanna',  cost:{mat:10},        blocks:3,  effect:'4 posti letto',        jobs:0, houses:4, hp:25, store:40},
-  block:  {cat:'base', name:'Alloggi',  cost:{mat:34},        blocks:7,  effect:'12 posti letto',       jobs:0, houses:12, hp:40, store:30},
+  hut:    {cat:'base', name:'Capanna',  cost:{mat:10},        blocks:3,  effect:'4 posti letto',        jobs:0, houses:4, hp:25, store:40, guard:true},
+  block:  {cat:'base', name:'Alloggi',  cost:{mat:34},        blocks:7,  effect:'12 posti letto',       jobs:0, houses:12, hp:40, store:30, guard:true},
   farm:   {cat:'base', name:'Fattoria', cost:{mat:14},        blocks:4,  effect:'1,3 cibo a testa',     jobs:2, per:{food:1.3}, ships:'food', hp:25},
   mine:   {cat:'base', name:'Miniera',  cost:{mat:18},        blocks:5,  effect:'0,8 materiali a testa',jobs:3, per:{mat:0.8}, ships:'mat', needs:['rock','soil'], hp:28},
   plant:  {cat:'base', name:'Centrale', cost:{mat:24},        blocks:6,  effect:'2 energia a testa',    jobs:2, per:{pow:2}, hp:28},
   depot:  {cat:'base', name:'Deposito', cost:{mat:22},        blocks:5,  effect:'+150 di capienza',     jobs:0, store:150, hp:30},
-  road:   {cat:'base', name:'Strada',   cost:{mat:4},         blocks:1,  effect:'chi ci passa va il 60% più veloce', jobs:0, road:true, hp:15},
+  road:   {cat:'base', name:'Strada',   cost:{mat:4},         blocks:1,  effect:'chi ci passa va il 60% più veloce', jobs:0, road:true, quiet:true, fixed:true, hp:15},
   workshop:{cat:'base',name:'Officina', cost:{mat:40},        blocks:7,  effect:'converte 1,6 cibo in 1,1 materiali a testa', jobs:3, per:{mat:1.1}, eats:{food:1.6}, ships:'mat', hp:32},
   green:  {cat:'base', name:'Serra',    cost:{mat:48,pow:20}, blocks:8,  effect:'1,5 cibo a testa, immune alle stagioni', jobs:2, per:{food:1.5}, ships:'food', noSeason:true, drain:0.6, hp:28},
   market: {cat:'base', name:'Mercato',  cost:{mat:38},        blocks:6,  effect:'+60% ai tributi e abilita lo scambio', jobs:1, trade:true, hp:30, store:60},
@@ -29,17 +40,18 @@ const BUILDINGS = {
   dock:   {cat:'acqua',name:'Molo',     cost:{mat:12},        blocks:3,  effect:'rende il mare percorribile', jobs:0, water:true, hp:20},
   fishery:{cat:'acqua',name:'Peschiera',cost:{mat:20},        blocks:4,  effect:'1,6 cibo a testa, sul mare', jobs:2, per:{food:1.6}, ships:'food', water:true, hp:22},
 
-  wall:   {cat:'difesa',name:'Mura',    cost:{mat:8},         blocks:2,  effect:'barriera: i nemici non la attraversano', jobs:0, wall:true, hp:120},
-  armory: {cat:'difesa',name:'Armeria', cost:{mat:30},        blocks:7,  effect:'addestra lancieri o arcieri', jobs:3, per:{mat:-0.3}, armory:true, hp:45},
+  wall:   {cat:'difesa',name:'Mura',    cost:{mat:8},         blocks:2,  effect:'barriera: i nemici non la attraversano', jobs:0, wall:true, quiet:true, hp:120},
+  armory: {cat:'difesa',name:'Armeria', cost:{mat:30},        blocks:7,  effect:'addestra lancieri o arcieri', jobs:3, per:{mat:-0.3}, armory:true, guard:true, hp:45},
   turret: {cat:'difesa',name:'Torretta',cost:{mat:40,pow:15}, blocks:8,  effect:'spara da sola sui nemici', jobs:0, drain:0.4, range:5.0, dps:3.5, hp:35},
-  shrine: {cat:'difesa',name:'Santuario',cost:{mat:45,pow:20},blocks:9,  effect:'un guardiano ogni 25s', jobs:0, drain:0.5, spawns:'guardian', every:25, cap:4, hp:40},
-  fort:   {cat:'difesa',name:'Roccaforte',cost:{mat:80,pow:25},blocks:12,effect:'rifugio per bambini e feriti durante le incursioni', jobs:2, drain:0.3, shelter:true, range:4.0, hp:150},
+  shrine: {cat:'difesa',name:'Santuario',cost:{mat:45,pow:20},blocks:9,  effect:'un guardiano ogni 25s', jobs:0, drain:0.5, spawns:'guardian', every:25, cap:4, guard:true, hp:40,
+          spawnMsg:'Il santuario ha generato un guardiano.'},
+  fort:   {cat:'difesa',name:'Roccaforte',cost:{mat:80,pow:25},blocks:12,effect:'rifugio per bambini e feriti durante le incursioni', jobs:2, drain:0.3, shelter:true, range:4.0, guard:true, hp:150},
 
   lab:    {cat:'scienza',name:'Centro ricerca',cost:{mat:55,pow:30}, blocks:9, effect:'0,9 ricerca a testa', jobs:2, per:{sci:0.9}, hp:35},
 
   pad:    {cat:'speciale',name:'Rampa di lancio', cost:{mat:70,pow:40}, blocks:14, effect:'parti per un nuovo mondo', jobs:4, launch:true, hp:50},
 
-  keep:   {cat:null, name:'Roccaforte rivale', cost:{}, blocks:0, effect:'cuore di un popolo rivale', jobs:0, hp:70, rivalOnly:true},
+  keep:   {cat:null, name:'Roccaforte rivale', cost:{}, blocks:0, effect:'cuore di un popolo rivale', jobs:0, hp:70, core:true, rivalOnly:true},
   camp:   {cat:null, name:'Accampamento',      cost:{}, blocks:0, effect:'insediamento rivale',      jobs:0, hp:32, rivalOnly:true},
   rfarm:  {cat:null, name:'Campi rivali',      cost:{}, blocks:0, effect:'nutre l\'espansione del clan', jobs:0, hp:26, rivalOnly:true},
   rtower: {cat:null, name:'Torre rivale',      cost:{}, blocks:0, effect:'difende il territorio del clan', jobs:0, hp:38, range:4.4, dps:2.8, rivalOnly:true}

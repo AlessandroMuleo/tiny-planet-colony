@@ -50,7 +50,7 @@ function setInspector(tile){
   if(tile.owner==='you') demoRow.style.display='block';
   if(isMine(tile)){
     const B=BUILDINGS[tile.building], up=$('i-upgrade'), rp=$('i-repair');
-    const canUp=sizeOf(tile)<3&&B.blocks>0&&tile.building!=='road';
+    const canUp=sizeOf(tile)<3&&B.blocks>0&&!B.fixed;
     up.style.display=canUp?'':'none';
     if(canUp){
       up.textContent='amplia a '+(sizeOf(tile)+1)+'× · '+(B.cost.mat||0)+'m'+(B.cost.pow?' '+B.cost.pow+'e':'');
@@ -323,7 +323,7 @@ const togglePause=()=>setSpeed(speedMul>0?0:lastSpeed);
    parte nuova, e intanto non produce. Riparare costa materiali in
    proporzione al danno.                                               */
 const canUpgrade=t=>!!t&&isMine(t)&&sizeOf(t)<3&&
-  BUILDINGS[t.building].blocks>0&&t.building!=='road'&&!raidActive;
+  BUILDINGS[t.building].blocks>0&&!BUILDINGS[t.building].fixed&&!raidActive;
 function upgradeBuilding(tile){
   if(!tile||!isMine(tile)) return;
   if(raidActive){ toast('Non si amplia durante un\'incursione.'); return; }

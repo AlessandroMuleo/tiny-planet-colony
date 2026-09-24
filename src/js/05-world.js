@@ -1,6 +1,8 @@
 const tileRadius = t => R + BIOMES[t.biome].lift;
 const surfacePos = (t,lift=0) => t.center.clone().multiplyScalar(tileRadius(t)+lift);
 const isMine = t => t.building && t.owner==='you' && !t.site;
+/* la casella ha un edificio con questa proprietà (vedi BUILDINGS) */
+const hasFlag = (t,f) => !!(t.building && BUILDINGS[t.building][f]);
 /* Una struttura sta su una casella sola. La taglia resta, ma vale sui numeri
    — posti di lavoro, letti, capienza, integrità — non sull'area occupata:
    gli edifici che si mangiavano due anelli di caselle erano un pugno in un occhio. */

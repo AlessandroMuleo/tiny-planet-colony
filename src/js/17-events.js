@@ -20,16 +20,12 @@ function stepFX(dt){
 
 /* ═══════════════ eventi casuali ═══════════════
    Ogni 90–170 s (non durante un'incursione) succede qualcosa che la
-   colonia non ha scelto: va gestito, non solo subito.               */
-const EVENTS=['meteor','plague','refugees','harvest'];
-function randomEventTick(){
-  if(worldAge<60||raidActive) return;
-  if(--eventIn>0) return;
-  eventIn=90+Math.floor(Math.random()*80);
-  fireEvent(EVENTS[Math.floor(Math.random()*EVENTS.length)]);
-}
-function fireEvent(kind){
-  if(kind==='meteor'){
+   colonia non ha scelto: va gestito, non solo subito.
+   Ogni evento è una voce della tabella: weight è quanto spesso esce
+   rispetto agli altri, run() lo fa accadere. Un evento nuovo si aggiunge
+   qui senza toccare il resto.                                        */
+const EVENTS={
+  meteor:{weight:1, run(){
     // tre impatti: uno vicino alla colonia, due a caso. Danneggiano ciò che
     // colpiscono ma lasciano frammenti di minerale da raccogliere
     const land=tiles.filter(t=>BIOMES[t.biome].build);
@@ -43,11 +39,12 @@ function fireEvent(kind){
     while(hits.length<3&&land.length) hits.push(land[Math.floor(Math.random()*land.length)]);
     hits.forEach((t,i)=>meteor(t,0.9+i*0.45));
     logEvent('☄ Pioggia di meteoriti in arrivo: tre impatti.');
-  } else if(kind==='plague'){
+  }},
+  plague:{weight:1, run(){
     const healthy=myPeople().filter(u=>!u.wounded&&u.stage!=='child');
-    if(!healthy.length){ eventIn=20; return; }
+    if(!healthy.length){ eventIn=20; return false; }
     // un ospedale funzionante dimezza il contagio
-    const clinic=FC.mine.some(t=>t.building==='clinic'&&(t.workers||0)>0);
+    const clinic=FC.mine.some(t=>hasFlag(t,'heal')&&(t.workers||0)>0);
     const n=Math.max(1,Math.ceil(healthy.length*(clinic?0.1:0.22)));
     for(let i=0;i<n;i++){
       const u=healthy.splice(Math.floor(Math.random()*healthy.length),1)[0];
@@ -57,18 +54,38 @@ function fireEvent(kind){
     trimWorkers(); syncJobs();
     logEvent('🦠 Epidemia: '+n+(n===1?' colono si è ammalato':' coloni si sono ammalati')+
       (clinic?' (l\'ospedale ha contenuto il contagio).':'. Un ospedale con addetti la conterrebbe.'));
-  } else if(kind==='refugees'){
+  }},
+  refugees:{weight:1, run(){
     const free=rates().houses-myPeople().length;
     const n=Math.min(3,free);
-    if(n<=0){ logEvent('🧳 Dei profughi sono passati oltre: non c\'erano letti liberi.'); return; }
+    if(n<=0){ logEvent('🧳 Dei profughi sono passati oltre: non c\'erano letti liberi.'); return false; }
     for(let i=0;i<n;i++) spawnUnit('worker','you',randomHome());   // arrivano adulti
     pop=myPeople().length;
     syncJobs();
     logEvent('🧳 Sono arrivati '+n+(n===1?' profugo: ora è un colono.':' profughi: ora sono coloni.'));
-  } else if(kind==='harvest'){
+  }},
+  harvest:{weight:1, run(){
     boomT=35;
     logEvent('🌾 Annata eccezionale: +40% cibo dai campi per 35 secondi.');
-  }
+  }}
+};
+/* estrazione pesata: con pesi tutti uguali coincide con la vecchia
+   scelta uniforme, e consuma un solo numero casuale */
+function pickEvent(){
+  const keys=Object.keys(EVENTS);
+  const total=keys.reduce((n,k)=>n+EVENTS[k].weight,0);
+  let r=Math.random()*total;
+  for(const k of keys){ r-=EVENTS[k].weight; if(r<0) return k; }
+  return keys[keys.length-1];
+}
+function randomEventTick(){
+  if(worldAge<60||raidActive) return;
+  if(--eventIn>0) return;
+  eventIn=90+Math.floor(Math.random()*80);
+  fireEvent(pickEvent());
+}
+function fireEvent(kind){
+  if(EVENTS[kind].run()===false) return;   // non è successo niente: HUD invariato
   refreshHUD();
 }
 function meteor(tile,delay){

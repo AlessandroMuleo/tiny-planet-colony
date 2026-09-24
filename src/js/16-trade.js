@@ -1,4 +1,4 @@
-const hasMarket = () => FC.mine.some(t=>t.building==='market'&&(t.workers||0)>0);
+const hasMarket = () => FC.mine.some(t=>hasFlag(t,'trade')&&(t.workers||0)>0);
 /* una carovana parte dal clan alleato, cammina fino a un tuo magazzino e scarica */
 function caravanGoal(u){
   if(u.delivered) return u.settlement?u.settlement.core:u.from;

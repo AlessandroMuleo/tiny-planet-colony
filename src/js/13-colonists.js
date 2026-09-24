@@ -151,8 +151,8 @@ function stepUnits(dt){
       u.mesh.quaternion.setFromUnitVectors(UP,dir);
       continue;
     }
-    // solo strade finite: un cantiere ha già building==='road' e dava il bonus
-    const road=t=>t.building==='road'&&!t.site;
+    // solo strade finite: un cantiere ha già il tipo dell'edificio e dava il bonus
+    const road=t=>hasFlag(t,'road')&&!t.site;
     const onRoad=road(u.from)||road(u.to);
     u.t+=dt*u.speed*(onRoad?1.6:1);
     if(u.t>=1){

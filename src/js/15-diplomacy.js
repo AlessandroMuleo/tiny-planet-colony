@@ -21,7 +21,7 @@ function recall(){
 /* Assoggettare invece di radere al suolo: le loro strutture restano in piedi
    e versano un tributo, e i superstiti passano a lavorare per te.        */
 const canSubjugate = s => (s.relation==='ostile') &&
-  !tiles.some(t=>t.settlement===s&&t.building==='keep') &&
+  !tiles.some(t=>t.settlement===s&&hasFlag(t,'core')) &&
   tiles.some(t=>t.settlement===s&&t.building) &&
   !units.some(u=>u.settlement===s);
 function subjugate(s){
