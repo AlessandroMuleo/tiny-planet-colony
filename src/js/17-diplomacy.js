@@ -308,6 +308,7 @@ function diplomacyTick(){
       setTie(s,o,tie(s,o)+pull+(Math.random()-0.5)*0.8);
       if(atWar(s,o)!==was) logEvent(was?'Tregua tra '+s.name+' e '+o.name+'.':'⚔ '+s.name+' e '+o.name+' sono in guerra.');
     }
+    marriageTick(s);
     // migranti: dai clan amici arriva gente, se ci sono letti
     if(s.goodwill>60&&rates().houses>pop&&Math.random()<0.004*(1+techSum('migrants'))){
       const u=spawnUnit('worker','you',s.core);
@@ -315,6 +316,34 @@ function diplomacyTick(){
       shiftGoodwill(s,2,'un loro migrante accolto');
       logEvent(u.name+', dal '+s.name+', si unisce alla colonia.');
     }
+  }
+}
+/* migrazioni in uscita: un colono scontento passa al clan più amico, se c'è.
+   Il clan si rafforza e ti è un po' più vicino. */
+function emigrate(u){
+  const to=settlements.filter(s=>!settled(s)&&s.relation!=='ostile'&&s.goodwill>0)
+    .sort((a,b)=>b.goodwill-a.goodwill)[0];
+  if(!to) return false;
+  to.mat+=15; shiftGoodwill(to,2,'un tuo colono si è unito a loro');
+  logEvent((u.name||'Un colono')+', scontento, lascia la colonia per il '+to.name+'.');
+  return true;
+}
+/* matrimoni: con un alleato molto amico, ogni tanto qualcuno si sposa.
+   Se hai un letto libero lo sposo viene da te, altrimenti il tuo colono va da loro. */
+function marriageTick(s){
+  if(s.relation!=='alleato'||s.goodwill<80||Math.random()>0.0025) return;
+  const adults=myPeople().filter(u=>u.stage==='adult'&&u.kind==='worker'&&u.name);
+  if(!adults.length) return;
+  const u=adults[Math.floor(Math.random()*adults.length)];
+  shiftGoodwill(s,8,'matrimonio');
+  for(const o of settlements) if(o!==s&&!settled(o)) setTie(s,o,tie(s,o)+3);
+  if(rates().houses>pop){
+    const spouse=spawnUnit('worker','you',u.from);
+    spouse.age=AGES.child.until+20; applyAge(spouse); pop++; syncJobs();
+    logEvent('💍 '+u.name+' sposa '+spouse.name+' del '+s.name+', che viene a vivere nella colonia.');
+  } else {
+    const i=units.indexOf(u); killUnit(u,i); pop=Math.max(0,pop-1); trimWorkers(); syncJobs();
+    logEvent('💍 '+u.name+' si sposa nel '+s.name+' e va a vivere da loro: qui non c\'erano letti.');
   }
 }
 /* un predone ucciso vicino a un clan, con tue unità lì accanto: li hai aiutati */

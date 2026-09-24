@@ -3,6 +3,7 @@ try{
   applySeason();
   updateCamera();
   refreshHUD();
+  if(URLP.has('auto')) $('b-auto').click();
   const prev=readSave();
   if(prev&&prev.v===1) toast('C\'è una partita salvata (mondo n° '+prev.worldIndex+'): premi «carica» per riprenderla.');
 }catch(e){ fail(e.message+'\n'+(e.stack||'').split('\n')[1]); }

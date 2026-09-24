@@ -138,6 +138,12 @@ $('b-save').addEventListener('click',()=>saveGame(false));
 $('b-load').addEventListener('click',loadGame);
 $('b-log').addEventListener('click',toggleLog);
 $('b-research').addEventListener('click',toggleResearch);
+$('b-share').addEventListener('click',()=>{
+  const url=location.origin+location.pathname+'?seed='+worldSeed+(worldIndex>1?'&mondo='+worldIndex:'');
+  const done=()=>toast('Link copiato: riapre questo pianeta (seme '+worldSeed+').');
+  if(navigator.clipboard) navigator.clipboard.writeText(url).then(done,()=>toast(url));
+  else toast(url);
+});
 $('b-stats').addEventListener('click',toggleStats);
 $('stats-mode').addEventListener('click',()=>{ statsTable=!statsTable; renderStats(); });
 $('i-upgrade').addEventListener('click',()=>upgradeBuilding(selected));

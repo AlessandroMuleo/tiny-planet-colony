@@ -70,7 +70,7 @@ function generateWorld(seed){
 
   document.getElementById('w-name').textContent=NAMES[(worldIndex-1)%NAMES.length];
   document.getElementById('w-count').textContent=
-    (worldIndex===1?'primo mondo':'mondo n° '+worldIndex)+' · '+trait.name+' ('+trait.note+')'+
+    (worldIndex===1?'primo mondo':'mondo n° '+worldIndex)+' · seme '+worldSeed+' · '+trait.name+' ('+trait.note+')'+
     (worldIndex>1?' · eredità +'+Math.round((legacy()-1)*100)+'%':'');
 }
 

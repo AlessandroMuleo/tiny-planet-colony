@@ -3,7 +3,15 @@
 Colony sim su una geosfera di 1.212 caselle, in un solo file HTML con three.js.
 Logistica a blocchi, stagioni, ricerca, clan rivali, incursioni, spazio.
 
-**Per giocare:** apri `dist/tiny-planet-colony.html` nel browser.
+**Per giocare:** apri `dist/tiny-planet-colony.html` nel browser, oppure
+`index.html`, che ci rimanda. Con GitHub Pages attivo (Settings → Pages →
+*Deploy from a branch*, `main`, cartella `/ (root)`) il gioco è su
+<https://alessandromuleo.github.io/tiny-planet-colony/>.
+
+Parametri dell'indirizzo, utili per condividere un pianeta:
+`?seed=4242` riapre lo stesso mondo, `&mondo=3` parte dal terzo (con i
+clan), `&auto` accende il governatore. Il pulsante «condividi» copia il
+link del pianeta in corso.
 
 ## Struttura
 

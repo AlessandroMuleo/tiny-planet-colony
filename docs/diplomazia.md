@@ -62,10 +62,16 @@ c'è una guarnigione (un soldato ogni tre assoggettati, più uno) e se gli
 assoggettati sono scontenti; scende da solo se sei presente. A 100 il clan
 si ribella: torna ostile e i suoi assoggettati diventano soldati nemici.
 
-## Migranti
+## Migrazioni e matrimoni
 
 Da un clan con benevolenza sopra 60, se hai letti liberi, ogni tanto arriva
-qualcuno a unirsi alla colonia.
+qualcuno a unirsi alla colonia. Al contrario, un colono molto scontento non
+sparisce nel nulla: va dal clan che ti è più amico, che si rafforza (+15
+materiali) e ti è un po' più vicino (+2).
+
+Con un alleato sopra 80 ogni tanto qualcuno si sposa: +8 di benevolenza, e i
+rapporti di quel clan con gli altri migliorano un poco. Se hai un letto
+libero lo sposo viene a vivere da te, altrimenti il tuo colono va da loro.
 
 ## In modalità automatica
 

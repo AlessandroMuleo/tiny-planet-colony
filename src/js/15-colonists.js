@@ -65,12 +65,14 @@ function needsTick(){
     if(u.funT>0) u.funT--;
     // a scuola: il bambino studia il suo mestiere, e da adulto parte avvantaggiato
     if(u.act==='study'&&u.from===u.goal&&u.stage==='child') practice(u,u.study||(u.study=pickStudy()),1.5);
-    // gli assoggettati non se ne vanno: per loro le rivolte arriveranno con la diplomazia
+    // gli assoggettati non se ne vanno: il loro malcontento finisce in rivolta (17-diplomacy)
     if(u.kind==='thrall'||myPeople().length<=1) continue;
     const hungry=n.food<=0&&Math.random()<NEEDS.STARVE_P;
     const unhappy=!hungry&&n.mood<NEEDS.LEAVE_AT&&Math.random()<NEEDS.LEAVE_P;
     if(hungry||unhappy){
       if(hungry) starvedAway(u);
+      // chi se ne va scontento non sparisce: va dal clan che ci è più amico
+      else if(emigrate(u)){ killUnit(u,i); pop=Math.max(0,pop-1); continue; }
       killUnit(u,i); pop=Math.max(0,pop-1);
       if(hungry) starved++; else left++;
     }
