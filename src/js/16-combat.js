@@ -54,6 +54,8 @@ function resolveCombat(dt){
     if(u.faction!=='you'&&u.to&&u.to!==t&&blocksFoe(u.to)) damageBuilding(u.to,dmg*dt);
     if(u.faction==='you'&&t.owner==='rival'&&t.settlement&&t.settlement.relation==='ostile')
       damageBuilding(t,dmg*dt);
+    if(u.faction==='rival'&&u.settlement&&t.settlement&&atWar(u.settlement,t.settlement))
+      damageBuilding(t,dmg*dt);
   }
   for(const t of FC.turrets){
     if(res.pow<=0||!hasFlag(t,'dps')||t.owner!=='you') continue;
@@ -109,6 +111,12 @@ function resolveCombat(dt){
     const u=units[i];
     if(u.hp>0) continue;
     const wasMine=u.faction==='you', kind=u.kind, set=u.settlement;
+    if(kind==='raider') raiderFellNear(u);
+    // un emissario ucciso prima di consegnare il messaggio è un incidente diplomatico
+    if(kind==='envoy'&&set&&!u.delivered){
+      shiftGoodwill(set,-30,'emissario ucciso');
+      logEvent('⚠ L\'emissario di '+set.name+' è stato ucciso: incidente diplomatico.');
+    }
     killUnit(u,i);
     if(wasMine){
       // guardiani e assoggettati non sono "pop": non vanno scalati dalla popolazione

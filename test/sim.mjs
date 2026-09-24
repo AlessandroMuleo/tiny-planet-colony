@@ -29,9 +29,16 @@ const SCENARIOS = [
   { name: 'primo mondo, automatico',     seed: 1,  world: 1, auto: true, survive: true },
   { name: 'primo mondo, automatico #2',  seed: 7,  world: 1, auto: true, survive: true },
   { name: 'primo mondo, senza giocatore',seed: 3,  world: 1, auto: false },
-  { name: 'terzo mondo con rivali',      seed: 11, world: 3, auto: true, survive: true },
+  // expect: messaggi che devono comparire almeno una volta nella partita
+  { name: 'terzo mondo con rivali',      seed: 11, world: 3, auto: true, survive: true, expect: ['📜', 'accetta il dono'] },
   { name: 'quinto mondo con rivali',     seed: 23, world: 5, auto: true, survive: true },
-  { name: 'salva e ricarica a metà',     seed: 5,  world: 3, auto: true, reload: true, survive: true }
+  { name: 'salva e ricarica a metà',     seed: 5,  world: 3, auto: true, reload: true, survive: true },
+  // un clan assoggettato all'inizio, senza guarnigione vicina: deve ribellarsi
+  { name: 'assoggettati senza guarnigione', seed: 11, world: 3, auto: true, expect: ['Rivolta'],
+    setup: `const s=settlements[0]; s.relation='ostile';
+      for(let i=units.length-1;i>=0;i--) if(units[i].settlement===s) killUnit(units[i],i);
+      for(const t of tiles) if(t.settlement===s&&hasFlag(t,'core')) destroyBuilding(t);
+      subjugate(s);` }
 ];
 
 /* Il ciclo di gioco di 23-main.js, senza disegno né requestAnimationFrame,
@@ -136,6 +143,14 @@ function __check(){
     if(s !== b) bad.push('letti su ' + (t.building || 'casella vuota') + ': ' + s + ' segnati, ' + b + ' coloni li tengono');
     if(t.building && isMine(t) && b > housesOf(t)) bad.push(BUILDINGS[t.building].name + ': ' + b + ' coloni a letto su ' + housesOf(t) + ' posti');
   }
+  const RELS = ['ostile','neutrale','alleato','assoggettato','conquistato'];
+  for(const s of settlements){
+    if(!RELS.includes(s.relation)) bad.push(s.name + ': relazione ' + s.relation);
+    if(!__fin(s.goodwill) || s.goodwill < -100 || s.goodwill > 100) bad.push(s.name + ': benevolenza ' + s.goodwill);
+    if(!__fin(s.unrest || 0) || (s.unrest || 0) < 0 || s.unrest > 100) bad.push(s.name + ': malcontento ' + s.unrest);
+    if(s.request && (!(s.request.amount > 0) || !['food','mat'].includes(s.request.kind))) bad.push(s.name + ': richiesta non valida');
+    for(const o of settlements) if(o !== s && atWar(s, o) !== atWar(o, s)) bad.push(s.name + ' e ' + o.name + ': guerra da una parte sola');
+  }
   if(assignedTotal() > workforce()) bad.push('addetti assegnati ' + assignedTotal() + ' oltre le braccia disponibili ' + workforce());
 
   return bad.map(m => ({level: 'errore', tick: __tick, msg: m}))
@@ -184,6 +199,7 @@ function runScenario(sc) {
   const t0 = Date.now();
   try {
     game.run(`__setup(${sc.world}, ${sc.seed}, ${sc.auto})`);
+    if (sc.setup) game.run(sc.setup);
     const dt = 1 / FPS;
     for (let f = 0; f < TICKS * FPS; f++) {
       issues.push(...game.run(`__frame(${dt})`));
@@ -205,6 +221,8 @@ function runScenario(sc) {
     crashed = e;
   }
   const summary = game.run('__summary()');
+  for (const e of sc.expect || [])
+    if (!game.toasts.some(t => t.includes(e))) issues.push({ level: 'errore', tick: summary.tick, msg: 'non è mai comparso «' + e + '»' });
   if (sc.survive && summary.gameOver)
     issues.push({ level: 'errore', tick: summary.tick, msg: 'la colonia si è estinta col governatore attivo' });
   return { sc, issues, crashed, failures: game.failures, summary, toasts: game.toasts, traces, ms: Date.now() - t0 };

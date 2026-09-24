@@ -261,6 +261,7 @@ function economyTick(){
   if(!raidActive){ raidIn--; if(raidIn<=0){ spawnRaid();
     raidIn=Math.round((120+(hasOrbital('eye')?ORBITALS.eye.delay:0))*(trait.raid?0.65:trait.calm?1.5:1)); } }
   for(const s of settlements) rivalThink(s);
+  diplomacyTick();
   if(auto) autoThink();
   refreshHUD(r);
   // l'ispettore mostrava integrità e addetti fermi al momento del clic

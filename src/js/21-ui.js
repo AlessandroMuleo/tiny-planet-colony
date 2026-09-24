@@ -234,57 +234,65 @@ function refreshArmy(){
   // a cavallo del ridisegno finiva su un pulsante già rimosso e si perdeva.
   // Ora si ridisegna solo se cambia qualcosa che si vede.
   const noTroops=myTroops().length===0, mk=hasMarket();
-  const sig=JSON.stringify(settlements.map(s=>[s.name,s.relation,
+  const sig=JSON.stringify(settlements.map(s=>[s.name,s.relation,Math.round(s.goodwill/5),
     tiles.filter(t=>t.settlement===s&&t.building).length,
-    units.filter(u=>u.settlement===s).length,
-    canAlly(s),canSubjugate(s),army.target===s,
+    units.filter(u=>u.settlement===s&&u.kind==='soldier').length,
+    canGift(s),canMakePeace(s),canSubjugate(s),army.target===s,
+    s.request&&[s.request.accepted,s.request.deadline>>2,res[s.request.kind]>=s.request.amount],
+    Math.round((s.unrest||0)/5),settlements.map(o=>atWar(s,o)&&canMediate(s,o)),
     mk&&res.food>=40,mk&&res.mat>=40,noTroops]));
   if(list.dataset.sig===sig) return;
   list.dataset.sig=sig;
   list.innerHTML='';
+  const btn=(parent,label,on,fn,cls)=>{
+    const b=document.createElement('button'); b.textContent=label; b.disabled=!on;
+    if(cls) b.className=cls;
+    b.addEventListener('click',fn); parent.appendChild(b); return b;
+  };
   for(const s of settlements){
     const alive=tiles.filter(t=>t.settlement===s&&t.building).length;
-    const guards=units.filter(u=>u.settlement===s).length;
+    const guards=units.filter(u=>u.settlement===s&&u.kind==='soldier').length;
+    const P=personalityOf(s), g=Math.round(s.goodwill||0);
     const d=document.createElement('div'); d.className='settle';
+    const wars=settlements.filter(o=>atWar(s,o));
     d.innerHTML='<div class="nm">'+s.name+'<span class="rel '+s.relation+'">'+s.relation+'</span></div>'+
-      '<div class="meta">'+alive+' strutture · '+guards+' soldati</div>';
-    const acts=document.createElement('div'); acts.className='acts';
-    if(s.relation!=='conquistato'&&s.relation!=='assoggettato'){
-      const a=document.createElement('button');
-      a.textContent='alleati ('+ALLY_COST.mat+'m)';
-      a.disabled=!canAlly(s);
-      a.addEventListener('click',()=>allyWith(s));
-      acts.appendChild(a);
-      if(canSubjugate(s)){
-        const sub=document.createElement('button');
-        sub.textContent='assoggetta';
-        sub.addEventListener('click',()=>subjugate(s));
-        acts.appendChild(sub);
-      }
-      if(s.relation==='alleato'){
-        const b1=document.createElement('button');
-        b1.textContent='40 cibo → 32 mat';
-        b1.disabled=!hasMarket()||res.food<40;
-        b1.addEventListener('click',()=>tradeWith(s,'buy'));
-        acts.appendChild(b1);
-        const b2=document.createElement('button');
-        b2.textContent='40 mat → 32 cibo';
-        b2.disabled=!hasMarket()||res.mat<40;
-        b2.addEventListener('click',()=>tradeWith(s,'sell'));
-        acts.appendChild(b2);
-      }
-      const w=document.createElement('button'); w.className='war';
-      w.textContent=army.target===s?'richiama':'attacca';
-      w.disabled=myTroops().length===0&&army.target!==s;
-      w.addEventListener('click',()=>army.target===s?recall():declareWar(s));
-      acts.appendChild(w);
-    } else {
-      const a=document.createElement('button');
-      a.textContent=s.relation==='assoggettato'?'assoggettato · tributo 1,4':'conquistato';
-      a.disabled=true;
-      acts.appendChild(a);
+      '<div class="meta"><span title="'+P.note+'">'+P.label+'</span> · '+alive+' strutture · '+guards+' soldati'+
+      (wars.length?' · <span class="war-with">in guerra con '+wars.map(o=>o.name).join(', ')+'</span>':'')+'</div>'+
+      (settled(s)?'':'<div class="gw" title="'+(s.log||[]).join('\n')+'"><div class="gw-bar"><i style="left:'+
+        ((g+100)/2)+'%"></i></div><span>'+(g>0?'+':'')+g+'</span></div>')+
+      (s.relation==='assoggettato'?'<div class="meta">malcontento '+Math.round(s.unrest||0)+'% · guarnigione '+
+        garrisonNear(s)+'</div>':'');
+    if(s.request){
+      const r=s.request, what=r.amount+(r.kind==='food'?' cibo':' materiali');
+      const q=document.createElement('div'); q.className='req';
+      q.innerHTML='<span>📜 chiede '+what+' · '+r.deadline+'s</span>';
+      const qa=document.createElement('div'); qa.className='acts';
+      if(!r.accepted){
+        btn(qa,'accetta',true,()=>answerRequest(s,true));
+        btn(qa,'rifiuta',true,()=>answerRequest(s,false));
+      } else btn(qa,'consegna '+what,res[r.kind]>=r.amount,()=>deliverRequest(s));
+      q.appendChild(qa); d.appendChild(q);
     }
-    d.appendChild(acts); list.appendChild(d);
+    const acts=document.createElement('div'); acts.className='acts';
+    if(!settled(s)){
+      if(s.relation==='ostile') btn(acts,'pace ('+PEACE_COST.mat+'m)',canMakePeace(s),()=>makePeace(s));
+      else btn(acts,'dono ('+GIFT_COST.mat+'m '+GIFT_COST.food+'c)',canGift(s),()=>giftTo(s));
+      if(canSubjugate(s)) btn(acts,'assoggetta',true,()=>subjugate(s));
+      if(s.relation==='alleato'){
+        btn(acts,'40 cibo → 32 mat',hasMarket()&&res.food>=40,()=>tradeWith(s,'buy'));
+        btn(acts,'40 mat → 32 cibo',hasMarket()&&res.mat>=40,()=>tradeWith(s,'sell'));
+      }
+      btn(acts,army.target===s?'richiama':'attacca',!(myTroops().length===0&&army.target!==s),
+        ()=>army.target===s?recall():declareWar(s),'war');
+    } else btn(acts,s.relation==='assoggettato'?'assoggettato · tributo 1,4':'conquistato',false,()=>{});
+    d.appendChild(acts);
+    for(const o of wars){
+      if(s.name>o.name) continue;              // un pulsante per coppia
+      const m=document.createElement('div'); m.className='acts';
+      btn(m,'media la pace con '+o.name+' ('+MEDIATE_COST.mat+'m)',canMediate(s,o),()=>mediate(s,o));
+      d.appendChild(m);
+    }
+    list.appendChild(d);
   }
 }
 

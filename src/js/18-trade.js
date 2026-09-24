@@ -3,16 +3,17 @@ const hasMarket = () => FC.mine.some(t=>hasFlag(t,'trade')&&(t.workers||0)>0);
 function caravanGoal(u){
   if(u.delivered) return u.settlement?u.settlement.core:u.from;
   const st=nearestStorage(u.from);
-  if(st&&u.from===st){
-    const bonus=hasMarket()?1.6:1;
-    const mat=Math.round(u.load*bonus), food=Math.round(u.load*0.5*bonus);
-    res.mat=Math.min(capacity(),res.mat+mat);
-    res.food=Math.min(capacity(),res.food+food);
-    u.delivered=true; dropCarry(u);
-    toast('Carovana di '+(u.settlement?u.settlement.name:'un alleato')+': +'+mat+' materiali, +'+food+' cibo.');
-    refreshHUD();
-  }
+  if(st&&u.from===st) unloadCaravan(u.settlement,u.load,'');
+  if(st&&u.from===st){ u.delivered=true; dropCarry(u); }
   return st||u.from;
+}
+function unloadCaravan(s,load,how){
+  const bonus=hasMarket()?1.6:1;
+  const mat=Math.round(load*bonus), food=Math.round(load*0.5*bonus);
+  res.mat=Math.min(capacity(),res.mat+mat);
+  res.food=Math.min(capacity(),res.food+food);
+  toast('Carovana di '+(s?s.name:'un alleato')+how+': +'+mat+' materiali, +'+food+' cibo.');
+  refreshHUD();
 }
 function sendCaravans(){
   for(const s of settlements){
@@ -22,15 +23,20 @@ function sendCaravans(){
     if(s.tradeT<every) continue;
     s.tradeT=0;
     const home=tiles.find(t=>t.settlement===s&&t.building);
-    if(!home||!FC.storage.length) continue;
+    const P=personalityOf(s);
+    if(!home||!FC.storage.length||!P.caravan&&s.relation!=='assoggettato') continue;
+    const load=Math.round((s.relation==='alleato'?22:14)*(s.relation==='alleato'?P.caravan:1));
+    // prima una carovana da un altro continente vagava per 160 tick e spariva:
+    // ora, se a piedi non si arriva, il carico viene via mare
+    if(!FC.storage.some(t=>reachable(home,t))){ unloadCaravan(s,load,' (via mare)'); continue; }
     const u=spawnUnit('caravan','rival',home);
-    u.settlement=s; u.load=s.relation==='alleato'?22:14; u.delivered=false; u.lifeT=0;
+    u.settlement=s; u.load=load; u.delivered=false; u.lifeT=0;
     takeCarry(u,0xd9a441);
   }
   // le carovane che hanno consegnato tornano a casa e spariscono
   for(let i=units.length-1;i>=0;i--){
     const u=units[i];
-    if(u.kind!=='caravan') continue;
+    if(u.kind!=='caravan'&&u.kind!=='envoy') continue;
     u.lifeT=(u.lifeT||0)+1;
     if(u.lifeT>160||(u.delivered&&u.settlement&&u.from===u.settlement.core)) killUnit(u,i);
   }
@@ -42,10 +48,12 @@ function tradeWith(s,dir){
   if(dir==='buy'){
     if(res.food<40){ toast('Servono 40 cibo.'); return; }
     res.food-=40; res.mat=Math.min(capacity(),res.mat+32);
+    shiftGoodwill(s,3,'scambio al mercato');
     toast('Scambiati 40 cibo per 32 materiali.');
   } else {
     if(res.mat<40){ toast('Servono 40 materiali.'); return; }
     res.mat-=40; res.food=Math.min(capacity(),res.food+32);
+    shiftGoodwill(s,3,'scambio al mercato');
     toast('Scambiati 40 materiali per 32 cibo.');
   }
   refreshHUD();

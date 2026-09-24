@@ -56,9 +56,11 @@ bisogni medi.
 ## La simulazione di prova
 
 Gira il codice vero del gioco (three.js r128, lo stesso della CDN) con DOM e
-renderer finti e `Math.random` a seme fisso. Sei scenari: primo mondo con
-e senza governatore, mondi con clan rivali, e una partita salvata e
-ricaricata a metà. A ogni tick controlla che:
+renderer finti e `Math.random` a seme fisso. Sette scenari: primo mondo con
+e senza governatore, mondi con clan rivali, una partita salvata e ricaricata
+a metà, e un clan assoggettato senza guarnigione. Col governatore la colonia
+deve arrivare viva alla fine, e alcuni scenari devono vedere certi eventi
+(una richiesta di un clan, una rivolta). A ogni tick controlla che:
 
 - `pop` coincida con i coloni che esistono davvero;
 - nessuna risorsa sia negativa, `NaN` o oltre la capienza;
@@ -70,6 +72,8 @@ ricaricata a metà. A ogni tick controlla che:
 - le prenotazioni di blocchi e letti coincidano con chi le tiene, nessun
   cantiere abbia più blocchi prenotati di quanti gliene mancano e nessun
   alloggio più coloni a letto dei posti;
+- benevolenza, malcontento e richieste dei clan siano validi, e le guerre
+  tra clan valgano da entrambe le parti;
 - bisogni, salute e posizioni delle unità siano numeri validi.
 
 Dopo il caricamento a metà partita controlla anche che coloni, bisogni e
@@ -90,6 +94,12 @@ colono ha un nome, da zero a due tratti che correggono le sue curve, e abilità
 che crescono con la pratica. In gioco, selezionando una casella con dei coloni
 l'ispettore mostra nome, tratti, mestiere migliore, bisogni e le tre azioni
 col punteggio più alto.
+
+## Diplomazia
+
+I clan hanno una benevolenza da −100 a +100 e una personalità. Mandano
+emissari con richieste a tempo, si fanno guerra tra loro, e gli assoggettati
+possono ribellarsi. I dettagli sono in [docs/diplomazia.md](docs/diplomazia.md).
 
 ## Aggiungere cose
 

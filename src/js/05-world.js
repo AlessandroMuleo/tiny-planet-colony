@@ -159,6 +159,7 @@ function makeSettlements(start,rnd){
     }
     settlements.push(set);
   }
+  initDiplomacy(rnd);
 }
 
 /* ═══════════════ mesh degli edifici ═══════════════ */

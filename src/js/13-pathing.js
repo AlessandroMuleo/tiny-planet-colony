@@ -84,6 +84,8 @@ function nearestTile(from,test){
 function hostile(a,b){
   if(a.faction===b.faction) return false;
   if(a.faction==='raider'||b.faction==='raider') return true;
+  // due clan in guerra tra loro si combattono (gli emissari non combattono)
+  if(a.faction==='rival'&&b.faction==='rival') return !!(a.settlement&&b.settlement&&atWar(a.settlement,b.settlement));
   const set=a.faction==='rival'?a.settlement:b.settlement;
   return !!set&&set.relation==='ostile';
 }

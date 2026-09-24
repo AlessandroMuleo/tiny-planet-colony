@@ -97,7 +97,16 @@
   .settle .rel.ostile{color:var(--rival)}
   .settle .rel.alleato{color:var(--moss)}
   .settle .meta{font-size:11.5px;color:var(--ink-dim);margin:2px 0 7px}
-  .acts{display:flex;gap:5px}
+  .acts{display:flex;gap:5px;flex-wrap:wrap}
+  .acts+.acts{margin-top:5px}
+  /* benevolenza: una barra da −100 a +100 con lo zero al centro */
+  .gw{display:flex;align-items:center;gap:7px;margin:-3px 0 7px;font-size:11px;color:var(--ink-dim);font-variant-numeric:tabular-nums}
+  .gw-bar{position:relative;flex:1;height:5px;border-radius:3px;
+    background:linear-gradient(90deg,rgba(224,97,107,.55),var(--line) 50%,rgba(143,217,138,.55))}
+  .gw-bar i{position:absolute;top:-2px;width:3px;height:9px;margin-left:-1.5px;border-radius:1px;background:var(--ink)}
+  .settle .war-with{color:var(--rival)}
+  .req{font-size:11.5px;margin:0 0 7px;color:var(--ink)}
+  .req .acts{margin-top:4px}
   .acts button{all:unset;flex:1;text-align:center;padding:6px 4px;border:1px solid var(--line);
     border-radius:3px;font-size:11.5px;cursor:pointer;color:var(--ink-dim);transition:.12s}
   .acts button:hover:not(:disabled){border-color:var(--ember);color:var(--ink)}
@@ -525,7 +534,8 @@ const UNITS = {
   raider:  {label:'predone',   hp:12, dmg:2.6, range:1.1, speed:.34, color:0x9b3fd4},
   soldier: {label:'soldato',   hp:11, dmg:2.2, range:1.1, speed:.42, color:0xe0616b},
   thrall:  {label:'assoggettato', hp:10, dmg:0.4, range:0.9, speed:.42, color:0xb99a86, civil:true},
-  caravan: {label:'carovana',  hp:14, dmg:0,   range:0,   speed:.34, color:0xe8c88a}
+  caravan: {label:'carovana',  hp:14, dmg:0,   range:0,   speed:.34, color:0xe8c88a},
+  envoy:   {label:'emissario', hp:9,  dmg:0,   range:0,   speed:.38, color:0xffe08a}
 };
 const MILITARY = ['spear','bow','guardian'];
 /* chi conta come popolazione: i soldati restano coloni, solo con un altro mestiere */
@@ -752,6 +762,7 @@ function makeSettlements(start,rnd){
     }
     settlements.push(set);
   }
+  initDiplomacy(rnd);
 }
 
 /* ═══════════════ mesh degli edifici ═══════════════ */
@@ -1753,6 +1764,7 @@ function economyTick(){
   if(!raidActive){ raidIn--; if(raidIn<=0){ spawnRaid();
     raidIn=Math.round((120+(hasOrbital('eye')?ORBITALS.eye.delay:0))*(trait.raid?0.65:trait.calm?1.5:1)); } }
   for(const s of settlements) rivalThink(s);
+  diplomacyTick();
   if(auto) autoThink();
   refreshHUD(r);
   // l'ispettore mostrava integrità e addetti fermi al momento del clic
@@ -1876,6 +1888,8 @@ function nearestTile(from,test){
 function hostile(a,b){
   if(a.faction===b.faction) return false;
   if(a.faction==='raider'||b.faction==='raider') return true;
+  // due clan in guerra tra loro si combattono (gli emissari non combattono)
+  if(a.faction==='rival'&&b.faction==='rival') return !!(a.settlement&&b.settlement&&atWar(a.settlement,b.settlement));
   const set=a.faction==='rival'?a.settlement:b.settlement;
   return !!set&&set.relation==='ostile';
 }
@@ -2379,6 +2393,7 @@ function goalTile(u,dt){
   if(u.faction==='rival'){
     const set=u.settlement;
     if(u.kind==='caravan') return caravanGoal(u);
+    if(u.kind==='envoy') return envoyGoal(u);
     if(FC.raiders.length){
       let best=null,bd=-2;
       for(const e of FC.raiders){ const d=u.from.center.dot(e.from.center);
@@ -2386,6 +2401,11 @@ function goalTile(u,dt){
       if(best) return best;
     }
     if(set&&set.relation==='ostile') return nearestOf(u.from,FC.mine);
+    // in guerra con un altro clan: marciano sulle sue strutture
+    if(set) for(const o of settlements) if(atWar(set,o)){
+      const t=nearestOf(u.from,FC.rivalB,x=>x.settlement===o);
+      if(t) return t;
+    }
     return set?set.core:u.from;
   }
   if(UNITS[u.kind].civil) return civilBrain(u,dt);
@@ -2514,6 +2534,8 @@ function resolveCombat(dt){
     if(u.faction!=='you'&&u.to&&u.to!==t&&blocksFoe(u.to)) damageBuilding(u.to,dmg*dt);
     if(u.faction==='you'&&t.owner==='rival'&&t.settlement&&t.settlement.relation==='ostile')
       damageBuilding(t,dmg*dt);
+    if(u.faction==='rival'&&u.settlement&&t.settlement&&atWar(u.settlement,t.settlement))
+      damageBuilding(t,dmg*dt);
   }
   for(const t of FC.turrets){
     if(res.pow<=0||!hasFlag(t,'dps')||t.owner!=='you') continue;
@@ -2569,6 +2591,12 @@ function resolveCombat(dt){
     const u=units[i];
     if(u.hp>0) continue;
     const wasMine=u.faction==='you', kind=u.kind, set=u.settlement;
+    if(kind==='raider') raiderFellNear(u);
+    // un emissario ucciso prima di consegnare il messaggio è un incidente diplomatico
+    if(kind==='envoy'&&set&&!u.delivered){
+      shiftGoodwill(set,-30,'emissario ucciso');
+      logEvent('⚠ L\'emissario di '+set.name+' è stato ucciso: incidente diplomatico.');
+    }
     killUnit(u,i);
     if(wasMine){
       // guardiani e assoggettati non sono "pop": non vanno scalati dalla popolazione
@@ -2629,16 +2657,11 @@ function stepProps(dt){
 }
 
 /* ═══════════════ diplomazia e conquista ═══════════════ */
-const ALLY_COST={mat:40,food:20};
-const canAlly = s => s.relation==='neutrale'&&res.mat>=ALLY_COST.mat&&res.food>=ALLY_COST.food;
-function allyWith(s){
-  if(!canAlly(s)) return;
-  res.mat-=ALLY_COST.mat; res.food-=ALLY_COST.food;
-  s.relation='alleato';
-  toast(s.name+' accetta il dono: alleanza stretta.'); refreshHUD();
-}
+/* l'alleanza non si compra più con un dono solo: i doni alzano la
+   benevolenza (vedi giftTo, più sotto), e a 75 il clan diventa alleato */
 function declareWar(s){
   if(s.relation==='conquistato') return;
+  if(s.relation!=='assoggettato'){ s.goodwill=-100; s.log.unshift('−100 guerra dichiarata'); }
   s.relation='ostile'; army.target=s;
   if(army.size===0) army.size=myTroops().length;
   applyDeploy();
@@ -2657,13 +2680,13 @@ const canSubjugate = s => (s.relation==='ostile') &&
   !units.some(u=>u.settlement===s);
 function subjugate(s){
   if(!canSubjugate(s)) return;
-  s.relation='assoggettato';
+  s.relation='assoggettato'; s.unrest=0; s.request=null;
   const camps=tiles.filter(t=>t.settlement===s&&t.building).length;
   const n=Math.min(6,Math.max(1,Math.floor(camps*0.7)));
   const home=tiles.find(t=>t.settlement===s&&t.building)||s.core;
   for(let i=0;i<n;i++){
     const u=spawnUnit('thrall','you',home);
-    u.stage='adult'; u.age=AGES.child.until;
+    u.stage='adult'; u.age=AGES.child.until; u.origin=s;   // da dove viene: serve per le rivolte
   }
   if(army.target===s) recall();
   syncJobs();
@@ -2674,8 +2697,12 @@ function subjugate(s){
 function checkConquest(s){
   if(s.relation==='conquistato'||s.relation==='assoggettato') return;
   if(tiles.some(t=>t.settlement===s&&t.building)) return;
+  const byYou=s.relation==='ostile';
   s.relation='conquistato';
   for(let i=units.length-1;i>=0;i--) if(units[i].settlement===s) killUnit(units[i],i);
+  // il bottino è tuo solo se eri in guerra con loro: se li hanno distrutti
+  // un altro clan o i predoni, non ti spetta niente
+  if(!byYou){ if(army.target===s) recall(); logEvent(s.name+' è stato spazzato via.'); refreshHUD(); return; }
   // unico punto del codice dove il bottino non era clampato alla capienza:
   // dopo una conquista le scorte potevano superare il tetto mostrato in HUD
   const cap=capacity();
@@ -2705,7 +2732,7 @@ function rivalThink(s){
   // il tetto cresce col tempo e col mondo: l'unico limite vero resta la
   // terra libera intorno a loro. Se li ignori, si prendono il pianeta.
   const cap=12+worldIndex*6+Math.floor(worldAge/150);
-  const troops=units.filter(u=>u.settlement===s).length;
+  const troops=units.filter(u=>u.settlement===s&&u.kind==='soldier').length;
 
   // 1. senza roccaforte non c'è clan: la ricostruiscono per prima cosa
   if(!has('keep')&&s.mat>=RIVAL_COST.keep){
@@ -2730,7 +2757,7 @@ function rivalThink(s){
     }
   }
   // 3. se non c'è più spazio o soldi per costruire, addestrano
-  if(s.mat>=20&&troops<Math.ceil(owned.length*0.8)+2){
+  if(s.mat>=20&&troops<(Math.ceil(owned.length*0.8)+2)*personalityOf(s).troops){
     s.mat-=20;
     const home=owned[Math.floor(Math.random()*owned.length)];
     spawnUnit('soldier','rival',home).settlement=s;
@@ -2753,21 +2780,252 @@ let trait=TRAITS[0];
 const legacy = () => 1 + 0.06*(worldIndex-1);   // +6% a tutto per mondo colonizzato
 
 /* ═══════════════ commercio e carovane ═══════════════ */
+
+/* ═══════════════ benevolenza ═══════════════
+   Il rapporto con un clan non è più una parola ma un numero, da −100 a
+   +100, come in RimWorld. La parola (ostile, neutrale, alleato) si ricava
+   dal numero, con un margine perché non si ribalti per un punto:
+   si diventa ostili a −40 e si torna neutrali sopra −25; alleati a 75,
+   e si smette sotto 60. Col tempo il numero torna verso il carattere
+   naturale del clan.                                                  */
+const GOODWILL = {HOSTILE:-40, UNHOSTILE:-25, ALLY:75, UNALLY:60, DRIFT:0.02};
+const PERSONALITIES = {
+  mercanti:     {label:'mercanti',     natural:20,  gift:1.3, border:0.7, caravan:1.4, troops:0.8,
+                 note:'apprezzano doni e scambi, mandano carovane ricche'},
+  guerrieri:    {label:'guerrieri',    natural:-15, gift:0.8, border:1.2, caravan:0.7, troops:1.4,
+                 note:'si armano in fretta e perdonano poco'},
+  isolazionisti:{label:'isolazionisti',natural:0,   gift:0.7, border:2.0, caravan:0,   troops:1.0,
+                 note:'non commerciano e odiano chi costruisce ai loro confini'}
+};
+const GIFT_COST={mat:40, food:20}, PEACE_COST={mat:60}, MEDIATE_COST={mat:40};
+const personalityOf = s => PERSONALITIES[s.personality]||PERSONALITIES.mercanti;
+const settled = s => s.relation==='conquistato'||s.relation==='assoggettato';
+
+/* dopo aver creato i clan di un mondo: carattere, benevolenza, rapporti tra loro */
+function initDiplomacy(rnd){
+  const ids=Object.keys(PERSONALITIES);
+  for(const s of settlements){
+    s.personality=ids[Math.floor(rnd()*ids.length)];
+    s.goodwill=Math.round(personalityOf(s).natural+rnd()*20-10);
+    s.ties={}; s.request=null; s.reqT=90+Math.floor(rnd()*120);
+    s.unrest=0; s.giftT=0; s.log=[];
+    updateRelation(s,true);
+  }
+  for(const a of settlements) for(const b of settlements)
+    if(a!==b&&a.ties[b.name]===undefined){
+      setTie(a,b,Math.round(rnd()*80-40));
+    }
+}
+/* la parola che corrisponde al numero, con il margine di isteresi */
+function updateRelation(s,silent){
+  if(settled(s)) return;
+  const g=s.goodwill, was=s.relation;
+  let rel=was;
+  if(was==='ostile'){ if(g>GOODWILL.UNHOSTILE) rel=g>=GOODWILL.ALLY?'alleato':'neutrale'; }
+  else if(was==='alleato'){ if(g<GOODWILL.UNALLY) rel=g<=GOODWILL.HOSTILE?'ostile':'neutrale'; }
+  else rel = g<=GOODWILL.HOSTILE?'ostile' : g>=GOODWILL.ALLY?'alleato' : 'neutrale';
+  if(rel===was) return;
+  s.relation=rel;
+  if(rel!=='ostile'&&army.target===s) recall();
+  if(!silent) logEvent(s.name+(rel==='ostile'?' ci è ora ostile.':rel==='alleato'?' è ora nostro alleato.':' torna neutrale.'));
+}
+/* ogni variazione passa di qui: il motivo resta nel registro del clan */
+function shiftGoodwill(s,delta,why){
+  if(!s||settled(s)||!delta) return;
+  s.goodwill=Math.max(-100,Math.min(100,s.goodwill+delta));
+  if(why&&Math.abs(delta)>=1){
+    s.log.unshift((delta>0?'+':'')+Math.round(delta)+' '+why);
+    if(s.log.length>5) s.log.length=5;
+  }
+  updateRelation(s);
+}
+
+/* ── azioni del giocatore ── */
+const canGift = s => !settled(s)&&s.relation!=='ostile'&&(s.giftT||0)<=0&&
+  res.mat>=GIFT_COST.mat&&res.food>=GIFT_COST.food;
+function giftTo(s){
+  if(!canGift(s)) return;
+  res.mat-=GIFT_COST.mat; res.food-=GIFT_COST.food; s.giftT=30;
+  shiftGoodwill(s,25*personalityOf(s).gift,'dono');
+  // aiutare un clan in guerra irrita il suo nemico
+  for(const o of settlements) if(o!==s&&atWar(s,o)) shiftGoodwill(o,-10,'hai aiutato '+s.name);
+  toast(s.name+' accetta il dono ('+Math.round(s.goodwill)+').'); refreshHUD();
+}
+const canMakePeace = s => s.relation==='ostile'&&!settled(s)&&res.mat>=PEACE_COST.mat;
+function makePeace(s){
+  if(!canMakePeace(s)) return;
+  res.mat-=PEACE_COST.mat;
+  if(army.target===s) recall();
+  shiftGoodwill(s,Math.max(35,GOODWILL.UNHOSTILE+5-s.goodwill),'trattato di pace');
+  toast('Offerta di pace a '+s.name+': '+(s.relation==='ostile'?'rifiutata.':'accettata.')); refreshHUD();
+}
+
+/* ── clan tra loro: si alleano o si fanno guerra, e tu puoi mediare ── */
+/* guerra con margine: comincia a −60 e finisce solo sopra −30, altrimenti
+   un rapporto che oscilla intorno alla soglia accendeva e spegneva la
+   guerra ogni pochi secondi */
+const WAR_AT=-60, TRUCE_AT=-30;
+const tie = (a,b) => (a.ties&&a.ties[b.name])||0;
+const atWar = (a,b) => a!==b&&!settled(a)&&!settled(b)&&!!(a.wars&&a.wars[b.name]);
+function setTie(a,b,v){
+  v=Math.max(-100,Math.min(100,v)); a.ties[b.name]=v; b.ties[a.name]=v;
+  a.wars=a.wars||{}; b.wars=b.wars||{};
+  const w = a.wars[b.name] ? v<=TRUCE_AT : v<=WAR_AT;
+  a.wars[b.name]=w; b.wars[a.name]=w;
+}
+const canMediate = (a,b) => atWar(a,b)&&res.mat>=MEDIATE_COST.mat;
+function mediate(a,b){
+  if(!canMediate(a,b)) return;
+  res.mat-=MEDIATE_COST.mat;
+  setTie(a,b,tie(a,b)+45);
+  shiftGoodwill(a,10,'mediazione'); shiftGoodwill(b,10,'mediazione');
+  toast('Mediazione tra '+a.name+' e '+b.name+(atWar(a,b)?': la guerra continua.':': tregua firmata.')); refreshHUD();
+}
+
+/* ── richieste a tempo, portate da un emissario a piedi ── */
+function sendEnvoy(s){
+  const home=tiles.find(t=>t.settlement===s&&t.building);
+  if(!home||!FC.storage.length) return;
+  const kind=s.personality==='guerrieri'?'mat':s.personality==='isolazionisti'?'food':(Math.random()<0.5?'food':'mat');
+  const req={kind, amount:30+10*Math.floor(Math.random()*4), deadline:60};
+  // su un altro continente non si arriva a piedi: il messaggio viene via mare
+  if(!FC.storage.some(t=>reachable(home,t))){ receiveRequest(s,req,' (via mare)'); return; }
+  const u=spawnUnit('envoy','rival',home);
+  u.settlement=s; u.lifeT=0; u.delivered=false; u.req=req;
+  takeCarry(u,0xffe08a);
+}
+function receiveRequest(s,req,how){
+  if(settled(s)||s.relation==='ostile'||s.request) return;
+  s.request={...req, accepted:false};
+  logEvent('📜 '+s.name+' chiede '+req.amount+(req.kind==='food'?' cibo':' materiali')+
+    ' entro '+req.deadline+' secondi'+(how||'')+'.');
+  if(auto) govAnswer(s);
+}
+function envoyGoal(u){
+  if(u.delivered) return u.settlement?u.settlement.core:u.from;
+  const st=nearestStorage(u.from);
+  if(st&&u.from===st){
+    u.delivered=true; dropCarry(u);
+    if(u.settlement) receiveRequest(u.settlement,u.req);
+  }
+  return st||u.from;
+}
+function answerRequest(s,yes){
+  const r=s.request; if(!r||r.accepted) return;
+  if(!yes){ s.request=null; shiftGoodwill(s,-5,'richiesta rifiutata'); toast('Richiesta di '+s.name+' rifiutata.'); refreshHUD(); return; }
+  r.accepted=true; toast('Richiesta di '+s.name+' accettata: consegna entro '+r.deadline+' secondi.'); refreshHUD();
+}
+function deliverRequest(s){
+  const r=s.request; if(!r||!r.accepted||res[r.kind]<r.amount) return;
+  res[r.kind]-=r.amount; s.request=null;
+  shiftGoodwill(s,15*personalityOf(s).gift,'richiesta esaudita');
+  toast(s.name+' ringrazia: richiesta esaudita.'); refreshHUD();
+}
+/* il governatore risponde da solo: accetta solo se può permetterselo */
+function govAnswer(s){
+  const r=s.request; if(!r) return;
+  if(res[r.kind]>=r.amount*1.5){ answerRequest(s,true); deliverRequest(s); }
+  else answerRequest(s,false);
+}
+
+/* ── un tick di diplomazia ── */
+function diplomacyTick(){
+  for(const s of settlements){
+    if(s.relation==='conquistato') continue;
+    if(s.relation==='assoggettato'){ unrestTick(s); continue; }
+    const P=personalityOf(s);
+    // deriva verso il carattere naturale
+    const diff=P.natural-s.goodwill;
+    s.goodwill+=Math.sign(diff)*Math.min(GOODWILL.DRIFT,Math.abs(diff));
+    // costruire ai loro confini li irrita, di continuo
+    let near=0;
+    for(const t of FC.mine) for(const x of s.tiles) if(x.building&&t.center.dot(x.center)>0.985){ near++; break; }
+    if(near){ s.borderAcc=(s.borderAcc||0)+near*0.03*P.border;
+      if(s.borderAcc>=1){ shiftGoodwill(s,-Math.floor(s.borderAcc),'costruisci ai loro confini'); s.borderAcc%=1; } }
+    else updateRelation(s);
+    if(s.giftT>0) s.giftT--;
+    // richieste: una alla volta, portata da un emissario
+    if(s.request){
+      if(--s.request.deadline<=0){
+        const acc=s.request.accepted; s.request=null;
+        shiftGoodwill(s,acc?-20:-8,acc?'promessa non mantenuta':'richiesta ignorata');
+        logEvent(s.name+(acc?': non hai consegnato quanto promesso.':': la richiesta è scaduta senza risposta.'));
+      }
+    } else if(s.relation!=='ostile'&&--s.reqT<=0){
+      s.reqT=150+Math.floor(Math.random()*150);
+      if(!units.some(u=>u.kind==='envoy'&&u.settlement===s&&!u.delivered)) sendEnvoy(s);
+    }
+    // rapporti con gli altri clan: oscillano, i guerrieri litigano più spesso
+    for(const o of settlements){
+      if(o===s||settled(o)||s.name>o.name) continue;
+      const pull=(s.personality==='guerrieri'||o.personality==='guerrieri')?-0.06:
+                 (s.personality==='mercanti'&&o.personality==='mercanti')?0.06:0;
+      const was=atWar(s,o);
+      setTie(s,o,tie(s,o)+pull+(Math.random()-0.5)*0.8);
+      if(atWar(s,o)!==was) logEvent(was?'Tregua tra '+s.name+' e '+o.name+'.':'⚔ '+s.name+' e '+o.name+' sono in guerra.');
+    }
+    // migranti: dai clan amici arriva gente, se ci sono letti
+    if(s.goodwill>60&&rates().houses>pop&&Math.random()<0.004){
+      const u=spawnUnit('worker','you',s.core);
+      u.age=AGES.child.until+10; applyAge(u); pop++; syncJobs();
+      shiftGoodwill(s,2,'un loro migrante accolto');
+      logEvent(u.name+', dal '+s.name+', si unisce alla colonia.');
+    }
+  }
+}
+/* un predone ucciso vicino a un clan, con tue unità lì accanto: li hai aiutati */
+function raiderFellNear(u){
+  for(const s of settlements){
+    if(settled(s)||s.relation==='ostile') continue;
+    if(!s.tiles.some(t=>t.building&&t.center.dot(u.from.center)>0.97)) continue;
+    const helped=units.some(o=>o.faction==='you'&&o.mesh.position.distanceTo(u.mesh.position)<3.5);
+    if(helped) shiftGoodwill(s,6,'aiuto contro i predoni');
+  }
+}
+
+/* ── rivolte: gli assoggettati non restano buoni per sempre ──
+   Il malcontento sale se vicino a loro non c'è una guarnigione e se chi
+   lavora per te è scontento; a 100 si ribellano.                       */
+function garrisonNear(s){
+  return units.filter(u=>u.faction==='you'&&!UNITS[u.kind].civil&&
+    u.from.center.dot(s.core.center)>0.9).length;
+}
+function unrestTick(s){
+  const thralls=units.filter(u=>u.kind==='thrall'&&u.origin===s);
+  const needed=Math.ceil(thralls.length/3)+1;
+  const guard=garrisonNear(s);
+  const mood=thralls.length?thralls.reduce((m,u)=>m+needsOf(u).mood,0)/thralls.length:0.5;
+  s.unrest=Math.max(0,Math.min(100,(s.unrest||0)+Math.max(0,1-guard/needed)*0.4+Math.max(0,0.45-mood)*1.5-0.2));
+  if(s.unrest<100) return;
+  // rivolta: il clan torna ostile e i suoi assoggettati impugnano le armi
+  s.relation='ostile'; s.goodwill=-80; s.unrest=0;
+  s.log.unshift('rivolta');
+  for(let i=units.length-1;i>=0;i--){
+    const u=units[i];
+    if(u.kind!=='thrall'||u.origin!==s) continue;
+    const at=u.from;
+    killUnit(u,i);
+    spawnUnit('soldier','rival',at).settlement=s;
+  }
+  trimWorkers(); syncJobs();
+  logEvent('🔥 Rivolta! '+s.name+' si ribella: gli assoggettati hanno preso le armi.');
+}
 const hasMarket = () => FC.mine.some(t=>hasFlag(t,'trade')&&(t.workers||0)>0);
 /* una carovana parte dal clan alleato, cammina fino a un tuo magazzino e scarica */
 function caravanGoal(u){
   if(u.delivered) return u.settlement?u.settlement.core:u.from;
   const st=nearestStorage(u.from);
-  if(st&&u.from===st){
-    const bonus=hasMarket()?1.6:1;
-    const mat=Math.round(u.load*bonus), food=Math.round(u.load*0.5*bonus);
-    res.mat=Math.min(capacity(),res.mat+mat);
-    res.food=Math.min(capacity(),res.food+food);
-    u.delivered=true; dropCarry(u);
-    toast('Carovana di '+(u.settlement?u.settlement.name:'un alleato')+': +'+mat+' materiali, +'+food+' cibo.');
-    refreshHUD();
-  }
+  if(st&&u.from===st) unloadCaravan(u.settlement,u.load,'');
+  if(st&&u.from===st){ u.delivered=true; dropCarry(u); }
   return st||u.from;
+}
+function unloadCaravan(s,load,how){
+  const bonus=hasMarket()?1.6:1;
+  const mat=Math.round(load*bonus), food=Math.round(load*0.5*bonus);
+  res.mat=Math.min(capacity(),res.mat+mat);
+  res.food=Math.min(capacity(),res.food+food);
+  toast('Carovana di '+(s?s.name:'un alleato')+how+': +'+mat+' materiali, +'+food+' cibo.');
+  refreshHUD();
 }
 function sendCaravans(){
   for(const s of settlements){
@@ -2777,15 +3035,20 @@ function sendCaravans(){
     if(s.tradeT<every) continue;
     s.tradeT=0;
     const home=tiles.find(t=>t.settlement===s&&t.building);
-    if(!home||!FC.storage.length) continue;
+    const P=personalityOf(s);
+    if(!home||!FC.storage.length||!P.caravan&&s.relation!=='assoggettato') continue;
+    const load=Math.round((s.relation==='alleato'?22:14)*(s.relation==='alleato'?P.caravan:1));
+    // prima una carovana da un altro continente vagava per 160 tick e spariva:
+    // ora, se a piedi non si arriva, il carico viene via mare
+    if(!FC.storage.some(t=>reachable(home,t))){ unloadCaravan(s,load,' (via mare)'); continue; }
     const u=spawnUnit('caravan','rival',home);
-    u.settlement=s; u.load=s.relation==='alleato'?22:14; u.delivered=false; u.lifeT=0;
+    u.settlement=s; u.load=load; u.delivered=false; u.lifeT=0;
     takeCarry(u,0xd9a441);
   }
   // le carovane che hanno consegnato tornano a casa e spariscono
   for(let i=units.length-1;i>=0;i--){
     const u=units[i];
-    if(u.kind!=='caravan') continue;
+    if(u.kind!=='caravan'&&u.kind!=='envoy') continue;
     u.lifeT=(u.lifeT||0)+1;
     if(u.lifeT>160||(u.delivered&&u.settlement&&u.from===u.settlement.core)) killUnit(u,i);
   }
@@ -2797,10 +3060,12 @@ function tradeWith(s,dir){
   if(dir==='buy'){
     if(res.food<40){ toast('Servono 40 cibo.'); return; }
     res.food-=40; res.mat=Math.min(capacity(),res.mat+32);
+    shiftGoodwill(s,3,'scambio al mercato');
     toast('Scambiati 40 cibo per 32 materiali.');
   } else {
     if(res.mat<40){ toast('Servono 40 materiali.'); return; }
     res.mat-=40; res.food=Math.min(capacity(),res.food+32);
+    shiftGoodwill(s,3,'scambio al mercato');
     toast('Scambiati 40 materiali per 32 cibo.');
   }
   refreshHUD();
@@ -3178,7 +3443,17 @@ function autoThink(){
       }
     }
   }
-  for(const s of settlements) if(canAlly(s)&&res.mat>110) allyWith(s);
+  // diplomazia: doni finché non sono alleati, pace con chi è ostile se non c'è
+  // un esercito schierato, e le richieste in sospeso
+  for(const s of settlements){
+    if(canGift(s)&&s.goodwill<GOODWILL.ALLY&&res.mat>110) giftTo(s);
+    else if(canMakePeace(s)&&army.target!==s&&res.mat>140) makePeace(s);
+    // due clan amici in guerra tra loro: meglio la pace, i commerci ne soffrono
+    for(const o of settlements)
+      if(atWar(s,o)&&s.goodwill>20&&o.goodwill>20&&res.mat>150&&canMediate(s,o)) mediate(s,o);
+    if(s.request&&!s.request.accepted) govAnswer(s);
+    else if(s.request&&s.request.accepted&&res[s.request.kind]>=s.request.amount) deliverRequest(s);
+  }
 }
 /* Prima sceglieva a caso tra le caselle confinanti, e la colonia si sfilacciava.
    Ora ogni candidata riceve un punteggio: quanti tuoi edifici tocca, quanto è
@@ -3459,57 +3734,65 @@ function refreshArmy(){
   // a cavallo del ridisegno finiva su un pulsante già rimosso e si perdeva.
   // Ora si ridisegna solo se cambia qualcosa che si vede.
   const noTroops=myTroops().length===0, mk=hasMarket();
-  const sig=JSON.stringify(settlements.map(s=>[s.name,s.relation,
+  const sig=JSON.stringify(settlements.map(s=>[s.name,s.relation,Math.round(s.goodwill/5),
     tiles.filter(t=>t.settlement===s&&t.building).length,
-    units.filter(u=>u.settlement===s).length,
-    canAlly(s),canSubjugate(s),army.target===s,
+    units.filter(u=>u.settlement===s&&u.kind==='soldier').length,
+    canGift(s),canMakePeace(s),canSubjugate(s),army.target===s,
+    s.request&&[s.request.accepted,s.request.deadline>>2,res[s.request.kind]>=s.request.amount],
+    Math.round((s.unrest||0)/5),settlements.map(o=>atWar(s,o)&&canMediate(s,o)),
     mk&&res.food>=40,mk&&res.mat>=40,noTroops]));
   if(list.dataset.sig===sig) return;
   list.dataset.sig=sig;
   list.innerHTML='';
+  const btn=(parent,label,on,fn,cls)=>{
+    const b=document.createElement('button'); b.textContent=label; b.disabled=!on;
+    if(cls) b.className=cls;
+    b.addEventListener('click',fn); parent.appendChild(b); return b;
+  };
   for(const s of settlements){
     const alive=tiles.filter(t=>t.settlement===s&&t.building).length;
-    const guards=units.filter(u=>u.settlement===s).length;
+    const guards=units.filter(u=>u.settlement===s&&u.kind==='soldier').length;
+    const P=personalityOf(s), g=Math.round(s.goodwill||0);
     const d=document.createElement('div'); d.className='settle';
+    const wars=settlements.filter(o=>atWar(s,o));
     d.innerHTML='<div class="nm">'+s.name+'<span class="rel '+s.relation+'">'+s.relation+'</span></div>'+
-      '<div class="meta">'+alive+' strutture · '+guards+' soldati</div>';
-    const acts=document.createElement('div'); acts.className='acts';
-    if(s.relation!=='conquistato'&&s.relation!=='assoggettato'){
-      const a=document.createElement('button');
-      a.textContent='alleati ('+ALLY_COST.mat+'m)';
-      a.disabled=!canAlly(s);
-      a.addEventListener('click',()=>allyWith(s));
-      acts.appendChild(a);
-      if(canSubjugate(s)){
-        const sub=document.createElement('button');
-        sub.textContent='assoggetta';
-        sub.addEventListener('click',()=>subjugate(s));
-        acts.appendChild(sub);
-      }
-      if(s.relation==='alleato'){
-        const b1=document.createElement('button');
-        b1.textContent='40 cibo → 32 mat';
-        b1.disabled=!hasMarket()||res.food<40;
-        b1.addEventListener('click',()=>tradeWith(s,'buy'));
-        acts.appendChild(b1);
-        const b2=document.createElement('button');
-        b2.textContent='40 mat → 32 cibo';
-        b2.disabled=!hasMarket()||res.mat<40;
-        b2.addEventListener('click',()=>tradeWith(s,'sell'));
-        acts.appendChild(b2);
-      }
-      const w=document.createElement('button'); w.className='war';
-      w.textContent=army.target===s?'richiama':'attacca';
-      w.disabled=myTroops().length===0&&army.target!==s;
-      w.addEventListener('click',()=>army.target===s?recall():declareWar(s));
-      acts.appendChild(w);
-    } else {
-      const a=document.createElement('button');
-      a.textContent=s.relation==='assoggettato'?'assoggettato · tributo 1,4':'conquistato';
-      a.disabled=true;
-      acts.appendChild(a);
+      '<div class="meta"><span title="'+P.note+'">'+P.label+'</span> · '+alive+' strutture · '+guards+' soldati'+
+      (wars.length?' · <span class="war-with">in guerra con '+wars.map(o=>o.name).join(', ')+'</span>':'')+'</div>'+
+      (settled(s)?'':'<div class="gw" title="'+(s.log||[]).join('\n')+'"><div class="gw-bar"><i style="left:'+
+        ((g+100)/2)+'%"></i></div><span>'+(g>0?'+':'')+g+'</span></div>')+
+      (s.relation==='assoggettato'?'<div class="meta">malcontento '+Math.round(s.unrest||0)+'% · guarnigione '+
+        garrisonNear(s)+'</div>':'');
+    if(s.request){
+      const r=s.request, what=r.amount+(r.kind==='food'?' cibo':' materiali');
+      const q=document.createElement('div'); q.className='req';
+      q.innerHTML='<span>📜 chiede '+what+' · '+r.deadline+'s</span>';
+      const qa=document.createElement('div'); qa.className='acts';
+      if(!r.accepted){
+        btn(qa,'accetta',true,()=>answerRequest(s,true));
+        btn(qa,'rifiuta',true,()=>answerRequest(s,false));
+      } else btn(qa,'consegna '+what,res[r.kind]>=r.amount,()=>deliverRequest(s));
+      q.appendChild(qa); d.appendChild(q);
     }
-    d.appendChild(acts); list.appendChild(d);
+    const acts=document.createElement('div'); acts.className='acts';
+    if(!settled(s)){
+      if(s.relation==='ostile') btn(acts,'pace ('+PEACE_COST.mat+'m)',canMakePeace(s),()=>makePeace(s));
+      else btn(acts,'dono ('+GIFT_COST.mat+'m '+GIFT_COST.food+'c)',canGift(s),()=>giftTo(s));
+      if(canSubjugate(s)) btn(acts,'assoggetta',true,()=>subjugate(s));
+      if(s.relation==='alleato'){
+        btn(acts,'40 cibo → 32 mat',hasMarket()&&res.food>=40,()=>tradeWith(s,'buy'));
+        btn(acts,'40 mat → 32 cibo',hasMarket()&&res.mat>=40,()=>tradeWith(s,'sell'));
+      }
+      btn(acts,army.target===s?'richiama':'attacca',!(myTroops().length===0&&army.target!==s),
+        ()=>army.target===s?recall():declareWar(s),'war');
+    } else btn(acts,s.relation==='assoggettato'?'assoggettato · tributo 1,4':'conquistato',false,()=>{});
+    d.appendChild(acts);
+    for(const o of wars){
+      if(s.name>o.name) continue;              // un pulsante per coppia
+      const m=document.createElement('div'); m.className='acts';
+      btn(m,'media la pace con '+o.name+' ('+MEDIATE_COST.mat+'m)',canMediate(s,o),()=>mediate(s,o));
+      d.appendChild(m);
+    }
+    list.appendChild(d);
   }
 }
 
@@ -3621,7 +3904,9 @@ function snapshot(){
     eventIn, boomT, padCargoMat, padCargoFood, grief,
     army:{size:army.size, target:si(army.target)},
     settlements:settlements.map(s=>({name:s.name, core:s.core.id, relation:s.relation,
-      mat:s.mat, thinkT:s.thinkT, tradeT:s.tradeT||0})),
+      mat:s.mat, thinkT:s.thinkT, tradeT:s.tradeT||0,
+      pers:s.personality, gw:s.goodwill, ties:s.ties, req:s.request, reqT:s.reqT,
+      unrest:s.unrest||0, giftT:s.giftT||0, log:s.log, wars:s.wars})),
     tiles:tiles.filter(t=>t.building).map(t=>({id:t.id, b:t.building, o:t.owner, sz:sizeOf(t),
       hp:t.hp, w:t.workers||0, un:t.unit, set:si(t.settlement), sp:t.spawnT||0,
       st:t.site?{need:t.site.need, have:t.site.have, up:!!t.site.upgrade}:null})),
@@ -3629,7 +3914,7 @@ function snapshot(){
       wd:!!u.wounded, set:si(u.settlement), dep:!!u.deployed,
       load:u.load, dl:!!u.delivered, life:u.lifeT||0,
       nd:u.needs?[u.needs.food,u.needs.rest,u.needs.mood]:null,
-      nm:u.name, tr:u.traits, sk:u.skills})),
+      nm:u.name, tr:u.traits, sk:u.skills, org:si(u.origin), rq:u.req||null})),
     orbit:orbit.map(o=>o.kind), moonCrew:moonCrew.length};
 }
 function saveGame(silent){
@@ -3667,6 +3952,14 @@ function restore(d){
     trait=TRAITS.find(x=>x.id===d.trait)||trait;
     settlements=d.settlements.map(s=>({name:s.name, core:tiles[s.core], relation:s.relation,
       tiles:[], mat:s.mat, thinkT:s.thinkT, tradeT:s.tradeT}));
+    // salvataggi di prima della benevolenza: si ricava un numero dalla parola
+    const gw0={ostile:-60, neutrale:0, alleato:80};
+    settlements.forEach((s,i)=>{
+      const e=d.settlements[i];
+      Object.assign(s,{personality:PERSONALITIES[e.pers]?e.pers:'mercanti',
+        goodwill:e.gw!==undefined?e.gw:(gw0[s.relation]||0), ties:e.ties||{}, request:e.req||null,
+        reqT:e.reqT||120, unrest:e.unrest||0, giftT:e.giftT||0, log:e.log||[], wars:e.wars||{}});
+    });
     for(const e of d.tiles){
       const t=tiles[e.id];
       if(!t||!BUILDINGS[e.b]) continue;
@@ -3694,6 +3987,8 @@ function restore(d){
       // salvataggi di prima dei bisogni: il colono parte sazio e riposato
       if(e.nd) u.needs={food:e.nd[0], rest:e.nd[1], mood:e.nd[2]};
       if(e.nm){ u.name=e.nm; u.traits=(e.tr||[]).filter(id=>PERSON_TRAITS[id]); u.skills={...(e.sk||{})}; }
+      if(e.org>=0&&settlements[e.org]) u.origin=settlements[e.org];
+      if(e.k==='envoy'){ u.lifeT=e.life; u.req=e.rq; u.delivered=e.dl||!e.rq; if(!u.delivered) takeCarry(u,0xffe08a); }
       if(e.k==='caravan'){ u.load=e.load; u.delivered=e.dl; u.lifeT=e.life; if(!e.dl) takeCarry(u,0xd9a441); }
     }
     Object.assign(res,d.res);

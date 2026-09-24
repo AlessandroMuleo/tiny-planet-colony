@@ -104,7 +104,8 @@ const UNITS = {
   raider:  {label:'predone',   hp:12, dmg:2.6, range:1.1, speed:.34, color:0x9b3fd4},
   soldier: {label:'soldato',   hp:11, dmg:2.2, range:1.1, speed:.42, color:0xe0616b},
   thrall:  {label:'assoggettato', hp:10, dmg:0.4, range:0.9, speed:.42, color:0xb99a86, civil:true},
-  caravan: {label:'carovana',  hp:14, dmg:0,   range:0,   speed:.34, color:0xe8c88a}
+  caravan: {label:'carovana',  hp:14, dmg:0,   range:0,   speed:.34, color:0xe8c88a},
+  envoy:   {label:'emissario', hp:9,  dmg:0,   range:0,   speed:.38, color:0xffe08a}
 };
 const MILITARY = ['spear','bow','guardian'];
 /* chi conta come popolazione: i soldati restano coloni, solo con un altro mestiere */

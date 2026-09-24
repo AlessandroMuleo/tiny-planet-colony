@@ -341,6 +341,7 @@ function goalTile(u,dt){
   if(u.faction==='rival'){
     const set=u.settlement;
     if(u.kind==='caravan') return caravanGoal(u);
+    if(u.kind==='envoy') return envoyGoal(u);
     if(FC.raiders.length){
       let best=null,bd=-2;
       for(const e of FC.raiders){ const d=u.from.center.dot(e.from.center);
@@ -348,6 +349,11 @@ function goalTile(u,dt){
       if(best) return best;
     }
     if(set&&set.relation==='ostile') return nearestOf(u.from,FC.mine);
+    // in guerra con un altro clan: marciano sulle sue strutture
+    if(set) for(const o of settlements) if(atWar(set,o)){
+      const t=nearestOf(u.from,FC.rivalB,x=>x.settlement===o);
+      if(t) return t;
+    }
     return set?set.core:u.from;
   }
   if(UNITS[u.kind].civil) return civilBrain(u,dt);

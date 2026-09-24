@@ -9,7 +9,9 @@ function snapshot(){
     eventIn, boomT, padCargoMat, padCargoFood, grief,
     army:{size:army.size, target:si(army.target)},
     settlements:settlements.map(s=>({name:s.name, core:s.core.id, relation:s.relation,
-      mat:s.mat, thinkT:s.thinkT, tradeT:s.tradeT||0})),
+      mat:s.mat, thinkT:s.thinkT, tradeT:s.tradeT||0,
+      pers:s.personality, gw:s.goodwill, ties:s.ties, req:s.request, reqT:s.reqT,
+      unrest:s.unrest||0, giftT:s.giftT||0, log:s.log, wars:s.wars})),
     tiles:tiles.filter(t=>t.building).map(t=>({id:t.id, b:t.building, o:t.owner, sz:sizeOf(t),
       hp:t.hp, w:t.workers||0, un:t.unit, set:si(t.settlement), sp:t.spawnT||0,
       st:t.site?{need:t.site.need, have:t.site.have, up:!!t.site.upgrade}:null})),
@@ -17,7 +19,7 @@ function snapshot(){
       wd:!!u.wounded, set:si(u.settlement), dep:!!u.deployed,
       load:u.load, dl:!!u.delivered, life:u.lifeT||0,
       nd:u.needs?[u.needs.food,u.needs.rest,u.needs.mood]:null,
-      nm:u.name, tr:u.traits, sk:u.skills})),
+      nm:u.name, tr:u.traits, sk:u.skills, org:si(u.origin), rq:u.req||null})),
     orbit:orbit.map(o=>o.kind), moonCrew:moonCrew.length};
 }
 function saveGame(silent){
@@ -55,6 +57,14 @@ function restore(d){
     trait=TRAITS.find(x=>x.id===d.trait)||trait;
     settlements=d.settlements.map(s=>({name:s.name, core:tiles[s.core], relation:s.relation,
       tiles:[], mat:s.mat, thinkT:s.thinkT, tradeT:s.tradeT}));
+    // salvataggi di prima della benevolenza: si ricava un numero dalla parola
+    const gw0={ostile:-60, neutrale:0, alleato:80};
+    settlements.forEach((s,i)=>{
+      const e=d.settlements[i];
+      Object.assign(s,{personality:PERSONALITIES[e.pers]?e.pers:'mercanti',
+        goodwill:e.gw!==undefined?e.gw:(gw0[s.relation]||0), ties:e.ties||{}, request:e.req||null,
+        reqT:e.reqT||120, unrest:e.unrest||0, giftT:e.giftT||0, log:e.log||[], wars:e.wars||{}});
+    });
     for(const e of d.tiles){
       const t=tiles[e.id];
       if(!t||!BUILDINGS[e.b]) continue;
@@ -82,6 +92,8 @@ function restore(d){
       // salvataggi di prima dei bisogni: il colono parte sazio e riposato
       if(e.nd) u.needs={food:e.nd[0], rest:e.nd[1], mood:e.nd[2]};
       if(e.nm){ u.name=e.nm; u.traits=(e.tr||[]).filter(id=>PERSON_TRAITS[id]); u.skills={...(e.sk||{})}; }
+      if(e.org>=0&&settlements[e.org]) u.origin=settlements[e.org];
+      if(e.k==='envoy'){ u.lifeT=e.life; u.req=e.rq; u.delivered=e.dl||!e.rq; if(!u.delivered) takeCarry(u,0xffe08a); }
       if(e.k==='caravan'){ u.load=e.load; u.delivered=e.dl; u.lifeT=e.life; if(!e.dl) takeCarry(u,0xd9a441); }
     }
     Object.assign(res,d.res);

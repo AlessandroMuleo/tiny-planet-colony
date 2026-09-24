@@ -179,7 +179,17 @@ function autoThink(){
       }
     }
   }
-  for(const s of settlements) if(canAlly(s)&&res.mat>110) allyWith(s);
+  // diplomazia: doni finché non sono alleati, pace con chi è ostile se non c'è
+  // un esercito schierato, e le richieste in sospeso
+  for(const s of settlements){
+    if(canGift(s)&&s.goodwill<GOODWILL.ALLY&&res.mat>110) giftTo(s);
+    else if(canMakePeace(s)&&army.target!==s&&res.mat>140) makePeace(s);
+    // due clan amici in guerra tra loro: meglio la pace, i commerci ne soffrono
+    for(const o of settlements)
+      if(atWar(s,o)&&s.goodwill>20&&o.goodwill>20&&res.mat>150&&canMediate(s,o)) mediate(s,o);
+    if(s.request&&!s.request.accepted) govAnswer(s);
+    else if(s.request&&s.request.accepted&&res[s.request.kind]>=s.request.amount) deliverRequest(s);
+  }
 }
 /* Prima sceglieva a caso tra le caselle confinanti, e la colonia si sfilacciava.
    Ora ogni candidata riceve un punteggio: quanti tuoi edifici tocca, quanto è
