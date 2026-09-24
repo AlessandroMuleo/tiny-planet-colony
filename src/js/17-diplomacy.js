@@ -187,7 +187,7 @@ const canGift = s => !settled(s)&&s.relation!=='ostile'&&(s.giftT||0)<=0&&
 function giftTo(s){
   if(!canGift(s)) return;
   res.mat-=GIFT_COST.mat; res.food-=GIFT_COST.food; s.giftT=30;
-  shiftGoodwill(s,25*personalityOf(s).gift*(activeFlag('embassy')?1.5:1),'dono');
+  shiftGoodwill(s,25*personalityOf(s).gift*(activeFlag('embassy')?1.5:1)*(1+techSum('gift')),'dono');
   // aiutare un clan in guerra irrita il suo nemico
   for(const o of settlements) if(o!==s&&atWar(s,o)) shiftGoodwill(o,-10,'hai aiutato '+s.name);
   toast(s.name+' accetta il dono ('+Math.round(s.goodwill)+').'); refreshHUD();
@@ -260,7 +260,7 @@ function answerRequest(s,yes){
 function deliverRequest(s){
   const r=s.request; if(!r||!r.accepted||res[r.kind]<r.amount) return;
   res[r.kind]-=r.amount; s.request=null;
-  shiftGoodwill(s,15*personalityOf(s).gift,'richiesta esaudita');
+  shiftGoodwill(s,15*personalityOf(s).gift*(1+techSum('gift')),'richiesta esaudita');
   toast(s.name+' ringrazia: richiesta esaudita.'); refreshHUD();
 }
 /* il governatore risponde da solo: accetta solo se può permetterselo */
@@ -309,7 +309,7 @@ function diplomacyTick(){
       if(atWar(s,o)!==was) logEvent(was?'Tregua tra '+s.name+' e '+o.name+'.':'⚔ '+s.name+' e '+o.name+' sono in guerra.');
     }
     // migranti: dai clan amici arriva gente, se ci sono letti
-    if(s.goodwill>60&&rates().houses>pop&&Math.random()<0.004){
+    if(s.goodwill>60&&rates().houses>pop&&Math.random()<0.004*(1+techSum('migrants'))){
       const u=spawnUnit('worker','you',s.core);
       u.age=AGES.child.until+10; applyAge(u); pop++; syncJobs();
       shiftGoodwill(s,2,'un loro migrante accolto');
@@ -339,7 +339,8 @@ function unrestTick(s){
   const needed=Math.ceil(thralls.length/3)+1;
   const guard=garrisonNear(s);
   const mood=thralls.length?thralls.reduce((m,u)=>m+needsOf(u).mood,0)/thralls.length:0.5;
-  s.unrest=Math.max(0,Math.min(100,(s.unrest||0)+Math.max(0,1-guard/needed)*0.4+Math.max(0,0.45-mood)*1.5-0.2));
+  const grow=(Math.max(0,1-guard/needed)*0.4+Math.max(0,0.45-mood)*1.5)*(1-techSum('unrest'));
+  s.unrest=Math.max(0,Math.min(100,(s.unrest||0)+grow-0.2));
   if(s.unrest<100) return;
   // rivolta: il clan torna ostile e i suoi assoggettati impugnano le armi
   s.relation='ostile'; s.goodwill=-80; s.unrest=0;

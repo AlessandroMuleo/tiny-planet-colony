@@ -63,6 +63,48 @@
   .fill.danger{margin-left:0;border-color:rgba(224,97,107,.45);color:var(--rival)}
   .fill.danger:hover:not(:disabled){border-color:var(--rival);color:var(--ink)}
   .demo{display:none;margin-top:9px}
+  .muted{color:var(--ink-dim);font-size:11.5px;font-weight:400}
+  /* albero della ricerca */
+  /* sotto la barra dei comandi, che deve restare cliccabile */
+  .research,.stats{left:50%;top:150px;transform:translateX(-50%);width:min(760px,calc(100vw - 32px));
+    max-height:calc(100vh - 250px);overflow-y:auto;display:none;z-index:55}
+  .research.on,.stats.on{display:block}
+  .research h3,.stats h3{margin:0 0 10px;font-size:13px;font-weight:500;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+  .tree{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+  .branch h4{margin:0 0 6px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-dim)}
+  .node{all:unset;box-sizing:border-box;display:block;width:100%;margin-bottom:6px;padding:7px 8px;border:1px solid var(--line);
+    border-radius:4px;cursor:pointer;font-size:11.5px;color:var(--ink-dim)}
+  .node b{display:block;color:var(--ink);font-weight:500;font-size:12.5px}
+  .node span{display:block;margin:2px 0}
+  .node em{font-style:normal;font-size:11px}
+  .node:hover:not(:disabled){border-color:var(--ember)}
+  .node:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+  .node:disabled{cursor:default;opacity:.45}
+  .node.done{opacity:1;border-color:rgba(143,217,138,.5)} .node.done em{color:var(--moss)}
+  .node.cur{border-color:var(--ember)} .node.cur em{color:var(--ember)}
+  /* statistiche: piccoli multipli, una serie per grafico */
+  .link{all:unset;cursor:pointer;font-size:11.5px;color:var(--ember)}
+  .link:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+  #stats-body{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+  .sc{margin:0}
+  .sc figcaption{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-dim);margin-bottom:3px}
+  .sc figcaption b{color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums}
+  .sc-wrap{position:relative}
+  .sc-svg{display:block;width:100%;height:auto;overflow:visible}
+  .sc-svg .line{fill:none;stroke:#3e95d8;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+  .sc-svg .grid{stroke:var(--line);stroke-width:1}
+  .sc-svg .world{stroke:var(--ink-dim);stroke-width:1;stroke-dasharray:3 3;opacity:.6}
+  .sc-svg .ax{fill:var(--ink-dim);font-size:8.5px;font-family:inherit}
+  .sc-svg .cross{stroke:var(--ink-dim);stroke-width:1}
+  .sc-svg .dot{fill:#3e95d8;stroke:var(--void);stroke-width:2}
+  .sc-svg .hit{fill:transparent;cursor:crosshair}
+  .sc-tip{position:absolute;top:-4px;transform:translate(-50%,-100%);background:var(--void);border:1px solid var(--line);
+    border-radius:3px;padding:3px 6px;font-size:11px;white-space:nowrap;pointer-events:none;opacity:0;font-variant-numeric:tabular-nums}
+  .sc-tip.on{opacity:1}
+  .st-scroll{grid-column:1/-1;overflow-x:auto}
+  .st{border-collapse:collapse;font-size:11.5px;font-variant-numeric:tabular-nums;width:100%}
+  .st th,.st td{padding:3px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  .st th{font-weight:500;color:var(--ink-dim)}
   /* una scelta del narratore: in basso al centro, non ferma il gioco */
   .choice{position:fixed;left:50%;bottom:92px;transform:translate(-50%,8px);width:min(420px,calc(100vw - 32px));
     background:var(--panel);border:1px solid var(--ember);border-radius:6px;padding:12px 14px;
@@ -240,6 +282,8 @@
       <button id="b-save" title="Salva la partita in questo browser (Ctrl+S). Salvataggio automatico ogni 30 s">salva</button>
       <button id="b-load" title="Riprendi l'ultima partita salvata">carica</button>
       <button id="b-log" title="Registro eventi e scorciatoie (L)">registro</button>
+      <button id="b-research" title="Albero della ricerca (T)">ricerca</button>
+      <button id="b-stats" title="Statistiche della partita (S)">statistiche</button>
     </div>
     <div class="ctrl" id="speeds">
       <button data-mul="0" title="Pausa (spazio)" aria-label="Pausa">⏸</button>
@@ -319,7 +363,8 @@
   <div class="keys">
     <kbd>spazio</kbd> pausa · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> velocità · <kbd>A</kbd> auto ·
     <kbd>F</kbd> fulmine · <kbd>R</kbd> pioggia · <kbd>C</kbd> cura · <kbd>U</kbd> amplia ·
-    <kbd>Esc</kbd> annulla · <kbd>Ctrl+S</kbd> salva · <kbd>L</kbd> registro
+    <kbd>Esc</kbd> annulla · <kbd>Ctrl+S</kbd> salva · <kbd>L</kbd> registro ·
+    <kbd>T</kbd> ricerca · <kbd>S</kbd> statistiche
   </div>
   <ol id="log-list"></ol>
 </div>
@@ -331,6 +376,14 @@
   </div>
 </div>
 <div class="tip" id="tip"></div>
+<div class="panel research" id="research">
+  <h3>Albero della ricerca <span class="muted">i nodi completati restano quando cambi mondo</span></h3>
+  <div class="tree" id="research-tree"></div>
+</div>
+<div class="panel stats" id="stats">
+  <h3>Statistiche <button id="stats-mode" class="link">tabella</button></h3>
+  <div id="stats-body"></div>
+</div>
 <div class="choice" id="choice" role="dialog" aria-labelledby="choice-title">
   <div class="choice-head"><h3 id="choice-title">—</h3><span id="choice-time"></span></div>
   <p id="choice-text"></p>
@@ -566,10 +619,16 @@ const canPay = (cost,n=1) => COST_KEYS.every(k=>!cost[k]||res[k]>=cost[k]*n);
 function pay(cost,n=1){ for(const k of COST_KEYS) if(cost[k]) res[k]-=cost[k]*n; }
 const costText = (cost,n=1) => COST_KEYS.filter(k=>cost[k]).map(k=>cost[k]*n+' '+COST_LABEL[k]).join(' · ');
 
-/* ── ricerca: tre livelli, ognuno migliora resa e armi ────────── */
-const TECH_COST = [0, 90, 240, 480];
-const techProd = () => 1 + 0.18*tech;
-const techWar  = () => 1 + 0.22*tech;
+/* ── ricerca: ora è un albero a rami (25-progress.js); resa e armi
+   sommano gli effetti dei nodi completati ─────────────────────────── */
+const techProd = () => 1 + techSum('prod');
+const techWar  = () => 1 + techSum('war');
+/* il costo di un edificio, con gli sconti della ricerca (la rampa) */
+function costOf(key){
+  const c={...BUILDINGS[key].cost};
+  if(key==='pad'&&typeof techSum==='function') for(const k in c) c[k]=Math.round(c[k]*(1-techSum('padCost')));
+  return c;
+}
 
 /* ── unità ────────────────────────────────────────────────────── */
 const UNITS = {
@@ -1459,7 +1518,7 @@ function finish(tile,kind,owner){
   if(old) planetGroup.remove(old);
   tile.building=kind; tile.owner=owner; tile.site=null;
   if(!tile.size) tile.size=1;
-  tile.hp=(BUILDINGS[kind].hp||25)*tile.size; tile.hpMax=tile.hp; tile.spawnT=0; tile.shipT=0;
+  tile.hp=(BUILDINGS[kind].hp||25)*tile.size*(owner==='you'?1+techSum('fort'):1); tile.hpMax=tile.hp; tile.spawnT=0; tile.shipT=0;
   const mesh=buildingMesh(kind);
   // scarto contenuto: si nota che è più grande senza debordare dalla casella
   mesh.scale.setScalar(0.86+0.15*tile.size);
@@ -1580,6 +1639,8 @@ function unitDamage(u){
     if(u.stage==='child'||u.wounded) return 0;
     if(u.stage==='elder') d*=0.6;
   }
+  // la tattica raddoppia i colpi della milizia (coloni civili che difendono)
+  if(u.faction==='you'&&UNITS[u.kind].civil) d*=1+techSum('militia');
   return d*(u.faction==='you'?techWar():1);
 }
 const myUnits  = () => units.filter(u=>u.faction==='you');
@@ -1644,20 +1705,21 @@ function rates(){
       food-=(B.eats.food||0)*w2; matr-=(B.eats.mat||0)*w2;
     }
     if(B.per){
-      food+=(B.per.food||0)*w2*(B.noSeason?1:S)*P*(trait.food||1)*(boomT>0?1.4:1)*(famineT>0&&!B.noSeason?0.5:1);
+      food+=(B.per.food||0)*w2*(B.noSeason?1:S)*P*(trait.food||1)*(boomT>0?1.4:1)*(famineT>0&&!B.noSeason?0.5:1)*(1+techSum('food'));
       matr+=(B.per.mat||0)*(B.per.mat>0?w2*P*(trait.mat||1):w);
       pow +=(B.per.pow||0)*w2*P*(trait.pow||1);
       scir+=(B.per.sci||0)*w2*P;
-      barr+=(B.per.bar||0)*w2*P;
+      barr+=(B.per.bar||0)*w2*P*(1+techSum('bar'));
     }
     if(B.drain) pow-=B.drain;
   }
   for(const o of orbit) if(o.built) pow-=ORBITALS[o.kind].drain||0;
   for(const s of settlements) tribute += s.relation==='alleato' ? 0.6 : s.relation==='assoggettato' ? 1.4 : 0;
   if(tiles.some(t=>isMine(t)&&BUILDINGS[t.building].trade&&(t.workers||0)>0)) tribute*=1.6;
+  tribute*=1+techSum('caravan');
   const block = pop>=houses ? 'servono letti' : (food-eat-upkeep<=0 && res.food<=8) ? 'serve cibo'
               : res.food<=8 ? 'scorte basse' : null;
-  const spoil=Math.max(0,res.food-granaryCover())*SPOIL;
+  const spoil=Math.max(0,res.food-granaryCover())*SPOIL*(1-techSum('spoil'));
   return {food:food-eat-upkeep-spoil, stock:food-upkeep-spoil, spoil, mat:matr+tribute, pow:pow-pop*USE,
     sci:scir, bar:barr, houses, jobs, demo:d, block};
 }
@@ -1842,11 +1904,10 @@ function economyTick(){
   res.pow =clamp(res.pow +r.pow);
   res.bar =clamp((res.bar||0)+r.bar);
 
-  // ricerca
-  if(r.sci>0 && tech<3){
-    sci+=r.sci;
-    if(sci>=TECH_COST[tech+1]){ tech++; toast('Ricerca completata: livello '+tech+'. Rese e armi migliorate.'); }
-  }
+  // ricerca: va al nodo scelto dell'albero (25-progress.js)
+  researchTick(r.sci);
+  statsTick();
+  if(worldAge%10===0&&$('stats').classList.contains('on')) renderStats();
   // stagioni
   seasonT++;
   if(seasonT>=SEASON_LEN){
@@ -2681,7 +2742,7 @@ function resolveCombat(dt){
       const foe=o.faction==='raider'||
         (o.faction==='rival'&&o.settlement&&o.settlement.relation==='ostile');
       if(!foe) continue;
-      if(tp.distanceTo(o.mesh.position)<B.range){
+      if(tp.distanceTo(o.mesh.position)<B.range+(hasTech('forts')?1:0)){
         o.hp-=B.dps*techWar()*dt;
         if(beams){
           const g=new THREE.BufferGeometry().setFromPoints([tp,o.mesh.position.clone()]);
@@ -3002,7 +3063,7 @@ const canGift = s => !settled(s)&&s.relation!=='ostile'&&(s.giftT||0)<=0&&
 function giftTo(s){
   if(!canGift(s)) return;
   res.mat-=GIFT_COST.mat; res.food-=GIFT_COST.food; s.giftT=30;
-  shiftGoodwill(s,25*personalityOf(s).gift*(activeFlag('embassy')?1.5:1),'dono');
+  shiftGoodwill(s,25*personalityOf(s).gift*(activeFlag('embassy')?1.5:1)*(1+techSum('gift')),'dono');
   // aiutare un clan in guerra irrita il suo nemico
   for(const o of settlements) if(o!==s&&atWar(s,o)) shiftGoodwill(o,-10,'hai aiutato '+s.name);
   toast(s.name+' accetta il dono ('+Math.round(s.goodwill)+').'); refreshHUD();
@@ -3075,7 +3136,7 @@ function answerRequest(s,yes){
 function deliverRequest(s){
   const r=s.request; if(!r||!r.accepted||res[r.kind]<r.amount) return;
   res[r.kind]-=r.amount; s.request=null;
-  shiftGoodwill(s,15*personalityOf(s).gift,'richiesta esaudita');
+  shiftGoodwill(s,15*personalityOf(s).gift*(1+techSum('gift')),'richiesta esaudita');
   toast(s.name+' ringrazia: richiesta esaudita.'); refreshHUD();
 }
 /* il governatore risponde da solo: accetta solo se può permetterselo */
@@ -3124,7 +3185,7 @@ function diplomacyTick(){
       if(atWar(s,o)!==was) logEvent(was?'Tregua tra '+s.name+' e '+o.name+'.':'⚔ '+s.name+' e '+o.name+' sono in guerra.');
     }
     // migranti: dai clan amici arriva gente, se ci sono letti
-    if(s.goodwill>60&&rates().houses>pop&&Math.random()<0.004){
+    if(s.goodwill>60&&rates().houses>pop&&Math.random()<0.004*(1+techSum('migrants'))){
       const u=spawnUnit('worker','you',s.core);
       u.age=AGES.child.until+10; applyAge(u); pop++; syncJobs();
       shiftGoodwill(s,2,'un loro migrante accolto');
@@ -3154,7 +3215,8 @@ function unrestTick(s){
   const needed=Math.ceil(thralls.length/3)+1;
   const guard=garrisonNear(s);
   const mood=thralls.length?thralls.reduce((m,u)=>m+needsOf(u).mood,0)/thralls.length:0.5;
-  s.unrest=Math.max(0,Math.min(100,(s.unrest||0)+Math.max(0,1-guard/needed)*0.4+Math.max(0,0.45-mood)*1.5-0.2));
+  const grow=(Math.max(0,1-guard/needed)*0.4+Math.max(0,0.45-mood)*1.5)*(1-techSum('unrest'));
+  s.unrest=Math.max(0,Math.min(100,(s.unrest||0)+grow-0.2));
   if(s.unrest<100) return;
   // rivolta: il clan torna ostile e i suoi assoggettati impugnano le armi
   s.relation='ostile'; s.goodwill=-80; s.unrest=0;
@@ -3196,7 +3258,7 @@ function sendCaravans(){
     const home=tiles.find(t=>t.settlement===s&&t.building);
     const P=personalityOf(s);
     if(!home||!FC.storage.length||!P.caravan&&s.relation!=='assoggettato') continue;
-    const load=Math.round((s.relation==='alleato'?22:14)*(s.relation==='alleato'?P.caravan:1));
+    const load=Math.round((s.relation==='alleato'?22:14)*(s.relation==='alleato'?P.caravan:1)*(1+techSum('caravan')));
     // prima una carovana da un altro continente vagava per 160 tick e spariva:
     // ora, se a piedi non si arriva, il carico viene via mare
     if(!FC.storage.some(t=>reachable(home,t))){ unloadCaravan(s,load,' (via mare)'); continue; }
@@ -3672,7 +3734,7 @@ function govContext(){
 }
 /* considerazioni che ricorrono */
 const gAfford = key => consider('si può pagare', c=>{
-  const cost=BUILDINGS[key].cost;
+  const cost=costOf(key);
   return Math.min(...COST_KEYS.map(k=>cost[k]?(res[k]||0)/cost[k]:1));
 }, CURVES.linear(0.7,0.3));
 const gNone = (key,n=1) => consider('ne mancano', c=>1-c.count(key)/n, CURVES.step(.01));
@@ -3722,7 +3784,7 @@ const GOV_PROJECTS={
     consider('minaccia', c=>c.threat),
     consider('mura da completare', c=>1-c.count('wall')/Math.max(1,Math.min(8,Math.floor(pop/3)))), gAfford('wall')]},
   lab:     {label:'Centro ricerca', weight:0.7, considerations:[
-    consider('ricerca da fare', c=>is(tech<3)), gNone('lab'),
+    consider('ricerca da fare', c=>is(researchLeft()>0)), gNone('lab'),
     consider('colonia avviata', c=>res.mat/110, CURVES.logistic(.8,10)), gAfford('lab')]},
   shrine:  {label:'Santuario', weight:0.55, considerations:[
     consider('minaccia', c=>c.threat), gNone('shrine'),
@@ -3780,7 +3842,7 @@ function govStaff(c){
     food: 0.4+0.6*clamp01(1-c.foodDays/80)+(c.r.food<0?0.4:0),
     mat:  0.3+0.6*clamp01(1-res.mat/Math.min(c.cap,220)),
     pow:  0.3+0.7*clamp01(0.6-c.r.pow),
-    sci:  tech<3?0.45:0.05,
+    sci:  researchLeft()?0.45:0.05,
     bar:  c.wantBars?0.6:0.1
   };
   const score=t=>{
@@ -3813,13 +3875,14 @@ function autoThink(){
       // taglia scelta in base a quanto è ricca e popolosa la colonia
       let sz=1;
       if((B.jobs>0||B.houses||B.granary)&&!B.fixed){
-        if(canPay(B.cost,4)&&pop>14) sz=3;
-        else if(canPay(B.cost,2.5)&&pop>8) sz=2;
+        if(canPay(costOf(want),4)&&pop>14) sz=3;
+        else if(canPay(costOf(want),2.5)&&pop>8) sz=2;
       }
-      while(sz>1&&!canPay(B.cost,sz)) sz--;
-      if(canPay(B.cost,sz)){
+      const cost=costOf(want);
+      while(sz>1&&!canPay(cost,sz)) sz--;
+      if(canPay(cost,sz)){
         const spot=pickSpot(want,sz);
-        if(spot){ pay(B.cost,sz); startSite(spot,want,'you',sz); }
+        if(spot){ pay(cost,sz); startSite(spot,want,'you',sz); }
       }
       // altrimenti si aspetta: il progetto migliore resta quello, si risparmia
     }
@@ -3926,11 +3989,11 @@ function refreshHUD(r){
   $('r-raid').title='Prossima incursione: circa '+raidSize()+' predoni';
   $('r-raid').className='rate'+(raidActive||raidIn<15?' neg':'');
   $('s-season').textContent=SEASONS[season].name+(boomT>0?' · abbondanza '+boomT+'s':'');
-  $('s-tech').textContent='liv. '+tech;
-  $('r-tech').textContent = tech>0
-    ? '+'+Math.round((techProd()-1)*100)+'% rese, +'+Math.round((techWar()-1)*100)+'% danno'+
-      (tech<3?' · '+Math.floor(sci)+'/'+TECH_COST[tech+1]:'')
-    : Math.floor(sci)+'/'+TECH_COST[1]+' al 1° livello';
+  $('s-tech').textContent=tech+'/'+Object.keys(RESEARCH).length;
+  $('r-tech').textContent = researching
+    ? RESEARCH[researching].name+' '+Math.floor(sci)+'/'+RESEARCH[researching].cost
+    : researchLeft()?'scegli cosa studiare':'albero completo';
+  renderResearch();
   $('s-thrall').textContent=myThralls().length;
   refreshTray(); refreshArmy();
 }
@@ -3951,8 +4014,8 @@ function setInspector(tile){
     const canUp=sizeOf(tile)<3&&B.blocks>0&&!B.fixed;
     up.style.display=canUp?'':'none';
     if(canUp){
-      up.textContent='amplia a '+(sizeOf(tile)+1)+'× · '+costText(B.cost);
-      up.disabled=raidActive||!canPay(B.cost);
+      up.textContent='amplia a '+(sizeOf(tile)+1)+'× · '+costText(costOf(tile.building));
+      up.disabled=raidActive||!canPay(costOf(tile.building));
       up.title=raidActive?'Non durante un\'incursione':'Torna cantiere per '+B.blocks+' blocchi, poi rende di più (U)';
     }
     const hurt=tile.hp<tile.hpMax-0.5;
@@ -4038,7 +4101,7 @@ function renderMinds(tile){
   $('i-minds').innerHTML=html;
 }
 
-const canAfford=B=>canPay(B.cost);
+const canAfford=B=>canPay(B.cost);   // (orbitali e UI generica)
 function tileAllows(tile,key){
   if(!tile||tile.building||tile.site) return false;
   const B=BUILDINGS[key], bio=BIOMES[tile.biome];
@@ -4105,11 +4168,11 @@ function refreshTray(){
   for(const b of tray.children){
     const B=BUILDINGS[b.dataset.key];
     const bl=(+b.dataset.bl)*buildSize;
-    b._tipCost=costText(B.cost,buildSize)+' · '+bl+' blocchi'+(buildSize>1?'  ·  taglia '+buildSize+'×':'');
+    b._tipCost=costText(costOf(b.dataset.key),buildSize)+' · '+bl+' blocchi'+(buildSize>1?'  ·  taglia '+buildSize+'×':'');
     b.disabled=!selected||!tileAllows(selected,b.dataset.key)||!canAffordSize(B);
   }
 }
-const canAffordSize=B=>canPay(B.cost,buildSize);
+const canAffordSize=B=>canPay(costOf(Object.keys(BUILDINGS).find(k=>BUILDINGS[k]===B)),buildSize);
 
 function refreshArmy(){
   const troops=myTroops();
@@ -4263,9 +4326,9 @@ function upgradeBuilding(tile){
   if(!tile||!isMine(tile)) return;
   if(raidActive){ toast('Non si amplia durante un\'incursione.'); return; }
   if(!canUpgrade(tile)) return;
-  const B=BUILDINGS[tile.building];
-  if(!canPay(B.cost)){ toast('Per ampliare servono '+costText(B.cost)+'.'); return; }
-  pay(B.cost);
+  const B=BUILDINGS[tile.building], cost=costOf(tile.building);
+  if(!canPay(cost)){ toast('Per ampliare servono '+costText(cost)+'.'); return; }
+  pay(cost);
   const hp=tile.hp;
   tile.size=sizeOf(tile)+1;
   openSite(tile,tile.building,'you',B.blocks,true);
@@ -4297,6 +4360,7 @@ function snapshot(){
     res:{...res}, pop, sci, tech, season, seasonT, raidIn, raidNo, worldAge, dayT,
     eventIn, boomT, padCargoMat, padCargoFood, grief, raidWarned,
     narrator:{phase:narrator.phase,t:narrator.t,hurt:narrator.hurt}, choice, famineT, exiles, chainT,
+    researched:[...researched], researching, stats,
     army:{size:army.size, target:si(army.target)},
     settlements:settlements.map(s=>({name:s.name, core:s.core.id, relation:s.relation,
       mat:s.mat, thinkT:s.thinkT, tradeT:s.tradeT||0,
@@ -4388,7 +4452,10 @@ function restore(d){
       if(e.k==='caravan'){ u.load=e.load; u.delivered=e.dl; u.lifeT=e.life; if(!e.dl) takeCarry(u,0xd9a441); }
     }
     Object.assign(res,d.res); res.bar=res.bar||0;
-    pop=myPeople().length; sci=d.sci; tech=d.tech; season=d.season; seasonT=d.seasonT;
+    pop=myPeople().length; sci=d.sci;
+    // salvataggi di prima dell'albero: i vecchi livelli diventano i primi nodi dell'economia e dell'esercito
+    researched=new Set((d.researched||['tools','weapons','rotation'].slice(0,d.tech||0)).filter(id=>RESEARCH[id]));
+    tech=researched.size; researching=RESEARCH[d.researching]?d.researching:null; stats=d.stats||[]; season=d.season; seasonT=d.seasonT;
     raidIn=d.raidIn; raidNo=d.raidNo; worldAge=d.worldAge; dayT=d.dayT;
     eventIn=d.eventIn; boomT=d.boomT; grief=d.grief||0; raidWarned=!!d.raidWarned;
     narrator=d.narrator&&NARRATOR_PHASES[d.narrator.phase]?{...d.narrator}:{phase:'calma',t:0,hurt:0};
@@ -4413,7 +4480,7 @@ function checkCollapse(){
   if(myPeople().length>0||myThralls().length>0) return false;
   gameOver=true;
   $('over-body').textContent='Non resta nessuno a portare avanti il villaggio. Hai raggiunto il mondo n° '+
-    worldIndex+' e il livello di ricerca '+tech+'.';
+    worldIndex+' con '+tech+' ricerche completate su '+Object.keys(RESEARCH).length+'.';
   $('over').classList.add('on');
   $('over-restart').focus();
   return true;
@@ -4423,6 +4490,7 @@ function restartGame(){
   gameOver=false;
   worldIndex=1; worldSeed=Date.now()%99999;
   res={food:22,mat:60,pow:12,bar:0}; pop=3; sci=0; tech=0; eventIn=110; boomT=0;
+  researched=new Set(); researching=null; stats=[]; veterans=[];
   generateWorld(worldSeed); applySeason(); refreshHUD();
   toast('Una nuova colonia atterra su '+NAMES[0]+'.');
 }
@@ -4433,7 +4501,7 @@ function construct(key){
   const B=BUILDINGS[key];
   if(!selected||!tileAllows(selected,key)||!canAffordSize(B)) return;
   const s=buildSize;
-  pay(B.cost,s);
+  pay(costOf(key),s);
   startSite(selected,key,'you',s);
   setInspector(selected); refreshHUD();
   toast('Cantiere '+s+'× aperto: servono '+(B.blocks*s)+' blocchi dal magazzino.');
@@ -4443,8 +4511,9 @@ function buildOrbital(kind){
   const O=ORBITALS[kind];
   if(hasOrbital(kind)||orbit.some(o=>o.kind===kind)) return;
   if(!O.hub&&!hasOrbital('station')){ toast('Serve prima la Stazione orbitale.'); return; }
-  if(res.mat<O.cost.mat||res.pow<O.cost.pow) return;
-  res.mat-=O.cost.mat; res.pow-=O.cost.pow;
+  const k=1-techSum('orbitCost'), cm=Math.round(O.cost.mat*k), cp=Math.round(O.cost.pow*k);
+  if(res.mat<cm||res.pow<cp) return;
+  res.mat-=cm; res.pow-=cp;
   addOrbital(kind);
   toast(O.name+': lancio in corso.');
   refreshHUD();
@@ -4466,18 +4535,20 @@ function launchFrom(tile){
   padCargoMat =Math.min(padCargoMat, cargoMax('mat'));
   padCargoFood=Math.min(padCargoFood,cargoMax('food'));
   res.mat-=padCargoMat; res.food-=padCargoFood;   // sottratti dalle scorte qui
+  const crew=boardVeterans(tile);
   const m=rocketMesh(); orientTo(m,tile);
   planetGroup.add(m);
   launching={mesh:m, tile, t:0};
-  toast('Decollo: '+padCargoMat+' materiali e '+padCargoFood+' cibo a bordo.');
+  toast('Decollo: '+crew+' veterani, '+padCargoMat+' materiali e '+padCargoFood+' cibo a bordo.');
   refreshHUD();
 }
 function nextWorld(){
   worldIndex++; worldSeed=(worldSeed*1103515245+12345)%2147483647;
   res.mat=padCargoMat; res.food=padCargoFood; res.pow=12; res.bar=0;   // sbarca solo il carico
-  pop=Math.max(3,Math.floor(pop/2));
-  generateWorld(worldSeed); applySeason(); refreshHUD();
+  pop=Math.max(3,veterans.length);
+  generateWorld(worldSeed); applySeason();
   toast('Atterrati su '+NAMES[(worldIndex-1)%NAMES.length]+'.');
+  landVeterans(); refreshHUD();
 }
 
 /* comandi */
@@ -4544,6 +4615,9 @@ for(const b of $('speeds').children)
 $('b-save').addEventListener('click',()=>saveGame(false));
 $('b-load').addEventListener('click',loadGame);
 $('b-log').addEventListener('click',toggleLog);
+$('b-research').addEventListener('click',toggleResearch);
+$('b-stats').addEventListener('click',toggleStats);
+$('stats-mode').addEventListener('click',()=>{ statsTable=!statsTable; renderStats(); });
 $('i-upgrade').addEventListener('click',()=>upgradeBuilding(selected));
 $('i-repair').addEventListener('click',()=>repairBuilding(selected));
 $('over-restart').addEventListener('click',restartGame);
@@ -4567,6 +4641,8 @@ addEventListener('keydown',e=>{
   else if(k==='2') setSpeed(2);
   else if(k==='3') setSpeed(4);
   else if(k==='a') $('b-auto').click();
+  else if(k==='t') toggleResearch();
+  else if(k==='s') toggleStats();
   else if(k==='f') setPower('bolt');
   else if(k==='r') setPower('rain');
   else if(k==='c') setPower('heal');
@@ -4623,6 +4699,230 @@ addEventListener('resize',()=>{
 });
 
 /* ═══════════════ avvio e loop ═══════════════ */
+/* ═══════════════ progressione tra mondi ═══════════════
+   Tre cose: un albero della ricerca a rami (al posto dei tre livelli in
+   fila), i veterani che salgono sulla rampa e portano nel mondo nuovo
+   quello che hanno imparato, e le statistiche della partita.           */
+
+/* ── albero della ricerca ────────────────────────────────────────────
+   Quattro rami da tre nodi. Un nodo richiede il precedente dello stesso
+   ramo. La ricerca accumulata va al nodo scelto; se non ne scegli uno, lo
+   sceglie il governatore (o il primo disponibile). I nodi restano tuoi
+   quando cambi mondo.                                                  */
+const RESEARCH = {
+  tools:    {branch:'economia',   tier:1, name:'Attrezzi',          cost:90,  effect:'+18% a tutte le rese',            prod:0.18},
+  rotation: {branch:'economia',   tier:2, name:'Rotazione colture', cost:200, effect:'+20% cibo, il cibo marcisce la metà', food:0.2, spoil:0.5},
+  metallurgy:{branch:'economia',  tier:3, name:'Metallurgia',       cost:400, effect:'+50% lingotti e +10% a tutte le rese', bar:0.5, prod:0.1},
+  weapons:  {branch:'militare',   tier:1, name:'Armi',              cost:90,  effect:'+22% danno di truppe e torrette', war:0.22},
+  forts:    {branch:'militare',   tier:2, name:'Fortificazioni',    cost:200, effect:'edifici +50% integrità, torrette +1 di portata', fort:0.5},
+  tactics:  {branch:'militare',   tier:3, name:'Tattica',           cost:400, effect:'la milizia colpisce il doppio, +22% danno', militia:1, war:0.22},
+  languages:{branch:'diplomazia', tier:1, name:'Lingue',            cost:90,  effect:'doni e richieste esaudite +50% benevolenza', gift:0.5},
+  commerce: {branch:'diplomazia', tier:2, name:'Commercio',         cost:200, effect:'carovane +50%, tributi +50%', caravan:0.5},
+  charisma: {branch:'diplomazia', tier:3, name:'Carisma',           cost:400, effect:'malcontento degli assoggettati dimezzato, migranti ×2', unrest:0.5, migrants:1},
+  rocketry: {branch:'spazio',     tier:1, name:'Propulsione',       cost:90,  effect:'la rampa costa il 30% in meno', padCost:0.3},
+  orbital:  {branch:'spazio',     tier:2, name:'Meccanica orbitale',cost:200, effect:'strutture orbitali −25%', orbitCost:0.25},
+  cryo:     {branch:'spazio',     tier:3, name:'Criogenia',         cost:400, effect:'+4 veterani a bordo della rampa', veterans:4}
+};
+const BRANCHES = ['economia','militare','diplomazia','spazio'];
+let researched=new Set(), researching=null;
+const hasTech = id => researched.has(id);
+/* somma di un effetto su tutti i nodi completati */
+const techSum = key => { let s=0; for(const id of researched) s+=RESEARCH[id][key]||0; return s; };
+const canResearch = id => !researched.has(id) &&
+  Object.values(RESEARCH).filter(n=>n.branch===RESEARCH[id].branch&&n.tier<RESEARCH[id].tier)
+    .every(n=>researched.has(Object.keys(RESEARCH).find(k=>RESEARCH[k]===n)));
+const researchOpen = () => Object.keys(RESEARCH).filter(canResearch);
+const researchLeft = () => Object.keys(RESEARCH).length-researched.size;
+
+function chooseResearch(id){
+  if(!canResearch(id)) return;
+  researching=id; renderResearch();
+  toast('Ricerca: '+RESEARCH[id].name+'.');
+}
+/* il governatore sceglie secondo le pressioni: minaccia → militare,
+   clan → diplomazia, rampa già costruita o vicina → spazio, altrimenti economia */
+function govResearch(){
+  const open=researchOpen();
+  if(!open.length) return null;
+  const threat=Math.min(1,(raidNo+1)/6), clans=settlements.some(s=>!settled(s));
+  const score=id=>{
+    const n=RESEARCH[id];
+    const b={economia:0.8, militare:0.3+0.6*threat, diplomazia:clans?0.6:0.05,
+             spazio:FC.mine.some(t=>isMine(t)&&hasFlag(t,'launch'))?0.7:0.25}[n.branch];
+    return b/n.tier;
+  };
+  return open.sort((a,b)=>score(b)-score(a))[0];
+}
+/* chiamata a ogni tick con la ricerca prodotta */
+function researchTick(points){
+  if(points<=0||!researchLeft()) return;
+  if(!researching||!canResearch(researching)) researching=auto?govResearch():researchOpen()[0];
+  if(!researching) return;
+  sci+=points;
+  const n=RESEARCH[researching];
+  if(sci<n.cost) return;
+  sci-=n.cost; researched.add(researching); tech=researched.size;
+  logEvent('🔬 Ricerca completata: '+n.name+' — '+n.effect+'.');
+  researching=null;
+  bumpWalk(); renderResearch();
+}
+
+/* ── pannello della ricerca ── */
+function toggleResearch(){
+  const on=!$('research').classList.contains('on');
+  $('research').classList.toggle('on',on); $('b-research').classList.toggle('on',on);
+  if(on) renderResearch();
+}
+function renderResearch(){
+  const box=$('research-tree');
+  if(!$('research').classList.contains('on')) return;
+  box.innerHTML='';
+  for(const br of BRANCHES){
+    const col=document.createElement('div'); col.className='branch';
+    col.innerHTML='<h4>'+br+'</h4>';
+    for(const id of Object.keys(RESEARCH).filter(k=>RESEARCH[k].branch===br)){
+      const n=RESEARCH[id], done=researched.has(id), cur=researching===id, ok=canResearch(id);
+      const b=document.createElement('button');
+      b.className='node'+(done?' done':'')+(cur?' cur':'');
+      b.disabled=done||!ok;
+      b.innerHTML='<b>'+n.name+'</b><span>'+n.effect+'</span><em>'+
+        (done?'completata':cur?Math.floor(sci)+'/'+n.cost:n.cost+' ricerca')+'</em>';
+      b.addEventListener('click',()=>chooseResearch(id));
+      col.appendChild(b);
+    }
+    box.appendChild(col);
+  }
+}
+
+/* ── veterani ──────────────────────────────────────────────────────
+   Al decollo salgono a bordo i coloni più esperti, fino ai posti della
+   rampa (3 + 2 per taglia, più la criogenia). Nel mondo nuovo arrivano
+   con nome, tratti, abilità ed età.                                    */
+let veterans=[];
+function boardVeterans(pad){
+  const seats=3+2*sizeOf(pad)+techSum('veterans');
+  const xp=u=>Object.values(u.skills||{}).reduce((a,b)=>a+b,0);
+  const crew=units.filter(u=>isPerson(u)&&u.stage!=='child'&&u.name)
+    .sort((a,b)=>xp(b)-xp(a)).slice(0,seats);
+  veterans=crew.map(u=>({name:u.name, traits:[...(u.traits||[])], skills:{...(u.skills||{})}, age:u.age}));
+  return veterans.length;
+}
+/* dopo generateWorld: i primi coloni diventano i veterani sbarcati */
+function landVeterans(){
+  if(!veterans.length) return;
+  const mine=units.filter(u=>u.faction==='you'&&u.kind==='worker');
+  veterans.forEach((v,i)=>{
+    const u=mine[i]; if(!u) return;
+    u.name=v.name; u.traits=v.traits; u.skills=v.skills; u.age=Math.min(v.age,AGES.adult.until-20); applyAge(u);
+  });
+  const best=veterans.map(v=>{ const k=Object.keys(v.skills).sort((a,b)=>v.skills[b]-v.skills[a])[0];
+    return v.name+(k?' ('+SKILLS[k]+')':''); });
+  logEvent('🚀 Sbarcano '+veterans.length+' veterani: '+best.slice(0,5).join(', ')+(best.length>5?'…':'')+'.');
+  veterans=[];
+}
+
+/* ── statistiche ───────────────────────────────────────────────────
+   Un campione ogni 10 tick; oltre 400 campioni si dimezza la risoluzione,
+   così una partita lunga resta leggera.                                */
+let stats=[];
+function statsTick(){
+  if(worldAge%10) return;
+  const minds=units.filter(u=>hasNeeds(u)&&u.needs);
+  const live=settlements.filter(s=>!settled(s));
+  stats.push({t:worldAge, w:worldIndex, pop:myPeople().length,
+    food:Math.round(res.food), mat:Math.round(res.mat), pow:Math.round(res.pow), bar:Math.round(res.bar||0),
+    wealth:Math.round(colonyWealth()),
+    mood:minds.length?Math.round(100*minds.reduce((s,u)=>s+u.needs.mood,0)/minds.length):null,
+    goodwill:live.length?Math.round(live.reduce((s,x)=>s+x.goodwill,0)/live.length):null,
+    raids:raidNo});
+  if(stats.length>400) stats=stats.filter((_,i)=>i%2===0);
+}
+
+/* ── schermata statistiche ───────────────────────────────────────────
+   Piccoli multipli: un grafico per misura, ognuno con la sua scala (mai
+   due assi sullo stesso grafico). Una serie sola per grafico, quindi un
+   solo colore e nessuna legenda: il titolo dice cosa si guarda. Al
+   passaggio del mouse, mirino e valore; le linee tratteggiate segnano
+   i cambi di mondo. C'è anche la vista a tabella.                       */
+const STAT_CHARTS = [
+  {key:'pop',      label:'Coloni'},
+  {key:'wealth',   label:'Ricchezza'},
+  {key:'mood',     label:'Umore medio', unit:'%'},
+  {key:'goodwill', label:'Benevolenza media dei clan'},
+  {key:'food',     label:'Cibo'},
+  {key:'mat',      label:'Materiali'}
+];
+let statsTable=false;
+function toggleStats(){
+  const on=!$('stats').classList.contains('on');
+  $('stats').classList.toggle('on',on); $('b-stats').classList.toggle('on',on);
+  if(on) renderStats();
+}
+function renderStats(){
+  const box=$('stats-body');
+  $('stats-mode').textContent=statsTable?'grafici':'tabella';
+  if(!stats.length){ box.innerHTML='<p class="muted">Ancora nessun dato: torna tra qualche secondo.</p>'; return; }
+  if(statsTable){ box.innerHTML=statsTableHTML(); return; }
+  box.innerHTML='';
+  for(const C of STAT_CHARTS){
+    const pts=stats.filter(s=>s[C.key]!==null&&s[C.key]!==undefined);
+    const fig=document.createElement('figure'); fig.className='sc';
+    const last=pts.length?pts[pts.length-1][C.key]:null;
+    fig.innerHTML='<figcaption><span>'+C.label+'</span><b>'+(last===null?'—':last.toLocaleString('it')+(C.unit||''))+'</b></figcaption>';
+    if(pts.length<2){ fig.insertAdjacentHTML('beforeend','<p class="muted">servono più dati</p>'); box.appendChild(fig); continue; }
+    fig.appendChild(lineChart(pts,C));
+    box.appendChild(fig);
+  }
+}
+function lineChart(pts,C){
+  const W=260, H=86, L=34, Rp=6, T=6, B=16;
+  const xs=pts.map(p=>p.t), ys=pts.map(p=>p[C.key]);
+  const x0=Math.min(...xs), x1=Math.max(...xs);
+  let y0=Math.min(0,...ys), y1=Math.max(...ys);
+  if(y1===y0) y1=y0+1;
+  const X=t=>L+(W-L-Rp)*(t-x0)/Math.max(1,x1-x0), Y=v=>T+(H-T-B)*(1-(v-y0)/(y1-y0));
+  const ns='http://www.w3.org/2000/svg', svg=document.createElementNS(ns,'svg');
+  svg.setAttribute('viewBox','0 0 '+W+' '+H); svg.setAttribute('class','sc-svg');
+  svg.setAttribute('role','img'); svg.setAttribute('aria-label',C.label+': da '+ys[0]+' a '+ys[ys.length-1]);
+  const fmt=v=>Math.abs(v)>=1000?(v/1000).toFixed(1).replace('.',',')+'k':String(Math.round(v));
+  let html='';
+  // griglia recessiva: zero (o minimo) e massimo
+  for(const v of [y0,y1]) html+='<line class="grid" x1="'+L+'" x2="'+(W-Rp)+'" y1="'+Y(v)+'" y2="'+Y(v)+'"/>'+
+    '<text class="ax" x="'+(L-4)+'" y="'+(Y(v)+3)+'" text-anchor="end">'+fmt(v)+'</text>';
+  // cambi di mondo
+  for(let i=1;i<pts.length;i++) if(pts[i].w!==pts[i-1].w)
+    html+='<line class="world" x1="'+X(pts[i].t)+'" x2="'+X(pts[i].t)+'" y1="'+T+'" y2="'+(H-B)+'"/>';
+  html+='<text class="ax" x="'+L+'" y="'+(H-3)+'">'+x0+'s</text><text class="ax" x="'+(W-Rp)+'" y="'+(H-3)+'" text-anchor="end">'+x1+'s</text>';
+  html+='<path class="line" d="'+pts.map((p,i)=>(i?'L':'M')+X(p.t).toFixed(1)+' '+Y(p[C.key]).toFixed(1)).join('')+'"/>';
+  html+='<line class="cross" y1="'+T+'" y2="'+(H-B)+'" visibility="hidden"/><circle class="dot" r="4" visibility="hidden"/>';
+  html+='<rect class="hit" x="'+L+'" y="0" width="'+(W-L-Rp)+'" height="'+H+'"/>';
+  svg.innerHTML=html;
+  const tip=document.createElement('div'); tip.className='sc-tip';
+  const cross=svg.querySelector('.cross'), dot=svg.querySelector('.dot');
+  const hit=svg.querySelector('.hit');
+  const move=e=>{
+    const r=svg.getBoundingClientRect(), t=x0+(x1-x0)*(((e.clientX-r.left)/r.width*W)-L)/(W-L-Rp);
+    let best=pts[0]; for(const p of pts) if(Math.abs(p.t-t)<Math.abs(best.t-t)) best=p;
+    const px=X(best.t), py=Y(best[C.key]);
+    cross.setAttribute('x1',px); cross.setAttribute('x2',px); cross.setAttribute('visibility','visible');
+    dot.setAttribute('cx',px); dot.setAttribute('cy',py); dot.setAttribute('visibility','visible');
+    tip.textContent=best.t+'s · mondo '+best.w+' · '+best[C.key].toLocaleString('it')+(C.unit||'');
+    tip.style.left=(px/W*100)+'%'; tip.classList.add('on');
+  };
+  hit.addEventListener('pointermove',move);
+  hit.addEventListener('pointerleave',()=>{ cross.setAttribute('visibility','hidden'); dot.setAttribute('visibility','hidden'); tip.classList.remove('on'); });
+  const wrap=document.createElement('div'); wrap.className='sc-wrap';
+  wrap.appendChild(svg); wrap.appendChild(tip);
+  return wrap;
+}
+function statsTableHTML(){
+  const rows=stats.slice(-40).reverse();
+  return '<div class="st-scroll"><table class="st"><thead><tr><th>tempo</th><th>mondo</th>'+
+    STAT_CHARTS.map(C=>'<th>'+C.label.toLowerCase()+'</th>').join('')+'<th>incursioni</th></tr></thead><tbody>'+
+    rows.map(s=>'<tr><td>'+s.t+'s</td><td>'+s.w+'</td>'+
+      STAT_CHARTS.map(C=>'<td>'+(s[C.key]===null||s[C.key]===undefined?'—':s[C.key].toLocaleString('it')+(C.unit||''))+'</td>').join('')+
+      '<td>'+s.raids+'</td></tr>').join('')+'</tbody></table></div>';
+}
 try{
   generateWorld(worldSeed);
   applySeason();

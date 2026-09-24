@@ -93,6 +93,8 @@ function unitDamage(u){
     if(u.stage==='child'||u.wounded) return 0;
     if(u.stage==='elder') d*=0.6;
   }
+  // la tattica raddoppia i colpi della milizia (coloni civili che difendono)
+  if(u.faction==='you'&&UNITS[u.kind].civil) d*=1+techSum('militia');
   return d*(u.faction==='you'?techWar():1);
 }
 const myUnits  = () => units.filter(u=>u.faction==='you');

@@ -54,20 +54,21 @@ function rates(){
       food-=(B.eats.food||0)*w2; matr-=(B.eats.mat||0)*w2;
     }
     if(B.per){
-      food+=(B.per.food||0)*w2*(B.noSeason?1:S)*P*(trait.food||1)*(boomT>0?1.4:1)*(famineT>0&&!B.noSeason?0.5:1);
+      food+=(B.per.food||0)*w2*(B.noSeason?1:S)*P*(trait.food||1)*(boomT>0?1.4:1)*(famineT>0&&!B.noSeason?0.5:1)*(1+techSum('food'));
       matr+=(B.per.mat||0)*(B.per.mat>0?w2*P*(trait.mat||1):w);
       pow +=(B.per.pow||0)*w2*P*(trait.pow||1);
       scir+=(B.per.sci||0)*w2*P;
-      barr+=(B.per.bar||0)*w2*P;
+      barr+=(B.per.bar||0)*w2*P*(1+techSum('bar'));
     }
     if(B.drain) pow-=B.drain;
   }
   for(const o of orbit) if(o.built) pow-=ORBITALS[o.kind].drain||0;
   for(const s of settlements) tribute += s.relation==='alleato' ? 0.6 : s.relation==='assoggettato' ? 1.4 : 0;
   if(tiles.some(t=>isMine(t)&&BUILDINGS[t.building].trade&&(t.workers||0)>0)) tribute*=1.6;
+  tribute*=1+techSum('caravan');
   const block = pop>=houses ? 'servono letti' : (food-eat-upkeep<=0 && res.food<=8) ? 'serve cibo'
               : res.food<=8 ? 'scorte basse' : null;
-  const spoil=Math.max(0,res.food-granaryCover())*SPOIL;
+  const spoil=Math.max(0,res.food-granaryCover())*SPOIL*(1-techSum('spoil'));
   return {food:food-eat-upkeep-spoil, stock:food-upkeep-spoil, spoil, mat:matr+tribute, pow:pow-pop*USE,
     sci:scir, bar:barr, houses, jobs, demo:d, block};
 }
@@ -252,11 +253,10 @@ function economyTick(){
   res.pow =clamp(res.pow +r.pow);
   res.bar =clamp((res.bar||0)+r.bar);
 
-  // ricerca
-  if(r.sci>0 && tech<3){
-    sci+=r.sci;
-    if(sci>=TECH_COST[tech+1]){ tech++; toast('Ricerca completata: livello '+tech+'. Rese e armi migliorate.'); }
-  }
+  // ricerca: va al nodo scelto dell'albero (25-progress.js)
+  researchTick(r.sci);
+  statsTick();
+  if(worldAge%10===0&&$('stats').classList.contains('on')) renderStats();
   // stagioni
   seasonT++;
   if(seasonT>=SEASON_LEN){

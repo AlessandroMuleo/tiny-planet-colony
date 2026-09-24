@@ -2,7 +2,7 @@ function checkCollapse(){
   if(myPeople().length>0||myThralls().length>0) return false;
   gameOver=true;
   $('over-body').textContent='Non resta nessuno a portare avanti il villaggio. Hai raggiunto il mondo n° '+
-    worldIndex+' e il livello di ricerca '+tech+'.';
+    worldIndex+' con '+tech+' ricerche completate su '+Object.keys(RESEARCH).length+'.';
   $('over').classList.add('on');
   $('over-restart').focus();
   return true;
@@ -12,6 +12,7 @@ function restartGame(){
   gameOver=false;
   worldIndex=1; worldSeed=Date.now()%99999;
   res={food:22,mat:60,pow:12,bar:0}; pop=3; sci=0; tech=0; eventIn=110; boomT=0;
+  researched=new Set(); researching=null; stats=[]; veterans=[];
   generateWorld(worldSeed); applySeason(); refreshHUD();
   toast('Una nuova colonia atterra su '+NAMES[0]+'.');
 }
@@ -22,7 +23,7 @@ function construct(key){
   const B=BUILDINGS[key];
   if(!selected||!tileAllows(selected,key)||!canAffordSize(B)) return;
   const s=buildSize;
-  pay(B.cost,s);
+  pay(costOf(key),s);
   startSite(selected,key,'you',s);
   setInspector(selected); refreshHUD();
   toast('Cantiere '+s+'× aperto: servono '+(B.blocks*s)+' blocchi dal magazzino.');
@@ -32,8 +33,9 @@ function buildOrbital(kind){
   const O=ORBITALS[kind];
   if(hasOrbital(kind)||orbit.some(o=>o.kind===kind)) return;
   if(!O.hub&&!hasOrbital('station')){ toast('Serve prima la Stazione orbitale.'); return; }
-  if(res.mat<O.cost.mat||res.pow<O.cost.pow) return;
-  res.mat-=O.cost.mat; res.pow-=O.cost.pow;
+  const k=1-techSum('orbitCost'), cm=Math.round(O.cost.mat*k), cp=Math.round(O.cost.pow*k);
+  if(res.mat<cm||res.pow<cp) return;
+  res.mat-=cm; res.pow-=cp;
   addOrbital(kind);
   toast(O.name+': lancio in corso.');
   refreshHUD();
@@ -55,18 +57,20 @@ function launchFrom(tile){
   padCargoMat =Math.min(padCargoMat, cargoMax('mat'));
   padCargoFood=Math.min(padCargoFood,cargoMax('food'));
   res.mat-=padCargoMat; res.food-=padCargoFood;   // sottratti dalle scorte qui
+  const crew=boardVeterans(tile);
   const m=rocketMesh(); orientTo(m,tile);
   planetGroup.add(m);
   launching={mesh:m, tile, t:0};
-  toast('Decollo: '+padCargoMat+' materiali e '+padCargoFood+' cibo a bordo.');
+  toast('Decollo: '+crew+' veterani, '+padCargoMat+' materiali e '+padCargoFood+' cibo a bordo.');
   refreshHUD();
 }
 function nextWorld(){
   worldIndex++; worldSeed=(worldSeed*1103515245+12345)%2147483647;
   res.mat=padCargoMat; res.food=padCargoFood; res.pow=12; res.bar=0;   // sbarca solo il carico
-  pop=Math.max(3,Math.floor(pop/2));
-  generateWorld(worldSeed); applySeason(); refreshHUD();
+  pop=Math.max(3,veterans.length);
+  generateWorld(worldSeed); applySeason();
   toast('Atterrati su '+NAMES[(worldIndex-1)%NAMES.length]+'.');
+  landVeterans(); refreshHUD();
 }
 
 /* comandi */
@@ -133,6 +137,9 @@ for(const b of $('speeds').children)
 $('b-save').addEventListener('click',()=>saveGame(false));
 $('b-load').addEventListener('click',loadGame);
 $('b-log').addEventListener('click',toggleLog);
+$('b-research').addEventListener('click',toggleResearch);
+$('b-stats').addEventListener('click',toggleStats);
+$('stats-mode').addEventListener('click',()=>{ statsTable=!statsTable; renderStats(); });
 $('i-upgrade').addEventListener('click',()=>upgradeBuilding(selected));
 $('i-repair').addEventListener('click',()=>repairBuilding(selected));
 $('over-restart').addEventListener('click',restartGame);
@@ -156,6 +163,8 @@ addEventListener('keydown',e=>{
   else if(k==='2') setSpeed(2);
   else if(k==='3') setSpeed(4);
   else if(k==='a') $('b-auto').click();
+  else if(k==='t') toggleResearch();
+  else if(k==='s') toggleStats();
   else if(k==='f') setPower('bolt');
   else if(k==='r') setPower('rain');
   else if(k==='c') setPower('heal');

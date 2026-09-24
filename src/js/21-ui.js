@@ -34,11 +34,11 @@ function refreshHUD(r){
   $('r-raid').title='Prossima incursione: circa '+raidSize()+' predoni';
   $('r-raid').className='rate'+(raidActive||raidIn<15?' neg':'');
   $('s-season').textContent=SEASONS[season].name+(boomT>0?' · abbondanza '+boomT+'s':'');
-  $('s-tech').textContent='liv. '+tech;
-  $('r-tech').textContent = tech>0
-    ? '+'+Math.round((techProd()-1)*100)+'% rese, +'+Math.round((techWar()-1)*100)+'% danno'+
-      (tech<3?' · '+Math.floor(sci)+'/'+TECH_COST[tech+1]:'')
-    : Math.floor(sci)+'/'+TECH_COST[1]+' al 1° livello';
+  $('s-tech').textContent=tech+'/'+Object.keys(RESEARCH).length;
+  $('r-tech').textContent = researching
+    ? RESEARCH[researching].name+' '+Math.floor(sci)+'/'+RESEARCH[researching].cost
+    : researchLeft()?'scegli cosa studiare':'albero completo';
+  renderResearch();
   $('s-thrall').textContent=myThralls().length;
   refreshTray(); refreshArmy();
 }
@@ -59,8 +59,8 @@ function setInspector(tile){
     const canUp=sizeOf(tile)<3&&B.blocks>0&&!B.fixed;
     up.style.display=canUp?'':'none';
     if(canUp){
-      up.textContent='amplia a '+(sizeOf(tile)+1)+'× · '+costText(B.cost);
-      up.disabled=raidActive||!canPay(B.cost);
+      up.textContent='amplia a '+(sizeOf(tile)+1)+'× · '+costText(costOf(tile.building));
+      up.disabled=raidActive||!canPay(costOf(tile.building));
       up.title=raidActive?'Non durante un\'incursione':'Torna cantiere per '+B.blocks+' blocchi, poi rende di più (U)';
     }
     const hurt=tile.hp<tile.hpMax-0.5;
@@ -146,7 +146,7 @@ function renderMinds(tile){
   $('i-minds').innerHTML=html;
 }
 
-const canAfford=B=>canPay(B.cost);
+const canAfford=B=>canPay(B.cost);   // (orbitali e UI generica)
 function tileAllows(tile,key){
   if(!tile||tile.building||tile.site) return false;
   const B=BUILDINGS[key], bio=BIOMES[tile.biome];
@@ -213,11 +213,11 @@ function refreshTray(){
   for(const b of tray.children){
     const B=BUILDINGS[b.dataset.key];
     const bl=(+b.dataset.bl)*buildSize;
-    b._tipCost=costText(B.cost,buildSize)+' · '+bl+' blocchi'+(buildSize>1?'  ·  taglia '+buildSize+'×':'');
+    b._tipCost=costText(costOf(b.dataset.key),buildSize)+' · '+bl+' blocchi'+(buildSize>1?'  ·  taglia '+buildSize+'×':'');
     b.disabled=!selected||!tileAllows(selected,b.dataset.key)||!canAffordSize(B);
   }
 }
-const canAffordSize=B=>canPay(B.cost,buildSize);
+const canAffordSize=B=>canPay(costOf(Object.keys(BUILDINGS).find(k=>BUILDINGS[k]===B)),buildSize);
 
 function refreshArmy(){
   const troops=myTroops();
@@ -371,9 +371,9 @@ function upgradeBuilding(tile){
   if(!tile||!isMine(tile)) return;
   if(raidActive){ toast('Non si amplia durante un\'incursione.'); return; }
   if(!canUpgrade(tile)) return;
-  const B=BUILDINGS[tile.building];
-  if(!canPay(B.cost)){ toast('Per ampliare servono '+costText(B.cost)+'.'); return; }
-  pay(B.cost);
+  const B=BUILDINGS[tile.building], cost=costOf(tile.building);
+  if(!canPay(cost)){ toast('Per ampliare servono '+costText(cost)+'.'); return; }
+  pay(cost);
   const hp=tile.hp;
   tile.size=sizeOf(tile)+1;
   openSite(tile,tile.building,'you',B.blocks,true);

@@ -116,10 +116,16 @@ const canPay = (cost,n=1) => COST_KEYS.every(k=>!cost[k]||res[k]>=cost[k]*n);
 function pay(cost,n=1){ for(const k of COST_KEYS) if(cost[k]) res[k]-=cost[k]*n; }
 const costText = (cost,n=1) => COST_KEYS.filter(k=>cost[k]).map(k=>cost[k]*n+' '+COST_LABEL[k]).join(' · ');
 
-/* ── ricerca: tre livelli, ognuno migliora resa e armi ────────── */
-const TECH_COST = [0, 90, 240, 480];
-const techProd = () => 1 + 0.18*tech;
-const techWar  = () => 1 + 0.22*tech;
+/* ── ricerca: ora è un albero a rami (25-progress.js); resa e armi
+   sommano gli effetti dei nodi completati ─────────────────────────── */
+const techProd = () => 1 + techSum('prod');
+const techWar  = () => 1 + techSum('war');
+/* il costo di un edificio, con gli sconti della ricerca (la rampa) */
+function costOf(key){
+  const c={...BUILDINGS[key].cost};
+  if(key==='pad'&&typeof techSum==='function') for(const k in c) c[k]=Math.round(c[k]*(1-techSum('padCost')));
+  return c;
+}
 
 /* ── unità ────────────────────────────────────────────────────── */
 const UNITS = {

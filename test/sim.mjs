@@ -31,8 +31,12 @@ const SCENARIOS = [
   { name: 'primo mondo, senza giocatore',seed: 3,  world: 1, auto: false },
   // expect: messaggi che devono comparire almeno una volta nella partita
   { name: 'terzo mondo con rivali',      seed: 11, world: 3, auto: true, survive: true, expect: ['📜', 'accetta il dono'] },
-  { name: 'quinto mondo con rivali',     seed: 23, world: 5, auto: true, survive: true },
+  { name: 'quinto mondo con rivali',     seed: 23, world: 5, auto: true, survive: true, expect: ['🔬'] },
   { name: 'salva e ricarica a metà',     seed: 5,  world: 3, auto: true, reload: true, survive: true },
+  // a metà partita si parte per il mondo successivo: sbarcano i veterani
+  { name: 'nuovo mondo coi veterani',    seed: 13, world: 2, auto: true, survive: true, expect: ['🚀 Sbarcano'],
+    midway: `const pad=FC.mine.find(t=>isMine(t)&&housesOf(t)>0)||FC.mine.find(t=>isMine(t));
+      const n=boardVeterans(pad); padCargoMat=60; padCargoFood=60; nextWorld(); __stale.clear(); __progress.clear();` },
   // un clan assoggettato all'inizio, senza guarnigione vicina: deve ribellarsi
   { name: 'assoggettati senza guarnigione', seed: 11, world: 3, auto: true, expect: ['Rivolta'],
     setup: `const s=settlements[0]; s.relation='ostile';
@@ -143,6 +147,9 @@ function __check(){
     if(s !== b) bad.push('letti su ' + (t.building || 'casella vuota') + ': ' + s + ' segnati, ' + b + ' coloni li tengono');
     if(t.building && isMine(t) && b > housesOf(t)) bad.push(BUILDINGS[t.building].name + ': ' + b + ' coloni a letto su ' + housesOf(t) + ' posti');
   }
+  if(tech !== researched.size) bad.push('tech = ' + tech + ' ma i nodi completati sono ' + researched.size);
+  for(const id of researched) if(!RESEARCH[id]) bad.push('nodo di ricerca sconosciuto: ' + id);
+  if(researching && (!RESEARCH[researching] || researched.has(researching))) bad.push('ricerca in corso non valida: ' + researching);
   if(!NARRATOR_PHASES[narrator.phase]) bad.push('narratore in una fase sconosciuta: ' + narrator.phase);
   if(choice && !CHOICE_EVENTS[choice.id]) bad.push('scelta sconosciuta: ' + choice.id);
   const RELS = ['ostile','neutrale','alleato','assoggettato','conquistato'];
@@ -206,6 +213,7 @@ function runScenario(sc) {
     for (let f = 0; f < TICKS * FPS; f++) {
       issues.push(...game.run(`__frame(${dt})`));
       if (TRACE && f % (TRACE * FPS) === 0) traces.push(game.run('__trace()'));
+      if (sc.midway && f === Math.floor(TICKS * FPS / 2)) game.run(sc.midway);
       // a metà partita: salva, ricarica dal salvataggio e continua da lì
       if (sc.reload && f === Math.floor(TICKS * FPS / 2)) {
         const state = 'JSON.stringify([myPeople().length, units.filter(u=>u.needs).length, Math.round(res.food), ' +

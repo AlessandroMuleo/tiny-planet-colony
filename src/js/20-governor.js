@@ -38,7 +38,7 @@ function govContext(){
 }
 /* considerazioni che ricorrono */
 const gAfford = key => consider('si può pagare', c=>{
-  const cost=BUILDINGS[key].cost;
+  const cost=costOf(key);
   return Math.min(...COST_KEYS.map(k=>cost[k]?(res[k]||0)/cost[k]:1));
 }, CURVES.linear(0.7,0.3));
 const gNone = (key,n=1) => consider('ne mancano', c=>1-c.count(key)/n, CURVES.step(.01));
@@ -88,7 +88,7 @@ const GOV_PROJECTS={
     consider('minaccia', c=>c.threat),
     consider('mura da completare', c=>1-c.count('wall')/Math.max(1,Math.min(8,Math.floor(pop/3)))), gAfford('wall')]},
   lab:     {label:'Centro ricerca', weight:0.7, considerations:[
-    consider('ricerca da fare', c=>is(tech<3)), gNone('lab'),
+    consider('ricerca da fare', c=>is(researchLeft()>0)), gNone('lab'),
     consider('colonia avviata', c=>res.mat/110, CURVES.logistic(.8,10)), gAfford('lab')]},
   shrine:  {label:'Santuario', weight:0.55, considerations:[
     consider('minaccia', c=>c.threat), gNone('shrine'),
@@ -146,7 +146,7 @@ function govStaff(c){
     food: 0.4+0.6*clamp01(1-c.foodDays/80)+(c.r.food<0?0.4:0),
     mat:  0.3+0.6*clamp01(1-res.mat/Math.min(c.cap,220)),
     pow:  0.3+0.7*clamp01(0.6-c.r.pow),
-    sci:  tech<3?0.45:0.05,
+    sci:  researchLeft()?0.45:0.05,
     bar:  c.wantBars?0.6:0.1
   };
   const score=t=>{
@@ -179,13 +179,14 @@ function autoThink(){
       // taglia scelta in base a quanto è ricca e popolosa la colonia
       let sz=1;
       if((B.jobs>0||B.houses||B.granary)&&!B.fixed){
-        if(canPay(B.cost,4)&&pop>14) sz=3;
-        else if(canPay(B.cost,2.5)&&pop>8) sz=2;
+        if(canPay(costOf(want),4)&&pop>14) sz=3;
+        else if(canPay(costOf(want),2.5)&&pop>8) sz=2;
       }
-      while(sz>1&&!canPay(B.cost,sz)) sz--;
-      if(canPay(B.cost,sz)){
+      const cost=costOf(want);
+      while(sz>1&&!canPay(cost,sz)) sz--;
+      if(canPay(cost,sz)){
         const spot=pickSpot(want,sz);
-        if(spot){ pay(B.cost,sz); startSite(spot,want,'you',sz); }
+        if(spot){ pay(cost,sz); startSite(spot,want,'you',sz); }
       }
       // altrimenti si aspetta: il progetto migliore resta quello, si risparmia
     }

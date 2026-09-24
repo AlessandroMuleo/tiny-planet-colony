@@ -65,7 +65,7 @@ function resolveCombat(dt){
       const foe=o.faction==='raider'||
         (o.faction==='rival'&&o.settlement&&o.settlement.relation==='ostile');
       if(!foe) continue;
-      if(tp.distanceTo(o.mesh.position)<B.range){
+      if(tp.distanceTo(o.mesh.position)<B.range+(hasTech('forts')?1:0)){
         o.hp-=B.dps*techWar()*dt;
         if(beams){
           const g=new THREE.BufferGeometry().setFromPoints([tp,o.mesh.position.clone()]);

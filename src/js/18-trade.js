@@ -25,7 +25,7 @@ function sendCaravans(){
     const home=tiles.find(t=>t.settlement===s&&t.building);
     const P=personalityOf(s);
     if(!home||!FC.storage.length||!P.caravan&&s.relation!=='assoggettato') continue;
-    const load=Math.round((s.relation==='alleato'?22:14)*(s.relation==='alleato'?P.caravan:1));
+    const load=Math.round((s.relation==='alleato'?22:14)*(s.relation==='alleato'?P.caravan:1)*(1+techSum('caravan')));
     // prima una carovana da un altro continente vagava per 160 tick e spariva:
     // ora, se a piedi non si arriva, il carico viene via mare
     if(!FC.storage.some(t=>reachable(home,t))){ unloadCaravan(s,load,' (via mare)'); continue; }

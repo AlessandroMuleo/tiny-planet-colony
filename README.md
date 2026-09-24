@@ -37,7 +37,9 @@ trasformarli.
 | 17-diplomacy · 18-trade | diplomazia, clan rivali, carovane |
 | 19-events | poteri del giocatore, **eventi casuali** |
 | 20-governor | governatore automatico |
-| 21-ui … 25-main | interfaccia, salvataggio, input, ciclo principale |
+| 21-ui … 24-input | interfaccia, salvataggio, ciclo di vita, input |
+| 25-progress | albero della ricerca, veterani, statistiche |
+| 26-main | avvio e ciclo principale |
 
 ## Comandi
 
@@ -56,9 +58,10 @@ bisogni medi.
 ## La simulazione di prova
 
 Gira il codice vero del gioco (three.js r128, lo stesso della CDN) con DOM e
-renderer finti e `Math.random` a seme fisso. Sette scenari: primo mondo con
+renderer finti e `Math.random` a seme fisso. Otto scenari: primo mondo con
 e senza governatore, mondi con clan rivali, una partita salvata e ricaricata
-a metà, e un clan assoggettato senza guarnigione. Col governatore la colonia
+a metà, una partenza per il mondo successivo coi veterani, e un clan
+assoggettato senza guarnigione. Col governatore la colonia
 deve arrivare viva alla fine, e alcuni scenari devono vedere certi eventi
 (una richiesta di un clan, una rivolta). A ogni tick controlla che:
 
@@ -115,6 +118,12 @@ tensione e picco, con una fase di ripresa dopo una batosta. Alcuni eventi
 chiedono una scelta, e un'epidemia non curata può finire con un clan di
 esuli. Dettagli in [docs/narratore.md](docs/narratore.md).
 
+## Progressione
+
+Un albero della ricerca a quattro rami, veterani che portano nome, tratti e
+abilità nel mondo successivo, e una schermata di statistiche. Dettagli in
+[docs/progressione.md](docs/progressione.md).
+
 ## Aggiungere cose
 
 - **Un edificio:** una voce in `BUILDINGS` (02-data) e un modello in
@@ -126,6 +135,8 @@ esuli. Dettagli in [docs/narratore.md](docs/narratore.md).
 - **Un'azione dei coloni:** una voce in `COLONIST_ACTIONS` (15-colonists), con
   peso, considerazioni e `run()`.
 - **Un tratto dei coloni:** una voce in `PERSON_TRAITS` (15-colonists).
+- **Un nodo di ricerca:** una voce in `RESEARCH` (25-progress), con ramo,
+  livello, costo ed effetto; l'effetto si legge con `techSum('chiave')`.
 - **Un evento con scelta:** una voce in `CHOICE_EVENTS` (19-events), con
   `when()`, testo e opzioni, ognuna con `run()` e `score(c)` per il
   governatore.

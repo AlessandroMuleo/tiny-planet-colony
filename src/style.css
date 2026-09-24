@@ -53,6 +53,48 @@
   .fill.danger{margin-left:0;border-color:rgba(224,97,107,.45);color:var(--rival)}
   .fill.danger:hover:not(:disabled){border-color:var(--rival);color:var(--ink)}
   .demo{display:none;margin-top:9px}
+  .muted{color:var(--ink-dim);font-size:11.5px;font-weight:400}
+  /* albero della ricerca */
+  /* sotto la barra dei comandi, che deve restare cliccabile */
+  .research,.stats{left:50%;top:150px;transform:translateX(-50%);width:min(760px,calc(100vw - 32px));
+    max-height:calc(100vh - 250px);overflow-y:auto;display:none;z-index:55}
+  .research.on,.stats.on{display:block}
+  .research h3,.stats h3{margin:0 0 10px;font-size:13px;font-weight:500;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+  .tree{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+  .branch h4{margin:0 0 6px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-dim)}
+  .node{all:unset;box-sizing:border-box;display:block;width:100%;margin-bottom:6px;padding:7px 8px;border:1px solid var(--line);
+    border-radius:4px;cursor:pointer;font-size:11.5px;color:var(--ink-dim)}
+  .node b{display:block;color:var(--ink);font-weight:500;font-size:12.5px}
+  .node span{display:block;margin:2px 0}
+  .node em{font-style:normal;font-size:11px}
+  .node:hover:not(:disabled){border-color:var(--ember)}
+  .node:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+  .node:disabled{cursor:default;opacity:.45}
+  .node.done{opacity:1;border-color:rgba(143,217,138,.5)} .node.done em{color:var(--moss)}
+  .node.cur{border-color:var(--ember)} .node.cur em{color:var(--ember)}
+  /* statistiche: piccoli multipli, una serie per grafico */
+  .link{all:unset;cursor:pointer;font-size:11.5px;color:var(--ember)}
+  .link:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+  #stats-body{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+  .sc{margin:0}
+  .sc figcaption{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-dim);margin-bottom:3px}
+  .sc figcaption b{color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums}
+  .sc-wrap{position:relative}
+  .sc-svg{display:block;width:100%;height:auto;overflow:visible}
+  .sc-svg .line{fill:none;stroke:#3e95d8;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+  .sc-svg .grid{stroke:var(--line);stroke-width:1}
+  .sc-svg .world{stroke:var(--ink-dim);stroke-width:1;stroke-dasharray:3 3;opacity:.6}
+  .sc-svg .ax{fill:var(--ink-dim);font-size:8.5px;font-family:inherit}
+  .sc-svg .cross{stroke:var(--ink-dim);stroke-width:1}
+  .sc-svg .dot{fill:#3e95d8;stroke:var(--void);stroke-width:2}
+  .sc-svg .hit{fill:transparent;cursor:crosshair}
+  .sc-tip{position:absolute;top:-4px;transform:translate(-50%,-100%);background:var(--void);border:1px solid var(--line);
+    border-radius:3px;padding:3px 6px;font-size:11px;white-space:nowrap;pointer-events:none;opacity:0;font-variant-numeric:tabular-nums}
+  .sc-tip.on{opacity:1}
+  .st-scroll{grid-column:1/-1;overflow-x:auto}
+  .st{border-collapse:collapse;font-size:11.5px;font-variant-numeric:tabular-nums;width:100%}
+  .st th,.st td{padding:3px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  .st th{font-weight:500;color:var(--ink-dim)}
   /* una scelta del narratore: in basso al centro, non ferma il gioco */
   .choice{position:fixed;left:50%;bottom:92px;transform:translate(-50%,8px);width:min(420px,calc(100vw - 32px));
     background:var(--panel);border:1px solid var(--ember);border-radius:6px;padding:12px 14px;
