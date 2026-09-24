@@ -175,7 +175,7 @@ function releaseAll(u){ releaseBlock(u); releaseBed(u); }
 function colonistContext(u){
   const canFight = !u.wounded && u.stage!=='child' && u.kind!=='thrall';
   let foe=null, bd=Math.max(MILITIA_RANGE,FLEE_RANGE);
-  for(const o of nearbyUnits(u.from,true)){
+  if(FC.danger) for(const o of nearbyUnits(u.from,true)){
     if(!hostile(u,o)||o.state==='landing') continue;
     const d=u.mesh.position.distanceTo(o.mesh.position);
     if(d<bd){ bd=d; foe=o; }

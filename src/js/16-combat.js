@@ -23,11 +23,12 @@ function rebuildProtection(){
 }
 const sheltered = u => u.faction==='you' &&
   (u.stage==='child'||u.wounded||u.kind==='thrall') && shelterTiles.has(u.from.id);
+const hostileToYou = u => u.faction==='raider'||(u.settlement&&u.settlement.relation==='ostile');
 const behindWalls = u => u.faction==='you' && wallTiles.has(u.from.id);
 function resolveCombat(dt){
   if(beams) beams.clear();
   rebuildProtection();
-  for(const u of units){
+  if(FC.danger) for(const u of units){
     if(u.state==='landing') continue;
     const U=UNITS[u.kind], dmg=unitDamage(u);
     if(!dmg) continue;
@@ -49,9 +50,11 @@ function resolveCombat(dt){
     const t=u.from, dmg=unitDamage(u);
     if(!dmg||!t.building) continue;
     if(u.faction==='raider'&&(t.owner==='you'||t.owner==='rival')) damageBuilding(t,dmg*dt);
-    else if(u.faction!=='you'&&t.owner==='you') damageBuilding(t,dmg*dt);
+    // solo un clan ostile danneggia i tuoi edifici: prima bastava che un soldato
+    // di un clan neutrale ci passasse sopra
+    else if(u.faction==='rival'&&u.settlement&&u.settlement.relation==='ostile'&&t.owner==='you') damageBuilding(t,dmg*dt);
     // la mura che sbarra il passo successivo viene abbattuta
-    if(u.faction!=='you'&&u.to&&u.to!==t&&blocksFoe(u.to)) damageBuilding(u.to,dmg*dt);
+    if(u.faction!=='you'&&hostileToYou(u)&&u.to&&u.to!==t&&blocksFoe(u.to)) damageBuilding(u.to,dmg*dt);
     if(u.faction==='you'&&t.owner==='rival'&&t.settlement&&t.settlement.relation==='ostile')
       damageBuilding(t,dmg*dt);
     if(u.faction==='rival'&&u.settlement&&t.settlement&&atWar(u.settlement,t.settlement))
