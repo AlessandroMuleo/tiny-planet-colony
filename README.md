@@ -71,7 +71,10 @@ e senza governatore, mondi con clan rivali, una partita salvata e ricaricata
 a metà, una partenza per il mondo successivo coi veterani, e un clan
 assoggettato senza guarnigione. Col governatore la colonia
 deve arrivare viva alla fine, e alcuni scenari devono vedere certi eventi
-(una richiesta di un clan, una rivolta). A ogni tick controlla che:
+(una richiesta di un clan, una rivolta). Gli eventi casuali (scelte,
+ricerche, traguardi, amici piante, matrimoni, carestie, predoni che
+ripartono, fasi di ripresa) devono comparire in almeno uno scenario della
+suite: per un seme solo sarebbero fragili. A ogni tick controlla che:
 
 - `pop` coincida con i coloni che esistono davvero;
 - nessuna risorsa sia negativa, `NaN` o oltre la capienza;
@@ -105,6 +108,18 @@ colono ha un nome, da zero a due tratti che correggono le sue curve, e abilità
 che crescono con la pratica. In gioco, selezionando una casella con dei coloni
 l'ispettore mostra nome, tratti, mestiere migliore, bisogni e le tre azioni
 col punteggio più alto.
+
+## Amicizie e traguardi
+
+Chi lavora sullo stesso edificio, dorme sotto lo stesso tetto o passa la
+serata in taverna si affeziona. Gli amici vicini alzano l'umore (+0,06),
+perderne uno lo abbassa per due minuti (−0,2). Due tratti nuovi, socievole
+e solitario, cambiano quanto in fretta nascono i legami. L'ispettore mostra
+gli amici di ogni colono.
+
+Sedici traguardi (popolazione, ricerca, diplomazia, mondi raggiunti…) si
+sbloccano giocando e restano nel browser da una partita all'altra; sono in
+fondo alla schermata statistiche.
 
 ## Diplomazia
 

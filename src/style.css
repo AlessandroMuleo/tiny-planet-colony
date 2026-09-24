@@ -92,6 +92,12 @@
     border-radius:3px;padding:3px 6px;font-size:11px;white-space:nowrap;pointer-events:none;opacity:0;font-variant-numeric:tabular-nums}
   .sc-tip.on{opacity:1}
   .st-scroll{grid-column:1/-1;overflow-x:auto}
+  .ach{grid-column:1/-1;margin-top:6px}
+  .ach h4{margin:0 0 6px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-dim)}
+  .ach-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+  .ach-i{padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:11px;color:var(--ink-dim);opacity:.55}
+  .ach-i b{display:block;font-weight:500;font-size:12px;color:var(--ink)}
+  .ach-i.on{opacity:1;border-color:rgba(255,196,107,.5)}
   .st{border-collapse:collapse;font-size:11.5px;font-variant-numeric:tabular-nums;width:100%}
   .st th,.st td{padding:3px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
   .st th{font-weight:500;color:var(--ink-dim)}

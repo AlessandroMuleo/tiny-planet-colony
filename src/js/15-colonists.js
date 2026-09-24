@@ -40,6 +40,8 @@ function moodFactors(u){
   if(grief>0.05) f.push(['lutto', -0.3*grief]);
   if(boomT>0) f.push(['annata abbondante', 0.08]);
   if(u.funT>0) f.push(['svago in taverna', 0.15]);
+  if(u.bonds&&friendNear(u)) f.push(['un amico vicino', 0.06]);
+  if(u.sorrowT>0) f.push(['ha perso un amico', -0.2]);
   if(u.kind==='thrall') f.push(['assoggettato', -0.2]);
   for(const id of u.traits||[]) if(PERSON_TRAITS[id].mood) f.push([PERSON_TRAITS[id].label, PERSON_TRAITS[id].mood]);
   return f;
@@ -63,6 +65,7 @@ function needsTick(){
     else n.rest=Math.max(0, n.rest-1/(NEEDS.AWAKE*traitMul(u,'awake')));
     n.mood+=(moodTarget(u)-n.mood)*NEEDS.MOOD_EASE;
     if(u.funT>0) u.funT--;
+    if(u.sorrowT>0) u.sorrowT--;
     // a scuola: il bambino studia il suo mestiere, e da adulto parte avvantaggiato
     if(u.act==='study'&&u.from===u.goal&&u.stage==='child') practice(u,u.study||(u.study=pickStudy()),1.5);
     // gli assoggettati non se ne vanno: il loro malcontento finisce in rivolta (17-diplomacy)
@@ -97,7 +100,9 @@ const PERSON_TRAITS={
   clever:  {label:'ingegnoso',  note:'impara il 50% più in fretta', learn:1.5},
   glutton: {label:'goloso',     note:'ha fame prima degli altri', hunger:1.2},
   sturdy:  {label:'robusto',    note:'regge il 30% in più senza dormire', awake:1.3},
-  cheerful:{label:'allegro',    note:'di umore migliore', mood:0.1}
+  cheerful:{label:'allegro',    note:'di umore migliore', mood:0.1},
+  friendly:{label:'socievole',  note:'fa amicizia il doppio più in fretta', social:2, not:'loner'},
+  loner:   {label:'solitario',  note:'fa amicizia a fatica', social:0.4, not:'friendly'}
 };
 /* prodotto di un campo numerico su tutti i tratti del colono (1 se nessuno lo ha) */
 function traitMul(u,field,key){

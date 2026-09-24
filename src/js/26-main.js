@@ -1,4 +1,5 @@
 try{
+  loadAchievements();
   generateWorld(worldSeed);
   applySeason();
   updateCamera();

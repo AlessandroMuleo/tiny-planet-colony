@@ -102,6 +102,12 @@
     border-radius:3px;padding:3px 6px;font-size:11px;white-space:nowrap;pointer-events:none;opacity:0;font-variant-numeric:tabular-nums}
   .sc-tip.on{opacity:1}
   .st-scroll{grid-column:1/-1;overflow-x:auto}
+  .ach{grid-column:1/-1;margin-top:6px}
+  .ach h4{margin:0 0 6px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-dim)}
+  .ach-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+  .ach-i{padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:11px;color:var(--ink-dim);opacity:.55}
+  .ach-i b{display:block;font-weight:500;font-size:12px;color:var(--ink)}
+  .ach-i.on{opacity:1;border-color:rgba(255,196,107,.5)}
   .st{border-collapse:collapse;font-size:11.5px;font-variant-numeric:tabular-nums;width:100%}
   .st th,.st td{padding:3px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
   .st th{font-weight:500;color:var(--ink-dim)}
@@ -1596,8 +1602,9 @@ function spawnUnit(kind,faction,tile){
   units.push(u);
   return u;
 }
-function killUnit(u,i){
-  releaseAll(u);                      // blocchi e letti prenotati tornano liberi
+function killUnit(u,i,died){
+  releaseAll(u);
+  if(hasNeeds(u)) mournFriend(u,died===true||u.hp<=0);   // morto, o solo andato via
   dropCarry(u);
   planetGroup.remove(u.mesh);
   units.splice(i,1);
@@ -1870,7 +1877,7 @@ function ageTick(){
       u.age++;
       const st=stageAt(u.age);
       if(u.age>=AGES.elder.until){
-        killUnit(u,i); pop=Math.max(0,pop-1); changed=true; mourn(0.15);
+        killUnit(u,i,true); pop=Math.max(0,pop-1); changed=true; mourn(0.15);
         toast('Un anziano è morto di vecchiaia.');
         continue;
       }
@@ -1936,7 +1943,7 @@ function economyTick(){
     raidWarned=true; logEvent('🔭 La torre avvista una navetta: incursione tra 25 secondi. Bambini al riparo!');
   }
   if(!raidActive){ raidIn--; if(raidIn<=0){ raidWarned=false; spawnRaid(); raidIn=raidInterval(); } }
-  raidersTick(); narratorTick(); choiceTick(); chainTick();
+  raidersTick(); narratorTick(); choiceTick(); chainTick(); socialTick(); achievementTick();
   for(const s of settlements) rivalThink(s);
   diplomacyTick();
   if(auto) autoThink();
@@ -2271,6 +2278,8 @@ function moodFactors(u){
   if(grief>0.05) f.push(['lutto', -0.3*grief]);
   if(boomT>0) f.push(['annata abbondante', 0.08]);
   if(u.funT>0) f.push(['svago in taverna', 0.15]);
+  if(u.bonds&&friendNear(u)) f.push(['un amico vicino', 0.06]);
+  if(u.sorrowT>0) f.push(['ha perso un amico', -0.2]);
   if(u.kind==='thrall') f.push(['assoggettato', -0.2]);
   for(const id of u.traits||[]) if(PERSON_TRAITS[id].mood) f.push([PERSON_TRAITS[id].label, PERSON_TRAITS[id].mood]);
   return f;
@@ -2294,6 +2303,7 @@ function needsTick(){
     else n.rest=Math.max(0, n.rest-1/(NEEDS.AWAKE*traitMul(u,'awake')));
     n.mood+=(moodTarget(u)-n.mood)*NEEDS.MOOD_EASE;
     if(u.funT>0) u.funT--;
+    if(u.sorrowT>0) u.sorrowT--;
     // a scuola: il bambino studia il suo mestiere, e da adulto parte avvantaggiato
     if(u.act==='study'&&u.from===u.goal&&u.stage==='child') practice(u,u.study||(u.study=pickStudy()),1.5);
     // gli assoggettati non se ne vanno: il loro malcontento finisce in rivolta (17-diplomacy)
@@ -2328,7 +2338,9 @@ const PERSON_TRAITS={
   clever:  {label:'ingegnoso',  note:'impara il 50% più in fretta', learn:1.5},
   glutton: {label:'goloso',     note:'ha fame prima degli altri', hunger:1.2},
   sturdy:  {label:'robusto',    note:'regge il 30% in più senza dormire', awake:1.3},
-  cheerful:{label:'allegro',    note:'di umore migliore', mood:0.1}
+  cheerful:{label:'allegro',    note:'di umore migliore', mood:0.1},
+  friendly:{label:'socievole',  note:'fa amicizia il doppio più in fretta', social:2, not:'loner'},
+  loner:   {label:'solitario',  note:'fa amicizia a fatica', social:0.4, not:'friendly'}
 };
 /* prodotto di un campo numerico su tutti i tratti del colono (1 se nessuno lo ha) */
 function traitMul(u,field,key){
@@ -3111,6 +3123,7 @@ function mediate(a,b){
   res.mat-=mediateCost();
   setTie(a,b,tie(a,b)+45);
   shiftGoodwill(a,10,'mediazione'); shiftGoodwill(b,10,'mediazione');
+  if(!atWar(a,b)) achFlags.mediated=true;
   toast('Mediazione tra '+a.name+' e '+b.name+(atWar(a,b)?': la guerra continua.':': tregua firmata.')); refreshHUD();
 }
 
@@ -3225,7 +3238,7 @@ function marriageTick(s){
   const adults=myPeople().filter(u=>u.stage==='adult'&&u.kind==='worker'&&u.name);
   if(!adults.length) return;
   const u=adults[Math.floor(Math.random()*adults.length)];
-  shiftGoodwill(s,8,'matrimonio');
+  shiftGoodwill(s,8,'matrimonio'); achFlags.married=true;
   for(const o of settlements) if(o!==s&&!settled(o)) setTie(s,o,tie(s,o)+3);
   if(rates().houses>pop){
     const spouse=spawnUnit('worker','you',u.from);
@@ -4129,9 +4142,11 @@ function renderMinds(tile){
     const cur=COLONIST_ACTIONS[u.act];
     const sk=bestSkill(u);
     const tr=(u.traits||[]).map(id=>'<span title="'+PERSON_TRAITS[id].note+'">'+PERSON_TRAITS[id].label+'</span>').join(', ');
+    const fr=friendsOf(u).map(v=>v.name).filter(Boolean);
     html+='<div class="mind"><div class="who">'+(u.name||UNITS[u.kind].label)+' · '+AGES[u.stage].label+
       (u.kind==='thrall'?' · assoggettato':'')+'<b>'+(cur?cur.label:'—')+'</b></div>'+
       ((tr||sk)?'<div class="traits">'+[tr, sk&&sk.bonus>=0.01?sk.label+' +'+Math.round(sk.bonus*100)+'%':''].filter(Boolean).join(' · ')+'</div>':'')+
+      (fr.length?'<div class="traits">amici: '+fr.slice(0,3).join(', ')+(fr.length>3?'…':'')+'</div>':'')+
       '<div class="needs">'+
       bar('sazio',n.food)+bar('riposato',n.rest)+bar('umore',n.mood)+'</div><ol>'+
       why.map(w=>{
@@ -4403,7 +4418,7 @@ function snapshot(){
     res:{...res}, pop, sci, tech, season, seasonT, raidIn, raidNo, worldAge, dayT,
     eventIn, boomT, padCargoMat, padCargoFood, grief, raidWarned,
     narrator:{phase:narrator.phase,t:narrator.t,hurt:narrator.hurt}, choice, famineT, exiles, chainT,
-    researched:[...researched], researching, stats,
+    researched:[...researched], researching, stats, achFlags,
     army:{size:army.size, target:si(army.target)},
     settlements:settlements.map(s=>({name:s.name, core:s.core.id, relation:s.relation,
       mat:s.mat, thinkT:s.thinkT, tradeT:s.tradeT||0,
@@ -4416,7 +4431,8 @@ function snapshot(){
       wd:!!u.wounded, set:si(u.settlement), dep:!!u.deployed,
       load:u.load, dl:!!u.delivered, life:u.lifeT||0,
       nd:u.needs?[u.needs.food,u.needs.rest,u.needs.mood]:null,
-      nm:u.name, tr:u.traits, sk:u.skills, org:si(u.origin), rq:u.req||null, fun:u.funT||0, st:u.study||null})),
+      nm:u.name, tr:u.traits, sk:u.skills, org:si(u.origin), rq:u.req||null, fun:u.funT||0, st:u.study||null,
+      uid:u.uid||0, bd:u.bonds||null, sor:u.sorrowT||0})),
     orbit:orbit.map(o=>o.kind), moonCrew:moonCrew.length};
 }
 function saveGame(silent){
@@ -4488,7 +4504,8 @@ function restore(d){
       u.deployed=e.dep;
       // salvataggi di prima dei bisogni: il colono parte sazio e riposato
       if(e.nd) u.needs={food:e.nd[0], rest:e.nd[1], mood:e.nd[2]};
-      u.funT=e.fun||0; u.study=e.st||null;
+      u.funT=e.fun||0; u.study=e.st||null; u.sorrowT=e.sor||0;
+      if(e.uid){ u.uid=e.uid; nextUid=Math.max(nextUid,e.uid+1); } if(e.bd) u.bonds={...e.bd};
       if(e.nm){ u.name=e.nm; u.traits=(e.tr||[]).filter(id=>PERSON_TRAITS[id]); u.skills={...(e.sk||{})}; }
       if(e.org>=0&&settlements[e.org]) u.origin=settlements[e.org];
       if(e.k==='envoy'){ u.lifeT=e.life; u.req=e.rq; u.delivered=e.dl||!e.rq; if(!u.delivered) takeCarry(u,0xffe08a); }
@@ -4498,7 +4515,7 @@ function restore(d){
     pop=myPeople().length; sci=d.sci;
     // salvataggi di prima dell'albero: i vecchi livelli diventano i primi nodi dell'economia e dell'esercito
     researched=new Set((d.researched||['tools','weapons','rotation'].slice(0,d.tech||0)).filter(id=>RESEARCH[id]));
-    tech=researched.size; researching=RESEARCH[d.researching]?d.researching:null; stats=d.stats||[]; season=d.season; seasonT=d.seasonT;
+    tech=researched.size; achFlags=d.achFlags||{}; researching=RESEARCH[d.researching]?d.researching:null; stats=d.stats||[]; season=d.season; seasonT=d.seasonT;
     raidIn=d.raidIn; raidNo=d.raidNo; worldAge=d.worldAge; dayT=d.dayT;
     eventIn=d.eventIn; boomT=d.boomT; grief=d.grief||0; raidWarned=!!d.raidWarned;
     narrator=d.narrator&&NARRATOR_PHASES[d.narrator.phase]?{...d.narrator}:{phase:'calma',t:0,hurt:0};
@@ -4910,8 +4927,8 @@ function toggleStats(){
 function renderStats(){
   const box=$('stats-body');
   $('stats-mode').textContent=statsTable?'grafici':'tabella';
-  if(!stats.length){ box.innerHTML='<p class="muted">Ancora nessun dato: torna tra qualche secondo.</p>'; return; }
-  if(statsTable){ box.innerHTML=statsTableHTML(); return; }
+  if(!stats.length){ box.innerHTML='<p class="muted">Ancora nessun dato: torna tra qualche secondo.</p>'+achievementsHTML(); return; }
+  if(statsTable){ box.innerHTML=statsTableHTML()+achievementsHTML(); return; }
   box.innerHTML='';
   for(const C of STAT_CHARTS){
     const pts=stats.filter(s=>s[C.key]!==null&&s[C.key]!==undefined);
@@ -4922,6 +4939,7 @@ function renderStats(){
     fig.appendChild(lineChart(pts,C));
     box.appendChild(fig);
   }
+  box.insertAdjacentHTML('beforeend',achievementsHTML());
 }
 function lineChart(pts,C){
   const W=260, H=86, L=34, Rp=6, T=6, B=16;
@@ -4972,7 +4990,109 @@ function statsTableHTML(){
       STAT_CHARTS.map(C=>'<td>'+(s[C.key]===null||s[C.key]===undefined?'—':s[C.key].toLocaleString('it')+(C.unit||''))+'</td>').join('')+
       '<td>'+s.raids+'</td></tr>').join('')+'</tbody></table></div>';
 }
+/* ═══════════════ amicizie e traguardi ═══════════════ */
+
+/* ── amicizie ────────────────────────────────────────────────────────
+   Chi lavora sullo stesso edificio o dorme sotto lo stesso tetto si
+   affeziona. Un legame va da 0 a 1; da FRIEND_AT in su è un'amicizia.
+   Gli amici vicini alzano l'umore; perderne uno lo abbassa per un po',
+   più del lutto generale. I legami non curati si affievoliscono.       */
+const FRIEND_AT = 0.5, BOND_GAIN = 0.04, BOND_DECAY = 0.001, MAX_BONDS = 6;
+let nextUid = 1;
+const uidOf = u => u.uid || (u.uid = nextUid++);
+const bondOf = (u,v) => (u.bonds&&u.bonds[uidOf(v)])||0;
+function addBond(u,v,k){
+  u.bonds=u.bonds||{};
+  const id=uidOf(v); u.bonds[id]=Math.min(1,(u.bonds[id]||0)+k);
+}
+/* ogni 5 tick: gruppi di coloni sulla stessa casella di lavoro o di sonno */
+function socialTick(){
+  if(worldAge%5) return;
+  const groups=new Map();
+  for(const u of units){
+    if(!hasNeeds(u)||u.stage==='child') continue;
+    // i legami che non si coltivano si affievoliscono
+    if(u.bonds) for(const id in u.bonds){ u.bonds[id]-=BOND_DECAY*5; if(u.bonds[id]<=0) delete u.bonds[id]; }
+    // colleghi dello stesso edificio (anche mentre portano il raccolto),
+    // compagni di stanza, e chi è in taverna nello stesso momento
+    const place = u.act==='work'&&u.job ? u.job : u.act==='sleep'&&u.bed&&u.from===u.bed ? u.bed :
+                  u.act==='relax' ? u.from : null;
+    if(!place) continue;
+    if(!groups.has(place)) groups.set(place,[]);
+    groups.get(place).push(u);
+  }
+  for(const g of groups.values()){
+    if(g.length<2||g.length>12) continue;       // in una folla non ci si conosce
+    for(const a of g) for(const b of g) if(a!==b) addBond(a,b,BOND_GAIN*traitMul(a,'social'));
+  }
+  // si tengono solo i legami più forti
+  for(const u of units) if(u.bonds){
+    const ids=Object.keys(u.bonds);
+    if(ids.length>MAX_BONDS) ids.sort((a,b)=>u.bonds[a]-u.bonds[b]).slice(0,ids.length-MAX_BONDS).forEach(id=>delete u.bonds[id]);
+  }
+}
+const friendsOf = u => units.filter(v=>v!==u&&hasNeeds(v)&&bondOf(u,v)>=FRIEND_AT);
+const friendNear = u => units.some(v=>v!==u&&hasNeeds(v)&&bondOf(u,v)>=FRIEND_AT&&
+  (v.from===u.from||u.from.neighbors.includes(v.from.id)));
+/* chiamata da killUnit: gli amici di chi se ne va ne soffrono */
+function mournFriend(u,died){
+  if(!u.uid) return;
+  let sad=0;
+  for(const v of units){
+    if(v===u||!hasNeeds(v)||bondOf(v,u)<FRIEND_AT) continue;
+    v.sorrowT=died?120:60; delete v.bonds[u.uid]; sad++;
+  }
+  if(sad&&died&&u.name) logEvent('🕯 '+sad+(sad===1?' amico piange':' amici piangono')+' '+u.name+'.');
+}
+
+/* ── traguardi ───────────────────────────────────────────────────────
+   Restano nel browser anche tra una partita e l'altra (localStorage a
+   parte dal salvataggio). Si controllano ogni 10 tick.                 */
+const ACH_KEY = 'tiny-planet-colony-achievements';
+const ACHIEVEMENTS = {
+  pop10:    {label:'Villaggio',         desc:'10 coloni',                    test:()=>myPeople().length>=10},
+  pop50:    {label:'Borgo',             desc:'50 coloni',                    test:()=>myPeople().length>=50},
+  pop150:   {label:'Città',             desc:'150 coloni',                   test:()=>myPeople().length>=150},
+  research1:{label:'Prima scoperta',    desc:'completa un nodo di ricerca',  test:()=>researched.size>=1},
+  branch:   {label:'Specialista',       desc:'completa un ramo della ricerca',
+             test:()=>BRANCHES.some(b=>Object.keys(RESEARCH).filter(k=>RESEARCH[k].branch===b).every(k=>researched.has(k)))},
+  raids5:   {label:'Veterani di guerra',desc:'sopravvivi a 5 incursioni',    test:()=>raidNo>=5&&!raidActive},
+  ally:     {label:'Amici lontani',     desc:'stringi un\'alleanza',          test:()=>settlements.some(s=>s.relation==='alleato')},
+  peace:    {label:'Pacificatore',      desc:'due clan in pace grazie a te', test:()=>achFlags.mediated},
+  subject:  {label:'Signore',           desc:'assoggetta un clan',           test:()=>settlements.some(s=>s.relation==='assoggettato')},
+  wed:      {label:'Fiori d\'arancio',  desc:'un matrimonio con un clan',    test:()=>achFlags.married},
+  friends:  {label:'Legami',            desc:'un colono con tre amici',      test:()=>units.some(u=>hasNeeds(u)&&friendsOf(u).length>=3)},
+  master:   {label:'Maestro',           desc:'un colono con +40% in un mestiere',
+             test:()=>units.some(u=>u.skills&&Object.keys(u.skills).some(k=>skillMul(u,k)>=1.4))},
+  ingots:   {label:'Età del ferro',     desc:'100 lingotti in magazzino',    test:()=>(res.bar||0)>=100},
+  world2:   {label:'Oltre il cielo',    desc:'raggiungi il secondo mondo',   test:()=>worldIndex>=2},
+  world5:   {label:'Nomadi delle stelle',desc:'raggiungi il quinto mondo',   test:()=>worldIndex>=5},
+  storm:    {label:'Tempesta perfetta', desc:'respingi un\'incursione durante un temporale',
+             test:()=>achFlags.stormRaid}
+};
+let achieved=new Set(), achFlags={};
+function loadAchievements(){
+  try{ achieved=new Set(JSON.parse(localStorage.getItem(ACH_KEY)||'[]').filter(id=>ACHIEVEMENTS[id])); }
+  catch(e){ achieved=new Set(); }
+}
+function achievementTick(){
+  if(worldAge%10) return;
+  for(const id in ACHIEVEMENTS){
+    if(achieved.has(id)||!ACHIEVEMENTS[id].test()) continue;
+    achieved.add(id);
+    logEvent('🏆 Traguardo: '+ACHIEVEMENTS[id].label+' — '+ACHIEVEMENTS[id].desc+'.');
+    try{ localStorage.setItem(ACH_KEY,JSON.stringify([...achieved])); }catch(e){}
+  }
+}
+function achievementsHTML(){
+  return '<div class="ach"><h4>Traguardi '+achieved.size+'/'+Object.keys(ACHIEVEMENTS).length+'</h4><div class="ach-grid">'+
+    Object.keys(ACHIEVEMENTS).map(id=>{
+      const A=ACHIEVEMENTS[id], on=achieved.has(id);
+      return '<div class="ach-i'+(on?' on':'')+'" title="'+A.desc+'"><b>'+(on?'🏆 ':'')+A.label+'</b><span>'+A.desc+'</span></div>';
+    }).join('')+'</div></div>';
+}
 try{
+  loadAchievements();
   generateWorld(worldSeed);
   applySeason();
   updateCamera();

@@ -215,7 +215,7 @@ function ageTick(){
       u.age++;
       const st=stageAt(u.age);
       if(u.age>=AGES.elder.until){
-        killUnit(u,i); pop=Math.max(0,pop-1); changed=true; mourn(0.15);
+        killUnit(u,i,true); pop=Math.max(0,pop-1); changed=true; mourn(0.15);
         toast('Un anziano è morto di vecchiaia.');
         continue;
       }
@@ -281,7 +281,7 @@ function economyTick(){
     raidWarned=true; logEvent('🔭 La torre avvista una navetta: incursione tra 25 secondi. Bambini al riparo!');
   }
   if(!raidActive){ raidIn--; if(raidIn<=0){ raidWarned=false; spawnRaid(); raidIn=raidInterval(); } }
-  raidersTick(); narratorTick(); choiceTick(); chainTick();
+  raidersTick(); narratorTick(); choiceTick(); chainTick(); socialTick(); achievementTick();
   for(const s of settlements) rivalThink(s);
   diplomacyTick();
   if(auto) autoThink();

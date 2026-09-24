@@ -24,14 +24,19 @@ const VERBOSE = process.argv.includes('--verbose');
 const TRACE = +arg('trace', 0);        // ogni N tick: cosa fanno i coloni
 const FPS = 5;                        // passi di simulazione per secondo di gioco (dt = 0,2 s)
 
+/* eventi casuali che devono comparire in almeno uno degli scenari: per un
+   seme solo sarebbero fragili (ogni modifica sposta i numeri casuali), ma
+   se non compaiono mai in tutta la suite qualcosa si è rotto davvero    */
+const SUITE_EXPECT = ['❓', 'Il governatore sceglie', '🔬', '🏆', '🕯', '💍', '🥀', 'ripartono col bottino', 'ripresa'];
+
 const SCENARIOS = [
   // survive: col governatore la colonia deve arrivare viva alla fine
   { name: 'primo mondo, automatico',     seed: 1,  world: 1, auto: true, survive: true },
-  { name: 'primo mondo, automatico #2',  seed: 7,  world: 1, auto: true, survive: true, expect: ['❓', 'Il governatore sceglie'] },
+  { name: 'primo mondo, automatico #2',  seed: 7,  world: 1, auto: true, survive: true },
   { name: 'primo mondo, senza giocatore',seed: 3,  world: 1, auto: false },
   // expect: messaggi che devono comparire almeno una volta nella partita
   { name: 'terzo mondo con rivali',      seed: 11, world: 3, auto: true, survive: true, expect: ['📜', 'accetta il dono'] },
-  { name: 'quinto mondo con rivali',     seed: 23, world: 5, auto: true, survive: true, expect: ['🔬'] },
+  { name: 'quinto mondo con rivali',     seed: 23, world: 5, auto: true, survive: true },
   { name: 'salva e ricarica a metà',     seed: 5,  world: 3, auto: true, reload: true, survive: true },
   // a metà partita si parte per il mondo successivo: sbarcano i veterani
   { name: 'nuovo mondo coi veterani',    seed: 13, world: 2, auto: true, survive: true, expect: ['🚀 Sbarcano'],
@@ -130,6 +135,7 @@ function __check(){
   for(const u of units){
     if(u.claimed) claims.set(u.claimed, (claims.get(u.claimed) || 0) + 1);
     if(u.bed) beds.set(u.bed, (beds.get(u.bed) || 0) + 1);
+    if(u.bonds) for(const id in u.bonds) if(!__fin(u.bonds[id]) || u.bonds[id] <= 0 || u.bonds[id] > 1) bad.push(u.kind + ': legame ' + u.bonds[id]);
     if(hasNeeds(u) && (!u.name || !Array.isArray(u.traits) || !u.skills)) bad.push(u.kind + ': civile senza nome, tratti o abilità');
     for(const k in u.skills || {})
       if(!__fin(u.skills[k]) || u.skills[k] < 0 || !SKILLS[k]) bad.push(u.kind + ': abilità ' + k + ' = ' + u.skills[k]);
@@ -291,7 +297,12 @@ const results = await Promise.all(picked.map(({ sc, i }) => new Promise(done => 
                    crashed: 'il processo è uscito con codice ' + code + '\n' + err }); }
   });
 })));
-const failed = results.filter(r => !report(r)).length;
+let failed = results.filter(r => !report(r)).length;
+if (!ONLY) {
+  const all = results.flatMap(r => r.toasts || []);
+  const missing = SUITE_EXPECT.filter(e => !all.some(t => t.includes(e)));
+  if (missing.length) { failed++; console.log('✗ in nessuno scenario è comparso: ' + missing.map(m => '«' + m + '»').join(', ')); }
+}
 console.log((failed ? `\n${failed} scenari falliti` : '\nTutti gli scenari sono passati') +
   ` · ${TICKS} tick · ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 process.exit(failed ? 1 : 0);

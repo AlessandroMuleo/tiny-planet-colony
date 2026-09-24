@@ -221,6 +221,7 @@ function mediate(a,b){
   res.mat-=mediateCost();
   setTie(a,b,tie(a,b)+45);
   shiftGoodwill(a,10,'mediazione'); shiftGoodwill(b,10,'mediazione');
+  if(!atWar(a,b)) achFlags.mediated=true;
   toast('Mediazione tra '+a.name+' e '+b.name+(atWar(a,b)?': la guerra continua.':': tregua firmata.')); refreshHUD();
 }
 
@@ -335,7 +336,7 @@ function marriageTick(s){
   const adults=myPeople().filter(u=>u.stage==='adult'&&u.kind==='worker'&&u.name);
   if(!adults.length) return;
   const u=adults[Math.floor(Math.random()*adults.length)];
-  shiftGoodwill(s,8,'matrimonio');
+  shiftGoodwill(s,8,'matrimonio'); achFlags.married=true;
   for(const o of settlements) if(o!==s&&!settled(o)) setTie(s,o,tie(s,o)+3);
   if(rates().houses>pop){
     const spouse=spawnUnit('worker','you',u.from);

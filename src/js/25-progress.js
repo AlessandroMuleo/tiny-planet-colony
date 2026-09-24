@@ -160,8 +160,8 @@ function toggleStats(){
 function renderStats(){
   const box=$('stats-body');
   $('stats-mode').textContent=statsTable?'grafici':'tabella';
-  if(!stats.length){ box.innerHTML='<p class="muted">Ancora nessun dato: torna tra qualche secondo.</p>'; return; }
-  if(statsTable){ box.innerHTML=statsTableHTML(); return; }
+  if(!stats.length){ box.innerHTML='<p class="muted">Ancora nessun dato: torna tra qualche secondo.</p>'+achievementsHTML(); return; }
+  if(statsTable){ box.innerHTML=statsTableHTML()+achievementsHTML(); return; }
   box.innerHTML='';
   for(const C of STAT_CHARTS){
     const pts=stats.filter(s=>s[C.key]!==null&&s[C.key]!==undefined);
@@ -172,6 +172,7 @@ function renderStats(){
     fig.appendChild(lineChart(pts,C));
     box.appendChild(fig);
   }
+  box.insertAdjacentHTML('beforeend',achievementsHTML());
 }
 function lineChart(pts,C){
   const W=260, H=86, L=34, Rp=6, T=6, B=16;

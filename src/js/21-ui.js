@@ -131,9 +131,11 @@ function renderMinds(tile){
     const cur=COLONIST_ACTIONS[u.act];
     const sk=bestSkill(u);
     const tr=(u.traits||[]).map(id=>'<span title="'+PERSON_TRAITS[id].note+'">'+PERSON_TRAITS[id].label+'</span>').join(', ');
+    const fr=friendsOf(u).map(v=>v.name).filter(Boolean);
     html+='<div class="mind"><div class="who">'+(u.name||UNITS[u.kind].label)+' · '+AGES[u.stage].label+
       (u.kind==='thrall'?' · assoggettato':'')+'<b>'+(cur?cur.label:'—')+'</b></div>'+
       ((tr||sk)?'<div class="traits">'+[tr, sk&&sk.bonus>=0.01?sk.label+' +'+Math.round(sk.bonus*100)+'%':''].filter(Boolean).join(' · ')+'</div>':'')+
+      (fr.length?'<div class="traits">amici: '+fr.slice(0,3).join(', ')+(fr.length>3?'…':'')+'</div>':'')+
       '<div class="needs">'+
       bar('sazio',n.food)+bar('riposato',n.rest)+bar('umore',n.mood)+'</div><ol>'+
       why.map(w=>{
