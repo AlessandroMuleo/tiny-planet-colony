@@ -24,9 +24,16 @@ const storageTiles  = () => tiles.filter(t=>isMine(t)&&storeOf(t)>0);
 function rates(){
   let food=FOOD_DRIP, matr=DRIP, pow=0, scir=0, houses=0, jobs=0, tribute=0;
   const S=seasonFood()*(trait.harsh?0.85:1), P=techProd()*legacy(), d=demography();
-  let eat=d.child*AGES.child.eat+d.adult*AGES.adult.eat+d.elder*AGES.elder.eat;
-  for(const u of myTroops()) if(u.kind==='guardian') eat += 0.30;
-  eat += myThralls().length*THRALL_EAT;
+  // eat: quanto mangiano i civili, che vanno da soli al magazzino (qui serve
+  // solo a mostrare il saldo nell'HUD). upkeep: le razioni di soldati e
+  // guardiani, che non hanno bisogni propri e si scalano dalla scorta a ogni tick
+  let eat=0, upkeep=0;
+  for(const u of units){
+    if(u.faction!=='you') continue;
+    if(hasNeeds(u)) eat+=eatRate(u);
+    else if(u.kind==='guardian') upkeep+=0.30;
+    else if(isPerson(u)) upkeep+=AGES[u.stage].eat;
+  }
   for(const t of tiles){
     if(!isMine(t)) continue;
     const B=BUILDINGS[t.building], w=t.workers||0;
@@ -44,9 +51,20 @@ function rates(){
   for(const o of orbit) if(o.built) pow-=ORBITALS[o.kind].drain||0;
   for(const s of settlements) tribute += s.relation==='alleato' ? 0.6 : s.relation==='assoggettato' ? 1.4 : 0;
   if(tiles.some(t=>isMine(t)&&BUILDINGS[t.building].trade&&(t.workers||0)>0)) tribute*=1.6;
-  const block = pop>=houses ? 'servono letti' : (food-eat<=0 && res.food<=8) ? 'serve cibo'
+  const block = pop>=houses ? 'servono letti' : (food-eat-upkeep<=0 && res.food<=8) ? 'serve cibo'
               : res.food<=8 ? 'scorte basse' : null;
-  return {food:food-eat, mat:matr+tribute, pow:pow-pop*USE, sci:scir, houses, jobs, demo:d, block};
+  return {food:food-eat-upkeep, stock:food-upkeep, mat:matr+tribute, pow:pow-pop*USE, sci:scir,
+    houses, jobs, demo:d, block};
+}
+/* chi produce davvero: solo chi è al lavoro (o sta portando il raccolto).
+   Un colono che mangia, dorme o scappa non rende, e l'umore pesa sulla resa. */
+function dutyTick(){
+  for(const t of tiles) if(isMine(t)&&jobsOf(t)>0) t.effWorkers=0;
+  for(const u of units){
+    if(u.faction!=='you'||!u.job||!isMine(u.job)) continue;
+    if(hasNeeds(u)&&u.act!=='work') continue;
+    u.job.effWorkers=(u.job.effWorkers||0)+workPower(u)*moodWork(u);
+  }
 }
 
 function setWorkers(tile,delta){
@@ -91,7 +109,9 @@ function syncJobs(){
     if(!t.site) continue;                     // completato in questo stesso frame
     blocksLeft += Math.max(0, t.site.need-t.site.have);
   }
-  const wanted=Math.min(6, Math.ceil(blocksLeft/4));
+  // con la utility AI i bambini non portano più blocchi e i portatori si fermano
+  // per mangiare e dormire: la squadra è un po' più grande per compensare
+  const wanted=Math.min(8, Math.ceil(blocksLeft/3));
   const needBuilders=Math.min(wanted, Math.max(0, able.length-1));
   const crew=able.slice(0,needBuilders);
   able=able.slice(needBuilders);
@@ -118,6 +138,8 @@ function syncJobs(){
 }
 function morph(u,kind){
   const carried=!!u.hasCargo;
+  // un soldato non ragiona più da civile: le sue prenotazioni tornano libere
+  if(!UNITS[kind].civil){ releaseAll(u); u.act=null; }
   dropCarry(u);
   planetGroup.remove(u.mesh);
   const m=unitMesh(kind);
@@ -141,7 +163,7 @@ function ageTick(){
       u.age++;
       const st=stageAt(u.age);
       if(u.age>=AGES.elder.until){
-        killUnit(u,i); pop=Math.max(0,pop-1); changed=true;
+        killUnit(u,i); pop=Math.max(0,pop-1); changed=true; mourn(0.15);
         toast('Un anziano è morto di vecchiaia.');
         continue;
       }
@@ -165,14 +187,16 @@ function ageTick(){
 function economyTick(){
   worldAge++;
   ageTick();
+  if(needsTick()){ trimWorkers(); syncJobs(); }
   // "pop" veniva aggiornato a mano in sei punti diversi e prima o poi si
   // sfasava dai coloni reali: ora si riallinea alla fonte a ogni tick
   pop=myPeople().length;
   if(checkCollapse()) return;
   if(boomT>0) boomT--;
   randomEventTick();
+  dutyTick();
   const r=rates(), cap=capacity(), clamp=v=>Math.min(cap,Math.max(0,v));
-  res.food=clamp(res.food+r.food);
+  res.food=clamp(res.food+r.stock);      // i civili mangiano da soli, al magazzino
   res.mat =clamp(res.mat +r.mat);
   res.pow =clamp(res.pow +r.pow);
 
@@ -195,15 +219,9 @@ function economyTick(){
     baby.age=0; applyAge(baby);           // nasce bambino: non lavora ancora
     syncJobs();
     toast('È nato un colono.');
-  } else if(res.food<=0&&pop>1&&Math.random()<.3){
-    // solo un vero colono (non un assoggettato) conta come popolazione:
-    // prima si cercava un civile qualsiasi, e un assoggettato ucciso
-    // scalava "pop" senza che nessun colono fosse davvero mancante
-    const i=units.findIndex(isPerson);
-    if(i>=0){ pop--; killUnit(units[i],i); }
-    trimWorkers(); syncJobs();
-    toast('Il cibo è finito: un colono se n’è andato.');
   }
+  // la fame non fa più sparire un colono a caso: ognuno ha il suo stomaco
+  // (needsTick, in 15-colonists.js)
 
   sendCaravans();
   if(!raidActive){ raidIn--; if(raidIn<=0){ spawnRaid();

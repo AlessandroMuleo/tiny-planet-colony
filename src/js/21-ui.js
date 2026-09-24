@@ -21,8 +21,10 @@ function refreshHUD(r){
   const set=(el,v)=>{const e=$(el);e.textContent=sign(v);e.className='rate'+(v<0?' neg':'');};
   set('r-food',r.food); set('r-mat',r.mat); set('r-pow',r.pow);
   const idle=idleCount();
+  const minds=units.filter(u=>hasNeeds(u)&&u.needs);
+  const mood=minds.length?minds.reduce((s,u)=>s+u.needs.mood,0)/minds.length:0;
   $('r-pop').textContent=pop+'/'+r.houses+' posti · '+idle+' liber'+(idle===1?'o':'i')+
-    (r.block?' · '+r.block:'');
+    (minds.length?' · umore '+Math.round(mood*100)+'%':'')+(r.block?' · '+r.block:'');
   $('r-pop').className='rate'+((idle>0||r.block)?' neg':'');
   $('s-raid').textContent=raidActive?'in corso':Math.max(0,raidIn)+'s';
   $('r-raid').textContent=raidActive?raiders().length+' nemici':'';
@@ -108,7 +110,32 @@ function setInspector(tile){
       : BIOMES[tile.biome].build ? 'Libera. Apri un catalogo e scegli cosa costruirci.'
                                  : 'Qui non si può costruire.';
   }
+  renderMinds(tile);
   box.classList.add('on');
+}
+/* I coloni sulla casella, con i bisogni e i tre punteggi più alti: per
+   ogni azione, la considerazione che la frena di più. È la risposta a
+   "perché sta facendo questo?".                                       */
+function renderMinds(tile){
+  const here=units.filter(u=>hasNeeds(u)&&u.needs&&(u.from===tile||u.to===tile));
+  const pct=v=>Math.round(v*100);
+  const bar=(label,v)=>'<span>'+label+'</span><div class="bar"><i class="'+(v<0.3?'low':'')+
+    '" style="width:'+pct(v)+'%"></i></div>';
+  let html='';
+  for(const u of here.slice(0,3)){
+    const n=u.needs, why=explainColonist(u).slice(0,3);
+    const cur=COLONIST_ACTIONS[u.act];
+    html+='<div class="mind"><div class="who">'+UNITS[u.kind].label+' · '+AGES[u.stage].label+
+      '<b>'+(cur?cur.label:'—')+'</b></div><div class="needs">'+
+      bar('sazio',n.food)+bar('riposato',n.rest)+bar('umore',n.mood)+'</div><ol>'+
+      why.map(w=>{
+        const worst=w.detail.slice().sort((a,b)=>a.value-b.value)[0];
+        return '<li>'+w.label+' '+w.score.toFixed(2)+
+          (worst&&worst.value<0.9?' <span>· '+worst.name+' '+worst.value.toFixed(2)+'</span>':'')+'</li>';
+      }).join('')+'</ol></div>';
+  }
+  if(here.length>3) html+='<div class="more">e altri '+(here.length-3)+'</div>';
+  $('i-minds').innerHTML=html;
 }
 
 const canAfford=B=>(!B.cost.mat||res.mat>=B.cost.mat)&&(!B.cost.pow||res.pow>=B.cost.pow);

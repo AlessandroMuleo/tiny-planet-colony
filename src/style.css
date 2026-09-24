@@ -53,6 +53,20 @@
   .fill.danger{margin-left:0;border-color:rgba(224,97,107,.45);color:var(--rival)}
   .fill.danger:hover:not(:disabled){border-color:var(--rival);color:var(--ink)}
   .demo{display:none;margin-top:9px}
+  /* chi sta sulla casella: bisogni e perché fa quello che fa */
+  .minds{margin-top:10px;display:flex;flex-direction:column;gap:9px}
+  .minds:empty{display:none}
+  .mind{border-top:1px solid var(--line);padding-top:8px;font-size:11.5px;color:var(--ink-dim)}
+  .mind .who{display:flex;justify-content:space-between;gap:6px;color:var(--ink)}
+  .mind .who b{font-weight:500;color:var(--ember)}
+  .mind .needs{display:grid;grid-template-columns:auto 1fr;gap:2px 6px;align-items:center;margin:5px 0}
+  .mind .bar{height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+  .mind .bar i{display:block;height:100%;background:var(--moss)}
+  .mind .bar i.low{background:var(--ember)}
+  .mind ol{margin:0;padding-left:16px}
+  .mind li{font-variant-numeric:tabular-nums}
+  .mind li span{opacity:.75}
+  .mind .more{font-size:11px}
   .kinds{display:none;gap:5px;margin-top:9px}
   .kinds button{all:unset;flex:1;text-align:center;padding:6px 4px;border:1px solid var(--line);
     border-radius:3px;font-size:11.5px;cursor:pointer;color:var(--ink-dim);transition:.12s}

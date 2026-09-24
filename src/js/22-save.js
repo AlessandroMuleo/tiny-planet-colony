@@ -6,7 +6,7 @@ function snapshot(){
   const si=s=>s?settlements.indexOf(s):-1;
   return {v:1, when:Date.now(), worldIndex, worldSeed, trait:trait.id,
     res:{...res}, pop, sci, tech, season, seasonT, raidIn, raidNo, worldAge, dayT,
-    eventIn, boomT, padCargoMat, padCargoFood,
+    eventIn, boomT, padCargoMat, padCargoFood, grief,
     army:{size:army.size, target:si(army.target)},
     settlements:settlements.map(s=>({name:s.name, core:s.core.id, relation:s.relation,
       mat:s.mat, thinkT:s.thinkT, tradeT:s.tradeT||0})),
@@ -15,7 +15,8 @@ function snapshot(){
       st:t.site?{need:t.site.need, have:t.site.have, up:!!t.site.upgrade}:null})),
     units:units.map(u=>({k:u.kind, f:u.faction, at:u.from.id, hp:u.hp, age:u.age,
       wd:!!u.wounded, set:si(u.settlement), dep:!!u.deployed,
-      load:u.load, dl:!!u.delivered, life:u.lifeT||0})),
+      load:u.load, dl:!!u.delivered, life:u.lifeT||0,
+      nd:u.needs?[u.needs.food,u.needs.rest,u.needs.mood]:null})),
     orbit:orbit.map(o=>o.kind), moonCrew:moonCrew.length};
 }
 function saveGame(silent){
@@ -77,12 +78,14 @@ function restore(d){
       if(isPerson(u)||u.kind==='thrall') applyAge(u);
       u.settlement=e.set>=0?settlements[e.set]||null:null;
       u.deployed=e.dep;
+      // salvataggi di prima dei bisogni: il colono parte sazio e riposato
+      if(e.nd) u.needs={food:e.nd[0], rest:e.nd[1], mood:e.nd[2]};
       if(e.k==='caravan'){ u.load=e.load; u.delivered=e.dl; u.lifeT=e.life; if(!e.dl) takeCarry(u,0xd9a441); }
     }
     Object.assign(res,d.res);
     pop=myPeople().length; sci=d.sci; tech=d.tech; season=d.season; seasonT=d.seasonT;
     raidIn=d.raidIn; raidNo=d.raidNo; worldAge=d.worldAge; dayT=d.dayT;
-    eventIn=d.eventIn; boomT=d.boomT; padCargoMat=d.padCargoMat; padCargoFood=d.padCargoFood;
+    eventIn=d.eventIn; boomT=d.boomT; grief=d.grief||0; padCargoMat=d.padCargoMat; padCargoFood=d.padCargoFood;
     army.size=d.army.size; army.target=d.army.target>=0?settlements[d.army.target]||null:null;
     for(const k of d.orbit){ addOrbital(k); const o=orbit[orbit.length-1]; o.built=true; o.rise=1; }
     for(let i=0;i<d.moonCrew;i++) landOnMoon();

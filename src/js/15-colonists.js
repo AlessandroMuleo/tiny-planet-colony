@@ -1,67 +1,206 @@
-function civilBrain(u,dt){
-  // 0. milizia: se un nemico è a tiro, il colono molla tutto e lo affronta.
-  //    Fa poco danno, ma dieci coloni valgono un lanciere.
+/* I coloni non seguono più una lista fissa di priorità: a ogni ragionamento
+   danno un punteggio a ogni azione possibile (14-utility.js) e fanno quella
+   che vale di più. Le azioni stanno in COLONIST_ACTIONS; la loro esecuzione
+   (dove andare, cosa fare all'arrivo) nelle funzioni run().             */
+
+/* ── bisogni ──────────────────────────────────────────────────────
+   Valgono tutti tra 0 e 1: 1 = sazio, riposato, contento.
+   Li hanno solo i civili (coloni e assoggettati): i soldati mangiano
+   dalla scorta comune, come prima, e non dormono.                    */
+const NEEDS = {
+  FULL:      60,     // tick che un colono regge a stomaco pieno
+  AWAKE:     140,    // tick di veglia prima di essere esausto
+  BED_REST:  25,     // tick per un sonno completo in un letto
+  GROUND_REST: 40,   // ... e per terra, senza letto
+  MOOD_EASE: 0.03,   // quanto l'umore si avvicina al suo obiettivo a ogni tick
+  LEAVE_AT:  0.2,    // sotto questo umore il colono può andarsene
+  LEAVE_P:   0.01,   // probabilità a tick di andarsene, sotto LEAVE_AT
+  STARVE_P:  0.04    // probabilità a tick di andarsene a stomaco vuoto
+};
+const hasNeeds = u => u.faction==='you' && UNITS[u.kind].civil && u.kind!=='caravan';
+const needsOf = u => u.needs || (u.needs={food:1, rest:0.5+Math.random()*0.5, mood:0.6});
+const eatRate = u => u.kind==='thrall' ? THRALL_EAT : AGES[u.stage].eat;
+/* l'umore pesa sul lavoro: 0,5 è la resa normale, 1 dà +40%, 0 dà −40% */
+const moodWork = u => hasNeeds(u) ? 0.6+0.8*needsOf(u).mood : 1;
+/* lutto della colonia: sale a ogni morte, scende da solo */
+let grief=0;
+const mourn = k => { grief=Math.min(1,grief+k); };
+
+/* obiettivo dell'umore: da dove viene, voce per voce (lo mostra l'ispettore) */
+function moodFactors(u){
+  const n=needsOf(u), f=[];
+  f.push(['di base', 0.6]);
+  if(n.food<=0) f.push(['affamato', -0.45]);
+  else if(n.food<0.25) f.push(['ha fame', -0.15]);
+  if(n.rest<0.1) f.push(['esausto', -0.25]);
+  if(u.slept==='bed') f.push(['ha dormito in un letto', 0.08]);
+  else if(u.slept==='ground') f.push(['ha dormito per terra', -0.12]);
+  if(u.wounded) f.push(['ferito', -0.15]);
+  if(pop>housesTotal()) f.push(['sovraffollamento', -0.1]);
+  if(grief>0.05) f.push(['lutto', -0.3*grief]);
+  if(boomT>0) f.push(['annata abbondante', 0.08]);
+  if(u.kind==='thrall') f.push(['assoggettato', -0.2]);
+  return f;
+}
+/* FC.beds è la fotografia di inizio fotogramma: un alloggio può essere caduto
+   nel frattempo, quindi si riverifica con isMine (vedi openSites) */
+const housesTotal = () => FC.beds.reduce((n,t)=>n+(isMine(t)?housesOf(t):0),0);
+const moodTarget = u => clamp01(moodFactors(u).reduce((s,[,v])=>s+v,0));
+
+/* un tick di bisogni per tutti; restituisce true se qualcuno se n'è andato */
+function needsTick(){
+  let left=0, starved=0;
+  grief=Math.max(0,grief-0.01);
+  for(let i=units.length-1;i>=0;i--){
+    const u=units[i];
+    if(!hasNeeds(u)) continue;
+    const n=needsOf(u);
+    n.food=Math.max(0, n.food-1/NEEDS.FULL);
+    if(u.act==='sleep'&&u.from===u.goal)
+      n.rest=Math.min(1, n.rest+1/(u.bed&&u.from===u.bed?NEEDS.BED_REST:NEEDS.GROUND_REST));
+    else n.rest=Math.max(0, n.rest-1/NEEDS.AWAKE);
+    n.mood+=(moodTarget(u)-n.mood)*NEEDS.MOOD_EASE;
+    // gli assoggettati non se ne vanno: per loro le rivolte arriveranno con la diplomazia
+    if(u.kind==='thrall'||myPeople().length<=1) continue;
+    const hungry=n.food<=0&&Math.random()<NEEDS.STARVE_P;
+    const unhappy=!hungry&&n.mood<NEEDS.LEAVE_AT&&Math.random()<NEEDS.LEAVE_P;
+    if(hungry||unhappy){
+      killUnit(u,i); pop=Math.max(0,pop-1);
+      if(hungry) starved++; else left++;
+    }
+  }
+  if(starved) toast(starved===1?'Il cibo è finito: un colono se n’è andato.':'Il cibo è finito: '+starved+' coloni se ne sono andati.');
+  if(left) toast(left===1?'Un colono scontento ha lasciato la colonia.':left+' coloni scontenti hanno lasciato la colonia.');
+  return starved+left>0;
+}
+
+/* ── prenotazioni ──────────────────────────────────────────────────
+   Un portatore che sceglie un cantiere prenota un blocco; un colono che
+   va a dormire prenota un letto. Così tre coloni non corrono per l'ultimo
+   blocco dello stesso cantiere, e in una capanna da 4 non dormono in 9.
+   Una prenotazione vive finché dura l'azione che l'ha presa.           */
+const freeBlocks = t => t.site ? t.site.need-t.site.have-(t.site.claims||0) : 0;
+/* la prenotazione si lega al cantiere (t.site), non alla casella: se sulla
+   stessa casella si apre un cantiere nuovo, non eredita i conti del vecchio */
+function claimBlock(u,t){ releaseBlock(u); t.site.claims=(t.site.claims||0)+1; u.claim=t; u.claimed=t.site; }
+function releaseBlock(u){
+  if(u.claimed) u.claimed.claims--;
+  u.claim=null; u.claimed=null;
+}
+const holdsBlock = u => !!(u.claim && u.claimed && u.claim.site===u.claimed);
+const freeBeds = t => isMine(t) ? housesOf(t)-(t.sleepers||0) : 0;
+function claimBed(u,t){ releaseBed(u); t.sleepers=(t.sleepers||0)+1; u.bed=t; }
+function releaseBed(u){
+  if(u.bed) u.bed.sleepers=Math.max(0,(u.bed.sleepers||0)-1);
+  u.bed=null;
+}
+/* chiamata da killUnit: chi esce di scena lascia libero ciò che aveva preso */
+function releaseAll(u){ releaseBlock(u); releaseBed(u); }
+
+/* ── contesto: cosa sa il colono quando ragiona ───────────────────── */
+function colonistContext(u){
   const canFight = !u.wounded && u.stage!=='child' && u.kind!=='thrall';
-  let foe=null, bd=canFight?MILITIA_RANGE:FLEE_RANGE;
+  let foe=null, bd=Math.max(MILITIA_RANGE,FLEE_RANGE);
   for(const o of nearbyUnits(u.from,true)){
     if(!hostile(u,o)||o.state==='landing') continue;
     const d=u.mesh.position.distanceTo(o.mesh.position);
     if(d<bd){ bd=d; foe=o; }
   }
-  if(foe){
-    dropCarry(u); u.mode='idle';
-    // adulti sani: milizia. Bambini, feriti e assoggettati: al riparo.
-    if(canFight) return foe.from;
+  const able = workPower(u)>0;
+  // il cantiere si cerca solo se serve: chi ha un lavoro non ci va
+  let site=null;
+  if(able&&!u.job){
+    if(holdsBlock(u)) site=u.claim;
+    else site=reachableSites(u.from).filter(t=>freeBlocks(t)>0)
+      .sort((a,b)=>b.center.dot(u.from.center)-a.center.dot(u.from.center))[0]||null;
+  }
+  return {u, n:needsOf(u), canFight, able, foe, foeDist:foe?bd:Infinity,
+    raid:FC.raiders.length>0, site, night:!!nightOn, current:u.act,
+    hpRatio:u.hp/u.hpMax};
+}
+
+/* ── le azioni ─────────────────────────────────────────────────────
+   Ogni azione: label, weight, considerations, run(u,ctx) → casella
+   obiettivo. Le curve sono il posto dove si regola il comportamento.  */
+const is = v => v?1:0;
+const COLONIST_ACTIONS = {
+  fight:{label:'difendere', weight:1.0, considerations:[
+    consider('sa combattere',  c=>is(c.canFight), CURVES.step(.5)),
+    consider('nemico vicino',  c=>1-c.foeDist/MILITIA_RANGE, CURVES.power(.5)),
+    consider('in salute',      c=>c.hpRatio, CURVES.logistic(.45,12))
+  ], run:(u,c)=>c.foe.from},
+
+  flee:{label:'scappare', weight:1.2, considerations:[
+    consider('nemico vicino',  c=>1-c.foeDist/FLEE_RANGE, CURVES.power(.5)),
+    consider('vulnerabile',    c=>c.canFight ? (1-c.hpRatio) : 1, CURVES.power(2))
+  ], run:(u,c)=>{
     const refuge = nearestOf(u.from,FC.mine,t=>!!BUILDINGS[t.building].shelter)
                 || nearestOf(u.from,FC.beds,t=>reachable(u.from,t));
     if(refuge&&refuge!==u.from) return refuge;
     const away=u.from.neighbors.map(n=>tiles[n]).filter(walkable)
-      .sort((a,b)=>a.center.dot(foe.from.center)-b.center.dot(foe.from.center));
-    if(away.length) return away[0];
-  }
-  // 0a. durante un'incursione, chi non sa difendersi corre al rifugio
-  if(FC.raiders.length&&(u.stage==='child'||u.wounded)){
-    dropCarry(u); u.mode='idle';
-    const f=nearestOf(u.from,FC.mine,t=>!!BUILDINGS[t.building].shelter);
-    if(f) return f;
-  }
-  // 0b. ferito: smette tutto e cerca l'ospedale più vicino
-  if(u.wounded){
-    dropCarry(u); u.mode='idle';
-    return nearestOf(u.from,FC.mine,t=>!!BUILDINGS[t.building].heal)||u.from;
-  }
-  // 1. senza incarico: fa il portatore per i cantieri aperti
-  if(!u.job){
-    if(u.site&&!u.site.site){ u.site=null; }   // il cantiere è finito mentre arrivava
-    if(u.mode==='fetch'||u.mode==='deliver'){
-      if(!u.site||!u.site.site){ u.mode='idle'; dropCarry(u); }
+      .sort((a,b)=>a.center.dot(c.foe.from.center)-b.center.dot(c.foe.from.center));
+    return away[0]||u.from;
+  }},
+
+  shelter:{label:'al riparo', weight:0.95, considerations:[
+    consider('incursione',     c=>is(c.raid), CURVES.step(.5)),
+    consider('indifeso',       c=>is(c.u.stage==='child'||c.u.wounded), CURVES.step(.5)),
+    consider('c\'è un rifugio',c=>is(FC.mine.some(t=>BUILDINGS[t.building].shelter)), CURVES.step(.5))
+  ], run:u=>nearestOf(u.from,FC.mine,t=>!!BUILDINGS[t.building].shelter)},
+
+  heal:{label:'curarsi', weight:0.85, considerations:[
+    consider('ferito',         c=>is(c.u.wounded), CURVES.step(.5)),
+    consider('salute persa',   c=>1-c.hpRatio, CURVES.linear(.6,.4))
+  ], run:u=>nearestOf(u.from,FC.mine,t=>!!BUILDINGS[t.building].heal)
+          || u.bed || nearestOf(u.from,FC.beds,t=>reachable(u.from,t)) || u.from},
+
+  eat:{label:'mangiare', weight:1.0, considerations:[
+    consider('fame',           c=>1-c.n.food, CURVES.logistic(.6,10)),
+    consider('c\'è cibo',      c=>res.food>=0.5?1:0.05),
+    consider('un magazzino',   c=>is(FC.storage.length||FC.mine.length), CURVES.step(.5))
+  ], run:u=>{
+    const st=nearestStorage(u.from);
+    if(st&&u.from!==st) return st;
+    // al magazzino: mangia quanto gli manca, se c'è
+    const n=needsOf(u), per=NEEDS.FULL*eatRate(u);
+    const take=Math.min((1-n.food)*per, Math.max(0,res.food));
+    res.food-=take; n.food=Math.min(1,n.food+take/per);
+    u.act=null;                         // fatto: al prossimo ragionamento si sceglie di nuovo
+    return u.from;
+  }},
+
+  sleep:{label:'dormire', weight:0.9, considerations:[
+    // chi dorme già continua finché non è riposato: senza, si sveglierebbe
+    // appena la stanchezza scende sotto la soglia che l'ha fatto coricare
+    consider('stanchezza',     c=>c.current==='sleep' ? (c.n.rest<0.95?1:0) : 1-c.n.rest, CURVES.logistic(.6,10)),
+    consider('è notte',        c=>c.night||c.current==='sleep'?1:0.55),
+    consider('al sicuro',      c=>is(!c.raid))
+  ], run:u=>{
+    if(u.bed&&!isMine(u.bed)) releaseBed(u);     // l'alloggio è crollato
+    if(!u.bed){
+      const bed=nearestOf(u.from,FC.beds,t=>freeBeds(t)>0&&reachable(u.from,t));
+      if(bed) claimBed(u,bed);
     }
-    if(u.mode==='idle'){
-      const site=reachableSites(u.from)
-        .sort((a,b)=>b.center.dot(u.from.center)-a.center.dot(u.from.center))[0];
-      if(site){ u.site=site; u.mode='fetch'; return nearestStorage(u.from); }
-      // niente da costruire: si raduna al villaggio invece di girare a vuoto
-      return nearestOf(u.from,FC.beds,t=>reachable(u.from,t))
-          || nearestOf(u.from,FC.mine,t=>reachable(u.from,t));
-    }
-    if(u.mode==='fetch'){
-      const st=nearestStorage(u.from);
-      if(!st) { u.mode='idle'; return null; }
-      if(u.from===st){ takeCarry(u,0xb8925e); u.mode='deliver'; return u.site; }
-      return st;
-    }
-    if(u.mode==='deliver'){
-      if(u.from===u.site){
-        dropCarry(u);
-        addBlockToSite(u.site);
-        u.mode=u.site && u.site.site ? 'fetch' : 'idle';
-        return null;
-      }
-      return u.site;
-    }
-    return null;
-  }
-  // 2. con un incarico: lavora sul posto e ogni tanto porta il raccolto
+    const spot=u.bed||u.from;
+    if(u.from===spot) u.slept=u.bed?'bed':'ground';
+    return spot;
+  }},
+
+  work:{label:'lavorare', weight:0.6, considerations:[
+    consider('ha un lavoro',   c=>is(c.u.job), CURVES.step(.5))
+  ], run:(u,c,dt)=>workRun(u,dt)},
+
+  build:{label:'costruire', weight:0.55, considerations:[
+    consider('può lavorare',   c=>is(c.able&&!c.u.job), CURVES.step(.5)),
+    consider('un cantiere libero', c=>is(c.site), CURVES.step(.5))
+  ], run:(u,c)=>buildRun(u,c.site)},
+
+  gather:{label:'tornare a casa', weight:0.1, considerations:[], run:u=>
+    nearestOf(u.from,FC.beds,t=>reachable(u.from,t)) || nearestOf(u.from,FC.mine,t=>reachable(u.from,t))}
+};
+
+/* lavoro: fermo sull'edificio, e ogni tanto porta il raccolto al magazzino */
+function workRun(u,dt){
   const B=BUILDINGS[u.job.building];
   if(u.mode==='haul'){
     const st=nearestStorage(u.from);
@@ -70,7 +209,6 @@ function civilBrain(u,dt){
   }
   if(u.mode!=='work'){ u.mode='work'; u.workT=0; }
   if(u.from!==u.job) return u.job;
-  // fermo sull'edificio: sta lavorando
   u.workT+=dt;
   if(B.ships && u.workT>harvestTime()){
     u.workT=0;
@@ -80,6 +218,45 @@ function civilBrain(u,dt){
   }
   return u.job;
 }
+/* costruzione: prende un blocco al magazzino e lo porta al cantiere prenotato */
+function buildRun(u,site){
+  if(u.claim!==site||!holdsBlock(u)) claimBlock(u,site);
+  if(u.mode!=='fetch'&&u.mode!=='deliver'){ u.mode='fetch'; dropCarry(u); }
+  if(u.mode==='fetch'){
+    const st=nearestStorage(u.from);
+    if(!st){ releaseBlock(u); u.mode='idle'; return null; }
+    if(u.from!==st) return st;
+    takeCarry(u,0xb8925e); u.mode='deliver';
+  }
+  if(u.from!==site) return site;
+  dropCarry(u);
+  releaseBlock(u);
+  addBlockToSite(site);
+  u.mode='idle';
+  return null;
+}
+
+/* lascia l'azione in corso: prenotazioni, carichi e stati intermedi */
+function leaveAction(u,next){
+  releaseBlock(u);
+  if(next!=='sleep'&&next!=='heal') releaseBed(u);   // chi si cura può farlo a letto
+  dropCarry(u); u.mode='idle';                       // il carico in mano va perso
+  u.mesh.visible=true;
+}
+
+function civilBrain(u,dt){
+  const ctx=colonistContext(u);
+  const pick=chooseAction(COLONIST_ACTIONS,ctx,u.act);
+  const next=pick.action||'gather';
+  if(next!==u.act){ leaveAction(u,next); u.act=next; }
+  u.actScore=pick.score;
+  const goal=COLONIST_ACTIONS[next].run(u,ctx,dt);
+  // chi dorme nel suo letto non si vede: è in casa (le finestre sono accese)
+  u.mesh.visible=!(u.act==='sleep'&&u.bed&&u.from===u.bed);
+  return goal;
+}
+/* per l'ispettore e per i test: tutti i punteggi del colono, spiegati */
+function explainColonist(u){ return explain(COLONIST_ACTIONS,colonistContext(u),u.act); }
 
 function goalTile(u,dt){
   if(u.faction==='raider'){

@@ -46,6 +46,7 @@ function spawnUnit(kind,faction,tile){
   return u;
 }
 function killUnit(u,i){
+  releaseAll(u);                      // blocchi e letti prenotati tornano liberi
   dropCarry(u);
   planetGroup.remove(u.mesh);
   units.splice(i,1);
