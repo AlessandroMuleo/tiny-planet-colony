@@ -27,7 +27,7 @@ const FPS = 5;                        // passi di simulazione per secondo di gio
 const SCENARIOS = [
   // survive: col governatore la colonia deve arrivare viva alla fine
   { name: 'primo mondo, automatico',     seed: 1,  world: 1, auto: true, survive: true },
-  { name: 'primo mondo, automatico #2',  seed: 7,  world: 1, auto: true, survive: true },
+  { name: 'primo mondo, automatico #2',  seed: 7,  world: 1, auto: true, survive: true, expect: ['❓', 'Il governatore sceglie'] },
   { name: 'primo mondo, senza giocatore',seed: 3,  world: 1, auto: false },
   // expect: messaggi che devono comparire almeno una volta nella partita
   { name: 'terzo mondo con rivali',      seed: 11, world: 3, auto: true, survive: true, expect: ['📜', 'accetta il dono'] },
@@ -143,6 +143,8 @@ function __check(){
     if(s !== b) bad.push('letti su ' + (t.building || 'casella vuota') + ': ' + s + ' segnati, ' + b + ' coloni li tengono');
     if(t.building && isMine(t) && b > housesOf(t)) bad.push(BUILDINGS[t.building].name + ': ' + b + ' coloni a letto su ' + housesOf(t) + ' posti');
   }
+  if(!NARRATOR_PHASES[narrator.phase]) bad.push('narratore in una fase sconosciuta: ' + narrator.phase);
+  if(choice && !CHOICE_EVENTS[choice.id]) bad.push('scelta sconosciuta: ' + choice.id);
   const RELS = ['ostile','neutrale','alleato','assoggettato','conquistato'];
   for(const s of settlements){
     if(!RELS.includes(s.relation)) bad.push(s.name + ': relazione ' + s.relation);

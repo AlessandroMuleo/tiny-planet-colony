@@ -120,19 +120,39 @@ function resolveCombat(dt){
     killUnit(u,i);
     if(wasMine){
       // guardiani e assoggettati non sono "pop": non vanno scalati dalla popolazione
-      if(kind!=='guardian'&&kind!=='thrall'){ pop=Math.max(1,pop-1); trimWorkers(); mourn(0.3); }
+      if(kind!=='guardian'&&kind!=='thrall'){ pop=Math.max(1,pop-1); trimWorkers(); mourn(0.3); narratorHurt(1); }
       syncJobs();
       toast('Hai perso '+(kind==='guardian'?'un guardiano.':kind==='thrall'?'un assoggettato.':'un combattente.'));
       refreshHUD();
     }
     if(set) checkConquest(set);
   }
-  if(raidActive&&raiders().length===0){ raidActive=false; toast('Incursione respinta.'); refreshHUD(); }
+  if(raidActive&&raiders().length===0&&!props.some(p=>p.payload)){ raidActive=false; toast('Incursione respinta.'); refreshHUD(); }
 }
 
 /* ═══════════════ incursioni: la navetta li sbarca ═══════════ */
-function spawnRaid(){
-  const n=Math.min(9,1+Math.floor(worldIndex/2)+Math.floor(raidNo/3));
+/* Saccheggio e ritirata: dopo RAID_STAY tick a terra i predoni prendono
+   quello che possono e ripartono. Prima restavano finché qualcuno non li
+   uccideva: se morivano i coloni in grado di combattere, due predoni
+   radevano al suolo tutto, alloggi compresi, e la colonia non poteva più
+   rinascere. La simulazione lo mostrava come estinzioni "per sfortuna". */
+const RAID_STAY = 60;
+function raidersTick(){
+  const rs=raiders().filter(u=>u.state!=='landing');
+  if(!rs.length) return;
+  for(const u of rs) u.lifeT=(u.lifeT||0)+1;
+  if(Math.max(...rs.map(u=>u.lifeT))<RAID_STAY) return;
+  const cap=n=>Math.min(Math.floor(res.mat),n);
+  const mat=cap(12*rs.length), food=Math.min(Math.floor(res.food),10*rs.length);
+  res.mat-=mat; res.food-=food;
+  for(let i=units.length-1;i>=0;i--) if(units[i].faction==='raider') killUnit(units[i],i);
+  raidActive=false;
+  logEvent('I predoni ripartono col bottino: −'+mat+' materiali, −'+food+' cibo.');
+  refreshHUD();
+}
+/* la forza la decide il narratore (19-events.js), in base a quanto vale la colonia */
+function spawnRaid(){ spawnRaidOf(raidSize()); }
+function spawnRaidOf(n){
   const spots=tiles.filter(t=>!t.building&&BIOMES[t.biome].build);
   if(!spots.length) return;
   const site=spots[Math.floor(Math.random()*spots.length)];

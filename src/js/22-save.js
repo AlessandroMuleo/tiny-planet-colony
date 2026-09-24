@@ -7,6 +7,7 @@ function snapshot(){
   return {v:1, when:Date.now(), worldIndex, worldSeed, trait:trait.id,
     res:{...res}, pop, sci, tech, season, seasonT, raidIn, raidNo, worldAge, dayT,
     eventIn, boomT, padCargoMat, padCargoFood, grief, raidWarned,
+    narrator:{phase:narrator.phase,t:narrator.t,hurt:narrator.hurt}, choice, famineT, exiles, chainT,
     army:{size:army.size, target:si(army.target)},
     settlements:settlements.map(s=>({name:s.name, core:s.core.id, relation:s.relation,
       mat:s.mat, thinkT:s.thinkT, tradeT:s.tradeT||0,
@@ -100,7 +101,10 @@ function restore(d){
     Object.assign(res,d.res); res.bar=res.bar||0;
     pop=myPeople().length; sci=d.sci; tech=d.tech; season=d.season; seasonT=d.seasonT;
     raidIn=d.raidIn; raidNo=d.raidNo; worldAge=d.worldAge; dayT=d.dayT;
-    eventIn=d.eventIn; boomT=d.boomT; grief=d.grief||0; raidWarned=!!d.raidWarned; padCargoMat=d.padCargoMat; padCargoFood=d.padCargoFood;
+    eventIn=d.eventIn; boomT=d.boomT; grief=d.grief||0; raidWarned=!!d.raidWarned;
+    narrator=d.narrator&&NARRATOR_PHASES[d.narrator.phase]?{...d.narrator}:{phase:'calma',t:0,hurt:0};
+    choice=d.choice&&CHOICE_EVENTS[d.choice.id]?d.choice:null; famineT=d.famineT||0; exiles=d.exiles||0; chainT=d.chainT||0;
+    hideChoice(); if(choice&&!auto) showChoice(); padCargoMat=d.padCargoMat; padCargoFood=d.padCargoFood;
     army.size=d.army.size; army.target=d.army.target>=0?settlements[d.army.target]||null:null;
     for(const k of d.orbit){ addOrbital(k); const o=orbit[orbit.length-1]; o.built=true; o.rise=1; }
     for(let i=0;i<d.moonCrew;i++) landOnMoon();

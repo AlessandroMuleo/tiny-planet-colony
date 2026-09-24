@@ -108,6 +108,13 @@ marcisce), pozzo (acqua sulla sabbia), taverna, scuola, memoriale,
 ambasciata e torre di segnalazione. Cosa cambia ognuno è in
 [docs/edifici.md](docs/edifici.md).
 
+## Narratore
+
+Le incursioni crescono con la ricchezza e seguono un ciclo di calma,
+tensione e picco, con una fase di ripresa dopo una batosta. Alcuni eventi
+chiedono una scelta, e un'epidemia non curata può finire con un clan di
+esuli. Dettagli in [docs/narratore.md](docs/narratore.md).
+
 ## Aggiungere cose
 
 - **Un edificio:** una voce in `BUILDINGS` (02-data) e un modello in
@@ -119,3 +126,6 @@ ambasciata e torre di segnalazione. Cosa cambia ognuno è in
 - **Un'azione dei coloni:** una voce in `COLONIST_ACTIONS` (15-colonists), con
   peso, considerazioni e `run()`.
 - **Un tratto dei coloni:** una voce in `PERSON_TRAITS` (15-colonists).
+- **Un evento con scelta:** una voce in `CHOICE_EVENTS` (19-events), con
+  `when()`, testo e opzioni, ognuna con `run()` e `score(c)` per il
+  governatore.

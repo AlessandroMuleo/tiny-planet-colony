@@ -70,6 +70,7 @@ function needsTick(){
     const hungry=n.food<=0&&Math.random()<NEEDS.STARVE_P;
     const unhappy=!hungry&&n.mood<NEEDS.LEAVE_AT&&Math.random()<NEEDS.LEAVE_P;
     if(hungry||unhappy){
+      if(hungry) starvedAway(u);
       killUnit(u,i); pop=Math.max(0,pop-1);
       if(hungry) starved++; else left++;
     }

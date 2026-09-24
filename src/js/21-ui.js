@@ -30,7 +30,8 @@ function refreshHUD(r){
     (minds.length?' · umore '+Math.round(mood*100)+'%':'')+(r.block?' · '+r.block:'');
   $('r-pop').className='rate'+((idle>0||r.block)?' neg':'');
   $('s-raid').textContent=raidActive?'in corso':Math.max(0,raidIn)+'s';
-  $('r-raid').textContent=raidActive?raiders().length+' nemici':'';
+  $('r-raid').textContent=raidActive?raiders().length+' nemici':narratorPhase().label+(famineT>0?' · carestia':'');
+  $('r-raid').title='Prossima incursione: circa '+raidSize()+' predoni';
   $('r-raid').className='rate'+(raidActive||raidIn<15?' neg':'');
   $('s-season').textContent=SEASONS[season].name+(boomT>0?' · abbondanza '+boomT+'s':'');
   $('s-tech').textContent='liv. '+tech;

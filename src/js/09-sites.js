@@ -80,7 +80,7 @@ function destroyBuilding(tile){
   tile.size=1;
   bumpWalk(); syncJobs(); refreshHUD();
   if(selected===tile) setInspector(tile);
-  if(mine) toast(was+': distrutta.');
+  if(mine){ toast(was+': distrutta.'); narratorHurt(0.5); }
   if(set) checkConquest(set);
 }
 

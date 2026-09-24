@@ -54,7 +54,7 @@ function rates(){
       food-=(B.eats.food||0)*w2; matr-=(B.eats.mat||0)*w2;
     }
     if(B.per){
-      food+=(B.per.food||0)*w2*(B.noSeason?1:S)*P*(trait.food||1)*(boomT>0?1.4:1);
+      food+=(B.per.food||0)*w2*(B.noSeason?1:S)*P*(trait.food||1)*(boomT>0?1.4:1)*(famineT>0&&!B.noSeason?0.5:1);
       matr+=(B.per.mat||0)*(B.per.mat>0?w2*P*(trait.mat||1):w);
       pow +=(B.per.pow||0)*w2*P*(trait.pow||1);
       scir+=(B.per.sci||0)*w2*P;
@@ -280,8 +280,8 @@ function economyTick(){
   if(!raidActive&&raidIn===26&&activeFlag('watch')){
     raidWarned=true; logEvent('🔭 La torre avvista una navetta: incursione tra 25 secondi. Bambini al riparo!');
   }
-  if(!raidActive){ raidIn--; if(raidIn<=0){ raidWarned=false; spawnRaid();
-    raidIn=Math.round((120+(hasOrbital('eye')?ORBITALS.eye.delay:0))*(trait.raid?0.65:trait.calm?1.5:1)); } }
+  if(!raidActive){ raidIn--; if(raidIn<=0){ raidWarned=false; spawnRaid(); raidIn=raidInterval(); } }
+  raidersTick(); narratorTick(); choiceTick(); chainTick();
   for(const s of settlements) rivalThink(s);
   diplomacyTick();
   if(auto) autoThink();
