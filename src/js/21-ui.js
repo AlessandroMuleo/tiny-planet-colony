@@ -8,6 +8,7 @@ function refreshHUD(r){
   $('s-food').textContent=fmt(res.food);
   $('s-mat').textContent =fmt(res.mat)+'/'+capacity();
   $('s-pow').textContent =fmt(res.pow);
+  $('s-bar').textContent =fmt(res.bar||0);
   $('s-pop').textContent =pop;
   $('s-war').textContent =myTroops().length;
   const d=r.demo||demography();
@@ -20,19 +21,24 @@ function refreshHUD(r){
     (orbit.some(o=>!o.built)?' (+1)':'');
   const set=(el,v)=>{const e=$(el);e.textContent=sign(v);e.className='rate'+(v<0?' neg':'');};
   set('r-food',r.food); set('r-mat',r.mat); set('r-pow',r.pow);
+  $('r-bar').textContent=r.bar?sign(r.bar):''; $('r-bar').className='rate'+(r.bar<0?' neg':'');
+  $('r-food').title=r.spoil>0.05?'di cui '+r.spoil.toFixed(1)+' marcisce a ogni tick: servono granai':'';
   const idle=idleCount();
+  const minds=units.filter(u=>hasNeeds(u)&&u.needs);
+  const mood=minds.length?minds.reduce((s,u)=>s+u.needs.mood,0)/minds.length:0;
   $('r-pop').textContent=pop+'/'+r.houses+' posti · '+idle+' liber'+(idle===1?'o':'i')+
-    (r.block?' · '+r.block:'');
+    (minds.length?' · umore '+Math.round(mood*100)+'%':'')+(r.block?' · '+r.block:'');
   $('r-pop').className='rate'+((idle>0||r.block)?' neg':'');
   $('s-raid').textContent=raidActive?'in corso':Math.max(0,raidIn)+'s';
-  $('r-raid').textContent=raidActive?raiders().length+' nemici':'';
+  $('r-raid').textContent=raidActive?raiders().length+' nemici':narratorPhase().label+(famineT>0?' · carestia':'');
+  $('r-raid').title='Prossima incursione: circa '+raidSize()+' predoni';
   $('r-raid').className='rate'+(raidActive||raidIn<15?' neg':'');
-  $('s-season').textContent=SEASONS[season].name+(boomT>0?' · abbondanza '+boomT+'s':'');
-  $('s-tech').textContent='liv. '+tech;
-  $('r-tech').textContent = tech>0
-    ? '+'+Math.round((techProd()-1)*100)+'% rese, +'+Math.round((techWar()-1)*100)+'% danno'+
-      (tech<3?' · '+Math.floor(sci)+'/'+TECH_COST[tech+1]:'')
-    : Math.floor(sci)+'/'+TECH_COST[1]+' al 1° livello';
+  $('s-season').textContent=SEASONS[season].name+(weather.kind!=='sereno'?' · '+weatherNow().label:'')+(boomT>0?' · abbondanza '+boomT+'s':'');
+  $('s-tech').textContent=tech+'/'+Object.keys(RESEARCH).length;
+  $('r-tech').textContent = researching
+    ? RESEARCH[researching].name+' '+Math.floor(sci)+'/'+RESEARCH[researching].cost
+    : researchLeft()?'scegli cosa studiare':'albero completo';
+  renderResearch();
   $('s-thrall').textContent=myThralls().length;
   refreshTray(); refreshArmy();
 }
@@ -53,8 +59,8 @@ function setInspector(tile){
     const canUp=sizeOf(tile)<3&&B.blocks>0&&!B.fixed;
     up.style.display=canUp?'':'none';
     if(canUp){
-      up.textContent='amplia a '+(sizeOf(tile)+1)+'× · '+(B.cost.mat||0)+'m'+(B.cost.pow?' '+B.cost.pow+'e':'');
-      up.disabled=raidActive||res.mat<(B.cost.mat||0)||res.pow<(B.cost.pow||0);
+      up.textContent='amplia a '+(sizeOf(tile)+1)+'× · '+costText(costOf(tile.building));
+      up.disabled=raidActive||!canPay(costOf(tile.building));
       up.title=raidActive?'Non durante un\'incursione':'Torna cantiere per '+B.blocks+' blocchi, poi rende di più (U)';
     }
     const hurt=tile.hp<tile.hpMax-0.5;
@@ -108,10 +114,42 @@ function setInspector(tile){
       : BIOMES[tile.biome].build ? 'Libera. Apri un catalogo e scegli cosa costruirci.'
                                  : 'Qui non si può costruire.';
   }
+  renderMinds(tile);
   box.classList.add('on');
 }
+/* I coloni sulla casella, con i bisogni e i tre punteggi più alti: per
+   ogni azione, la considerazione che la frena di più. È la risposta a
+   "perché sta facendo questo?".                                       */
+function renderMinds(tile){
+  const here=units.filter(u=>hasNeeds(u)&&u.needs&&(u.from===tile||u.to===tile))
+    .sort((a,b)=>(b===followed)-(a===followed));      // il colono seguito in cima
+  const pct=v=>Math.round(v*100);
+  const bar=(label,v)=>'<span>'+label+'</span><div class="bar"><i class="'+(v<0.3?'low':'')+
+    '" style="width:'+pct(v)+'%"></i></div>';
+  let html='';
+  for(const u of here.slice(0,3)){
+    const n=u.needs, why=explainColonist(u).slice(0,3);
+    const cur=COLONIST_ACTIONS[u.act];
+    const sk=bestSkill(u);
+    const tr=(u.traits||[]).map(id=>'<span title="'+PERSON_TRAITS[id].note+'">'+PERSON_TRAITS[id].label+'</span>').join(', ');
+    const fr=friendsOf(u).map(v=>v.name).filter(Boolean);
+    html+='<div class="mind'+(u===followed?' followed':'')+'"><div class="who">'+(u===followed?'◎ ':'')+(u.name||UNITS[u.kind].label)+' · '+AGES[u.stage].label+
+      (u.kind==='thrall'?' · assoggettato':'')+'<b>'+(cur?cur.label:'—')+'</b></div>'+
+      ((tr||sk)?'<div class="traits">'+[tr, sk&&sk.bonus>=0.01?sk.label+' +'+Math.round(sk.bonus*100)+'%':''].filter(Boolean).join(' · ')+'</div>':'')+
+      (fr.length?'<div class="traits">amici: '+fr.slice(0,3).join(', ')+(fr.length>3?'…':'')+'</div>':'')+
+      '<div class="needs">'+
+      bar('sazio',n.food)+bar('riposato',n.rest)+bar('umore',n.mood)+'</div><ol>'+
+      why.map(w=>{
+        const worst=w.detail.slice().sort((a,b)=>a.value-b.value)[0];
+        return '<li>'+w.label+' '+w.score.toFixed(2)+
+          (worst&&worst.value<0.9?' <span>· '+worst.name+' '+worst.value.toFixed(2)+'</span>':'')+'</li>';
+      }).join('')+'</ol></div>';
+  }
+  if(here.length>3) html+='<div class="more">e altri '+(here.length-3)+'</div>';
+  $('i-minds').innerHTML=html;
+}
 
-const canAfford=B=>(!B.cost.mat||res.mat>=B.cost.mat)&&(!B.cost.pow||res.pow>=B.cost.pow);
+const canAfford=B=>canPay(B.cost);   // (orbitali e UI generica)
 function tileAllows(tile,key){
   if(!tile||tile.building||tile.site) return false;
   const B=BUILDINGS[key], bio=BIOMES[tile.biome];
@@ -144,18 +182,26 @@ function refreshTray(){
         const O=ORBITALS[key];
         const b=document.createElement('button');
         b.className='card launch'; b.dataset.orb=key;
-        b.textContent=ICONS[key]||'●';
-        attachTip(b,O.name,O.cost.mat+' mat · '+O.cost.pow+' en',O.effect);
-        b.addEventListener('click',()=>buildOrbital(key));
+        b.innerHTML=(ICONS[key]||'●')+'<small></small>';
+        attachTip(b,O.name,'',O.effect);
+        b.addEventListener('click',()=>orbitalAction(key));
         tray.appendChild(b);
       }
     }
+    // una carta per struttura: se non c'è la si lancia, se c'è la si migliora
     for(const b of tray.children){
-      const k=b.dataset.orb, O=ORBITALS[k];
-      const need=!O.hub&&!hasOrbital('station');
-      b.disabled = hasOrbital(k)||orbit.some(o=>o.kind===k)||need||
-                   res.mat<O.cost.mat||res.pow<O.cost.pow;
-      b.title = need ? 'Serve prima la Stazione orbitale' : '';
+      const k=b.dataset.orb, o=orbitOf(k), up=upgradeCost(k);
+      const lv=o&&o.built?(o.level||1):0;
+      b.querySelector('small').textContent=lv?'L'+lv:'';
+      b.classList.toggle('built',!!lv);
+      if(!o){
+        const why=orbitBlock(k);
+        b.disabled=!!why;
+        b._tipCost=costText(orbitCost(k))+(why?'  ·  '+why:'');
+      } else if(!o.built){ b.disabled=true; b._tipCost='in salita verso l\'orbita'; }
+      else if(!up){ b.disabled=true; b._tipCost='livello massimo'+(orbitalOn(k)?'':' · spenta'); }
+      else { b.disabled=!canPay(up); b._tipCost='migliora al livello '+(lv+1)+': '+costText(up)+
+        '  ·  effetto ×'+String(ORBIT_LEVELS[lv+1].mul).replace('.',',')+(orbitalOn(k)?'':'  ·  ora spenta'); }
     }
     return;
   }
@@ -169,7 +215,7 @@ function refreshTray(){
       b.className='card'+(B.launch?' launch':'');
       b.dataset.key=key;
       b.textContent=ICONS[key]||'●';
-      b.dataset.mat=B.cost.mat||0; b.dataset.pow=B.cost.pow||0; b.dataset.bl=B.blocks;
+      b.dataset.bl=B.blocks;
       attachTip(b,B.name,'',B.effect);
       b.addEventListener('click',()=>construct(key));
       tray.appendChild(b);
@@ -177,12 +223,12 @@ function refreshTray(){
   }
   for(const b of tray.children){
     const B=BUILDINGS[b.dataset.key];
-    const m=(+b.dataset.mat)*buildSize, p=(+b.dataset.pow)*buildSize, bl=(+b.dataset.bl)*buildSize;
-    b._tipCost=m+' mat'+(p?' · '+p+' en':'')+' · '+bl+' blocchi'+(buildSize>1?'  ·  taglia '+buildSize+'×':'');
+    const bl=(+b.dataset.bl)*buildSize;
+    b._tipCost=costText(costOf(b.dataset.key),buildSize)+' · '+bl+' blocchi'+(buildSize>1?'  ·  taglia '+buildSize+'×':'');
     b.disabled=!selected||!tileAllows(selected,b.dataset.key)||!canAffordSize(B);
   }
 }
-const canAffordSize=B=>res.mat>=(B.cost.mat||0)*buildSize&&res.pow>=(B.cost.pow||0)*buildSize;
+const canAffordSize=B=>canPay(costOf(Object.keys(BUILDINGS).find(k=>BUILDINGS[k]===B)),buildSize);
 
 function refreshArmy(){
   const troops=myTroops();
@@ -203,57 +249,65 @@ function refreshArmy(){
   // a cavallo del ridisegno finiva su un pulsante già rimosso e si perdeva.
   // Ora si ridisegna solo se cambia qualcosa che si vede.
   const noTroops=myTroops().length===0, mk=hasMarket();
-  const sig=JSON.stringify(settlements.map(s=>[s.name,s.relation,
+  const sig=JSON.stringify(settlements.map(s=>[s.name,s.relation,Math.round(s.goodwill/5),
     tiles.filter(t=>t.settlement===s&&t.building).length,
-    units.filter(u=>u.settlement===s).length,
-    canAlly(s),canSubjugate(s),army.target===s,
+    units.filter(u=>u.settlement===s&&u.kind==='soldier').length,
+    canGift(s),canMakePeace(s),canSubjugate(s),army.target===s,
+    s.request&&[s.request.accepted,s.request.deadline>>2,res[s.request.kind]>=s.request.amount],
+    Math.round((s.unrest||0)/5),settlements.map(o=>atWar(s,o)&&canMediate(s,o)),
     mk&&res.food>=40,mk&&res.mat>=40,noTroops]));
   if(list.dataset.sig===sig) return;
   list.dataset.sig=sig;
   list.innerHTML='';
+  const btn=(parent,label,on,fn,cls)=>{
+    const b=document.createElement('button'); b.textContent=label; b.disabled=!on;
+    if(cls) b.className=cls;
+    b.addEventListener('click',fn); parent.appendChild(b); return b;
+  };
   for(const s of settlements){
     const alive=tiles.filter(t=>t.settlement===s&&t.building).length;
-    const guards=units.filter(u=>u.settlement===s).length;
+    const guards=units.filter(u=>u.settlement===s&&u.kind==='soldier').length;
+    const P=personalityOf(s), g=Math.round(s.goodwill||0);
     const d=document.createElement('div'); d.className='settle';
+    const wars=settlements.filter(o=>atWar(s,o));
     d.innerHTML='<div class="nm">'+s.name+'<span class="rel '+s.relation+'">'+s.relation+'</span></div>'+
-      '<div class="meta">'+alive+' strutture · '+guards+' soldati</div>';
-    const acts=document.createElement('div'); acts.className='acts';
-    if(s.relation!=='conquistato'&&s.relation!=='assoggettato'){
-      const a=document.createElement('button');
-      a.textContent='alleati ('+ALLY_COST.mat+'m)';
-      a.disabled=!canAlly(s);
-      a.addEventListener('click',()=>allyWith(s));
-      acts.appendChild(a);
-      if(canSubjugate(s)){
-        const sub=document.createElement('button');
-        sub.textContent='assoggetta';
-        sub.addEventListener('click',()=>subjugate(s));
-        acts.appendChild(sub);
-      }
-      if(s.relation==='alleato'){
-        const b1=document.createElement('button');
-        b1.textContent='40 cibo → 32 mat';
-        b1.disabled=!hasMarket()||res.food<40;
-        b1.addEventListener('click',()=>tradeWith(s,'buy'));
-        acts.appendChild(b1);
-        const b2=document.createElement('button');
-        b2.textContent='40 mat → 32 cibo';
-        b2.disabled=!hasMarket()||res.mat<40;
-        b2.addEventListener('click',()=>tradeWith(s,'sell'));
-        acts.appendChild(b2);
-      }
-      const w=document.createElement('button'); w.className='war';
-      w.textContent=army.target===s?'richiama':'attacca';
-      w.disabled=myTroops().length===0&&army.target!==s;
-      w.addEventListener('click',()=>army.target===s?recall():declareWar(s));
-      acts.appendChild(w);
-    } else {
-      const a=document.createElement('button');
-      a.textContent=s.relation==='assoggettato'?'assoggettato · tributo 1,4':'conquistato';
-      a.disabled=true;
-      acts.appendChild(a);
+      '<div class="meta"><span title="'+P.note+'">'+P.label+'</span> · '+alive+' strutture · '+guards+' soldati'+
+      (wars.length?' · <span class="war-with">in guerra con '+wars.map(o=>o.name).join(', ')+'</span>':'')+'</div>'+
+      (settled(s)?'':'<div class="gw" title="'+(s.log||[]).join('\n')+'"><div class="gw-bar"><i style="left:'+
+        ((g+100)/2)+'%"></i></div><span>'+(g>0?'+':'')+g+'</span></div>')+
+      (s.relation==='assoggettato'?'<div class="meta">malcontento '+Math.round(s.unrest||0)+'% · guarnigione '+
+        garrisonNear(s)+'</div>':'');
+    if(s.request){
+      const r=s.request, what=r.amount+(r.kind==='food'?' cibo':' materiali');
+      const q=document.createElement('div'); q.className='req';
+      q.innerHTML='<span>📜 chiede '+what+' · '+r.deadline+'s</span>';
+      const qa=document.createElement('div'); qa.className='acts';
+      if(!r.accepted){
+        btn(qa,'accetta',true,()=>answerRequest(s,true));
+        btn(qa,'rifiuta',true,()=>answerRequest(s,false));
+      } else btn(qa,'consegna '+what,res[r.kind]>=r.amount,()=>deliverRequest(s));
+      q.appendChild(qa); d.appendChild(q);
     }
-    d.appendChild(acts); list.appendChild(d);
+    const acts=document.createElement('div'); acts.className='acts';
+    if(!settled(s)){
+      if(s.relation==='ostile') btn(acts,'pace ('+PEACE_COST.mat+'m)',canMakePeace(s),()=>makePeace(s));
+      else btn(acts,'dono ('+GIFT_COST.mat+'m '+GIFT_COST.food+'c)',canGift(s),()=>giftTo(s));
+      if(canSubjugate(s)) btn(acts,'assoggetta',true,()=>subjugate(s));
+      if(s.relation==='alleato'){
+        btn(acts,'40 cibo → 32 mat',hasMarket()&&res.food>=40,()=>tradeWith(s,'buy'));
+        btn(acts,'40 mat → 32 cibo',hasMarket()&&res.mat>=40,()=>tradeWith(s,'sell'));
+      }
+      btn(acts,army.target===s?'richiama':'attacca',!(myTroops().length===0&&army.target!==s),
+        ()=>army.target===s?recall():declareWar(s),'war');
+    } else btn(acts,s.relation==='assoggettato'?'assoggettato · tributo 1,4':'conquistato',false,()=>{});
+    d.appendChild(acts);
+    for(const o of wars){
+      if(s.name>o.name) continue;              // un pulsante per coppia
+      const m=document.createElement('div'); m.className='acts';
+      btn(m,'media la pace con '+o.name+' ('+mediateCost()+'m)',canMediate(s,o),()=>mediate(s,o));
+      d.appendChild(m);
+    }
+    list.appendChild(d);
   }
 }
 
@@ -328,11 +382,9 @@ function upgradeBuilding(tile){
   if(!tile||!isMine(tile)) return;
   if(raidActive){ toast('Non si amplia durante un\'incursione.'); return; }
   if(!canUpgrade(tile)) return;
-  const B=BUILDINGS[tile.building], cm=B.cost.mat||0, cp=B.cost.pow||0;
-  if(res.mat<cm||res.pow<cp){
-    toast('Per ampliare servono '+cm+' materiali'+(cp?' e '+cp+' energia':'')+'.'); return;
-  }
-  res.mat-=cm; res.pow-=cp;
+  const B=BUILDINGS[tile.building], cost=costOf(tile.building);
+  if(!canPay(cost)){ toast('Per ampliare servono '+costText(cost)+'.'); return; }
+  pay(cost);
   const hp=tile.hp;
   tile.size=sizeOf(tile)+1;
   openSite(tile,tile.building,'you',B.blocks,true);

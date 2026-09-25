@@ -7,7 +7,7 @@
     "build": "node tools/build.mjs",
     "sim": "node test/sim.mjs",
     "sim:quick": "node test/sim.mjs --ticks 300",
-    "test": "node tools/build.mjs && node test/sim.mjs --ticks 300"
+    "test": "node tools/build.mjs && node test/sim.mjs"
   },
   "devDependencies": {
     "three": "0.128.0"

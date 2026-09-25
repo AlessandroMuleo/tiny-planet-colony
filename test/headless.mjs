@@ -80,6 +80,7 @@ export function loadGame({ seed = 1 } = {}) {
   const ctx = {
     THREE, document, localStorage, console,
     innerWidth: 1280, innerHeight: 800, devicePixelRatio: 1,
+    navigator: {}, URLSearchParams,
     performance: { now: () => 0 },
     requestAnimationFrame: () => 0,
     setTimeout: () => 0, clearTimeout: () => {},

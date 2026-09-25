@@ -24,6 +24,9 @@ function generateWorld(seed){
   selected=null; marker=null; launching=null; rangeMesh=null; activeFX=[]; setInspector(null);
   raidIn=160; raidNo=0; raidActive=false; army={size:0,target:null};
   season=0; seasonT=0; worldAge=0;
+  narrator={phase:'calma',t:0,hurt:0}; choice=null; famineT=0; exiles=0; chainT=0;
+  weather={kind:'sereno',t:120}; applyWeather();
+  spaceOffline=0; raidSite=null; minerT=0;
   beams=new THREE.Group(); planetGroup.add(beams);
   ringGroup=new THREE.Group(); planetGroup.add(ringGroup); rings.clear();
   if(orbitGroup) scene.remove(orbitGroup);
@@ -69,7 +72,7 @@ function generateWorld(seed){
 
   document.getElementById('w-name').textContent=NAMES[(worldIndex-1)%NAMES.length];
   document.getElementById('w-count').textContent=
-    (worldIndex===1?'primo mondo':'mondo n° '+worldIndex)+' · '+trait.name+' ('+trait.note+')'+
+    (worldIndex===1?'primo mondo':'mondo n° '+worldIndex)+' · seme '+worldSeed+(difficulty!=='normale'?' · '+diff().label:'')+' · '+trait.name+' ('+trait.note+')'+
     (worldIndex>1?' · eredità +'+Math.round((legacy()-1)*100)+'%':'');
 }
 
@@ -140,7 +143,7 @@ function makeSettlements(start,rnd){
       settlements.every(x=>t.center.dot(x.core.center)<0.55));
     if(!far.length) continue;
     const core=far[Math.floor(rnd()*far.length)];
-    const set={name:'Clan '+CLANS[Math.floor(rnd()*CLANS.length)],
+    const set={name:uniqueClanName('Clan '+CLANS[Math.floor(rnd()*CLANS.length)]),
                core, relation:'neutrale', tiles:[core], mat:30, thinkT:0};
     finish(core,'keep','rival'); core.settlement=set;
     let hasFarm=false, hasTower=false;
@@ -159,6 +162,7 @@ function makeSettlements(start,rnd){
     }
     settlements.push(set);
   }
+  initDiplomacy(rnd);
 }
 
 /* ═══════════════ mesh degli edifici ═══════════════ */

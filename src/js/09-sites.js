@@ -59,7 +59,7 @@ function finish(tile,kind,owner){
   if(old) planetGroup.remove(old);
   tile.building=kind; tile.owner=owner; tile.site=null;
   if(!tile.size) tile.size=1;
-  tile.hp=(BUILDINGS[kind].hp||25)*tile.size; tile.hpMax=tile.hp; tile.spawnT=0; tile.shipT=0;
+  tile.hp=(BUILDINGS[kind].hp||25)*tile.size*(owner==='you'?1+techSum('fort'):1); tile.hpMax=tile.hp; tile.spawnT=0; tile.shipT=0;
   const mesh=buildingMesh(kind);
   // scarto contenuto: si nota che è più grande senza debordare dalla casella
   mesh.scale.setScalar(0.86+0.15*tile.size);
@@ -78,9 +78,12 @@ function destroyBuilding(tile){
   tile.building=null; tile.owner=null; tile.workers=0; tile.hp=0; tile.hpMax=0;
   tile.settlement=null; tile.site=null;
   tile.size=1;
+  // se è crollato un magazzino, ciò che non ci sta più va perso subito:
+  // prima restava oltre la capienza fino al tick successivo
+  if(mine){ const cap=capacity(); for(const k of ['food','mat','pow','bar']) res[k]=Math.min(res[k]||0,cap); }
   bumpWalk(); syncJobs(); refreshHUD();
   if(selected===tile) setInspector(tile);
-  if(mine) toast(was+': distrutta.');
+  if(mine){ toast(was+': distrutta.'); narratorHurt(0.5); }
   if(set) checkConquest(set);
 }
 

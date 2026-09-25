@@ -3,10 +3,11 @@
 // si rompe, così si può lanciare prima di ogni commit.
 // Ogni scenario gira in un processo suo, in parallelo agli altri.
 //
-//   node test/sim.mjs                 tutti gli scenari, 900 tick (qualche minuto)
-//   node test/sim.mjs --ticks 300     più corto: è quello di "npm test"
+//   node test/sim.mjs                 tutti gli scenari, 900 tick: è quello di "npm test"
+//   node test/sim.mjs --ticks 300     più corto
 //   node test/sim.mjs --only rivali   solo gli scenari che contengono "rivali"
 //   node test/sim.mjs --verbose       stampa anche i messaggi del gioco
+//   node test/sim.mjs --trace 30      ogni 30 tick: azioni dei coloni e bisogni medi
 
 import { loadGame } from './headless.mjs';
 import { spawn } from 'node:child_process';
@@ -20,14 +21,43 @@ const arg = (name, def) => {
 const TICKS = +arg('ticks', 900);
 const ONLY = arg('only', '');
 const VERBOSE = process.argv.includes('--verbose');
+const TRACE = +arg('trace', 0);        // ogni N tick: cosa fanno i coloni
 const FPS = 5;                        // passi di simulazione per secondo di gioco (dt = 0,2 s)
 
+/* eventi casuali che devono comparire in almeno uno degli scenari: per un
+   seme solo sarebbero fragili (ogni modifica sposta i numeri casuali), ma
+   se non compaiono mai in tutta la suite qualcosa si è rotto davvero    */
+const SUITE_EXPECT = ['❓', 'Il governatore sceglie', '🔬', '🏆', '🕯', '💍', '🥀', 'ripartono col bottino', 'ripresa',
+  '⛈', '🌵', '🌫', '⚡', '🛰', '🛡', '☄', '🔭'];
+
 const SCENARIOS = [
-  { name: 'primo mondo, automatico',     seed: 1,  world: 1, auto: true },
-  { name: 'primo mondo, automatico #2',  seed: 7,  world: 1, auto: true },
+  // survive: col governatore la colonia deve arrivare viva alla fine
+  { name: 'primo mondo, automatico',     seed: 1,  world: 1, auto: true, survive: true },
+  { name: 'primo mondo, automatico #2',  seed: 7,  world: 1, auto: true, survive: true },
   { name: 'primo mondo, senza giocatore',seed: 3,  world: 1, auto: false },
-  { name: 'terzo mondo con rivali',      seed: 11, world: 3, auto: true },
-  { name: 'quinto mondo con rivali',     seed: 23, world: 5, auto: true }
+  // expect: messaggi che devono comparire almeno una volta nella partita
+  { name: 'terzo mondo con rivali',      seed: 11, world: 3, auto: true, survive: true, expect: ['📜', 'accetta il dono'] },
+  { name: 'quinto mondo con rivali',     seed: 23, world: 5, auto: true, survive: true },
+  { name: 'salva e ricarica a metà',     seed: 5,  world: 3, auto: true, reload: true, survive: true },
+  // difficile: incursioni più forti, fame e sonno più rapidi, meno scorte
+  { name: 'difficile col governatore',   seed: 9,  world: 2, auto: true, survive: true, difficulty: 'difficile' },
+  // a metà partita si parte per il mondo successivo: sbarcano i veterani
+  { name: 'nuovo mondo coi veterani',    seed: 13, world: 2, auto: true, survive: true, expect: ['🚀 Sbarcano'],
+    midway: `const pad=FC.mine.find(t=>isMine(t)&&housesOf(t)>0)||FC.mine.find(t=>isMine(t));
+      const n=boardVeterans(pad); padCargoMat=60; padCargoFood=60; nextWorld(); __stale.clear(); __progress.clear();` },
+  // un clan assoggettato all'inizio, senza guarnigione vicina: deve ribellarsi
+  { name: 'assoggettati senza guarnigione', seed: 11, world: 3, auto: true, expect: ['Rivolta'],
+    setup: `const s=settlements[0]; s.relation='ostile';
+      for(let i=units.length-1;i>=0;i--) if(units[i].settlement===s) killUnit(units[i],i);
+      for(const t of tiles) if(t.settlement===s&&hasFlag(t,'core')) destroyBuilding(t);
+      subjugate(s);` },
+  // una colonia già avviata verso lo spazio: stazione in orbita, controllo
+  // missioni e depositi. Il governatore deve lanciare e migliorare da solo
+  { name: 'corsa allo spazio', seed: 17, world: 2, auto: true, survive: true, expect: ['lancio in corso', '🛰'],
+    setup: `for(const k of ['depot','depot','depot','plant','plant','control','foundry','mine','farm','hut','hut']){
+        const t=pickSpot(k); if(t) finish(t,k,'you'); }
+      res.food=res.mat=res.pow=capacity(); res.bar=Math.min(capacity(),120);
+      addOrbital('station'); orbit[0].built=true;` }
 ];
 
 /* Il ciclo di gioco di 23-main.js, senza disegno né requestAnimationFrame,
@@ -35,8 +65,9 @@ const SCENARIOS = [
 const DRIVER = `
 var __acc = 0, __clock = 0, __tick = 0, __stale = new Map(), __progress = new Map();
 
-function __setup(world, seed, autoOn){
+function __setup(world, seed, autoOn, diffName){
   worldIndex = world; worldSeed = seed;
+  difficulty = diffName || 'normale'; res = startingRes();
   generateWorld(worldSeed); applySeason(); refreshHUD();
   auto = autoOn;
 }
@@ -63,7 +94,7 @@ function __check(){
   if(pop !== P) bad.push('pop = ' + pop + ' ma i coloni sono ' + P);
 
   const cap = capacity();
-  for(const k of ['food','mat','pow']){
+  for(const k of ['food','mat','pow','bar']){
     if(!__fin(res[k])) bad.push('res.' + k + ' non è un numero: ' + res[k]);
     else if(res[k] < -1e-9) bad.push('res.' + k + ' negativa: ' + res[k].toFixed(2));
     else if(res[k] > cap + 1e-6) bad.push('res.' + k + ' = ' + res[k].toFixed(1) + ' oltre la capienza ' + cap);
@@ -109,10 +140,76 @@ function __check(){
     }
     if(t.building && !BUILDINGS[t.building]) bad.push('edificio sconosciuto: ' + t.building);
   }
+  // prenotazioni: il contatore di ogni cantiere e letto coincide con chi l'ha presa,
+  // e nessun cantiere ha più blocchi prenotati di quanti gliene mancano
+  const claims = new Map(), beds = new Map();
+  for(const u of units){
+    if(u.claimed) claims.set(u.claimed, (claims.get(u.claimed) || 0) + 1);
+    if(u.bed) beds.set(u.bed, (beds.get(u.bed) || 0) + 1);
+    if(u.bonds) for(const id in u.bonds) if(!__fin(u.bonds[id]) || u.bonds[id] <= 0 || u.bonds[id] > 1) bad.push(u.kind + ': legame ' + u.bonds[id]);
+    if(hasNeeds(u) && (!u.name || !Array.isArray(u.traits) || !u.skills)) bad.push(u.kind + ': civile senza nome, tratti o abilità');
+    for(const k in u.skills || {})
+      if(!__fin(u.skills[k]) || u.skills[k] < 0 || !SKILLS[k]) bad.push(u.kind + ': abilità ' + k + ' = ' + u.skills[k]);
+    for(const id of u.traits || []) if(!PERSON_TRAITS[id]) bad.push(u.kind + ': tratto sconosciuto ' + id);
+    if(u.needs) for(const k of ['food','rest','mood'])
+      if(!__fin(u.needs[k]) || u.needs[k] < 0 || u.needs[k] > 1) bad.push(u.kind + ': bisogno ' + k + ' = ' + u.needs[k]);
+  }
+  for(const t of tiles){
+    if(t.site && t.owner === 'you'){
+      const c = t.site.claims || 0, n = claims.get(t.site) || 0;
+      if(c !== n) bad.push('cantiere di ' + t.site.kind + ': ' + c + ' prenotazioni segnate, ' + n + ' coloni le tengono');
+      if(c > t.site.need - t.site.have) bad.push('cantiere di ' + t.site.kind + ': ' + c + ' blocchi prenotati ma ne mancano ' + (t.site.need - t.site.have));
+    }
+    const s = t.sleepers || 0, b = beds.get(t) || 0;
+    if(s !== b) bad.push('letti su ' + (t.building || 'casella vuota') + ': ' + s + ' segnati, ' + b + ' coloni li tengono');
+    if(t.building && isMine(t) && b > housesOf(t)) bad.push(BUILDINGS[t.building].name + ': ' + b + ' coloni a letto su ' + housesOf(t) + ' posti');
+  }
+  if(tech !== researched.size) bad.push('tech = ' + tech + ' ma i nodi completati sono ' + researched.size);
+  for(const id of researched) if(!RESEARCH[id]) bad.push('nodo di ricerca sconosciuto: ' + id);
+  if(researching && (!RESEARCH[researching] || researched.has(researching))) bad.push('ricerca in corso non valida: ' + researching);
+  if(!WEATHER[weather.kind] || !(weather.t > -1)) bad.push('meteo non valido: ' + weather.kind);
+  const kinds = new Set();
+  for(const o of orbit){
+    if(!ORBITALS[o.kind]) bad.push('orbitale sconosciuto: ' + o.kind);
+    if(kinds.has(o.kind)) bad.push('due ' + o.kind + ' in orbita');
+    kinds.add(o.kind);
+    if(!ORBIT_LEVELS[o.level]) bad.push(o.kind + ': livello ' + o.level);
+    if(o.built && !ORBITALS[o.kind].hub && !hasOrbital('station')) bad.push(o.kind + ' in orbita senza stazione');
+  }
+  if(!(spaceOffline >= 0)) bad.push('spaceOffline = ' + spaceOffline);
+  if(!NARRATOR_PHASES[narrator.phase]) bad.push('narratore in una fase sconosciuta: ' + narrator.phase);
+  if(choice && !CHOICE_EVENTS[choice.id]) bad.push('scelta sconosciuta: ' + choice.id);
+  const RELS = ['ostile','neutrale','alleato','assoggettato','conquistato'];
+  for(const s of settlements){
+    if(!RELS.includes(s.relation)) bad.push(s.name + ': relazione ' + s.relation);
+    if(!__fin(s.goodwill) || s.goodwill < -100 || s.goodwill > 100) bad.push(s.name + ': benevolenza ' + s.goodwill);
+    if(!__fin(s.unrest || 0) || (s.unrest || 0) < 0 || s.unrest > 100) bad.push(s.name + ': malcontento ' + s.unrest);
+    if(s.request && (!(s.request.amount > 0) || !['food','mat'].includes(s.request.kind))) bad.push(s.name + ': richiesta non valida');
+    for(const o of settlements) if(o !== s && atWar(s, o) !== atWar(o, s)) bad.push(s.name + ' e ' + o.name + ': guerra da una parte sola');
+  }
   if(assignedTotal() > workforce()) bad.push('addetti assegnati ' + assignedTotal() + ' oltre le braccia disponibili ' + workforce());
 
   return bad.map(m => ({level: 'errore', tick: __tick, msg: m}))
     .concat(warn.map(m => ({level: 'avviso', tick: __tick, msg: m})));
+}
+
+function __trace(){
+  const acts = {}, n = {food:0, rest:0, mood:0}; let k = 0;
+  for(const u of units){
+    if(!hasNeeds(u)) continue;
+    const a = u.act || '-'; acts[a] = (acts[a] || 0) + 1;
+    if(u.needs){ n.food += u.needs.food; n.rest += u.needs.rest; n.mood += u.needs.mood; k++; }
+  }
+  const pct = v => k ? Math.round(100 * v / k) + '%' : '-';
+  return 't' + __tick + ' ' + (nightOn ? 'notte' : 'giorno') + ' · ' +
+    Object.entries(acts).sort((a, b) => b[1] - a[1]).map(([a, c]) => a + ' ' + c).join(', ') +
+    ' · sazi ' + pct(n.food) + ' riposati ' + pct(n.rest) + ' umore ' + pct(n.mood) +
+    ' · esperienza media ' + Math.round(units.filter(u => u.skills && u.job).reduce((s, u) => s + (skillMul(u, skillKey(u.job)) - 1), 0) /
+      Math.max(1, units.filter(u => u.skills && u.job).length) * 100) + '%' +
+    ' · cibo ' + Math.round(res.food) + ' mat ' + Math.round(res.mat) + ' en ' + Math.round(res.pow) +
+    (typeof govLast !== 'undefined' && govLast ? ' · gov ' + govLast.map(p => p.action + ' ' + p.score.toFixed(2)).join(' ') : '') +
+    ' · cantieri ' +
+    tiles.filter(t => t.site && t.owner === 'you').map(t => t.site.have + '/' + t.site.need).join(' ');
 }
 
 function __summary(){
@@ -122,6 +219,7 @@ function __summary(){
     res: {food: Math.round(res.food), mat: Math.round(res.mat), pow: Math.round(res.pow)}, cap: capacity(),
     tech, buildings: playerBuildings().length, sites: tiles.filter(t => t.site && t.owner === 'you').length,
     raids: raidNo, units: units.length,
+    orbit: orbit.filter(o => o.built).map(o => o.kind + (o.level > 1 ? o.level : '')).join(' '),
     clans: settlements.map(s => s.name + ' ' + s.relation).join(', '),
     // stato esatto, per l'impronta: nessun arrotondamento
     exact: JSON.stringify([res, sci, worldAge, units.map(u => u.kind + ':' + u.hp + ':' + u.from.id + ':' + u.mode),
@@ -133,14 +231,27 @@ function __summary(){
 function runScenario(sc) {
   const game = loadGame({ seed: sc.seed });
   game.run(DRIVER);
-  const issues = [];
+  const issues = [], traces = [];
   let crashed = null;
   const t0 = Date.now();
   try {
-    game.run(`__setup(${sc.world}, ${sc.seed}, ${sc.auto})`);
+    game.run(`__setup(${sc.world}, ${sc.seed}, ${sc.auto}, ${JSON.stringify(sc.difficulty || 'normale')})`);
+    if (sc.setup) game.run(sc.setup);
     const dt = 1 / FPS;
     for (let f = 0; f < TICKS * FPS; f++) {
       issues.push(...game.run(`__frame(${dt})`));
+      if (TRACE && f % (TRACE * FPS) === 0) traces.push(game.run('__trace()'));
+      if (sc.midway && f === Math.floor(TICKS * FPS / 2)) game.run(sc.midway);
+      // a metà partita: salva, ricarica dal salvataggio e continua da lì
+      if (sc.reload && f === Math.floor(TICKS * FPS / 2)) {
+        const state = 'JSON.stringify([myPeople().length, units.filter(u=>u.needs).length, Math.round(res.food), ' +
+          'units.filter(u=>u.name).map(u=>u.name+(u.traits||[]).join("")+Math.round(Object.values(u.skills||{}).reduce((a,b)=>a+b,0))).sort().join()])';
+        const before = game.run(state);
+        game.run('saveGame(true); loadGame(); __stale.clear(); __progress.clear();');
+        const after = game.run(state);
+        if (before !== after) issues.push({ level: 'errore', tick: game.run('__tick'),
+          msg: 'dopo il caricamento coloni, bisogni, cibo, nomi, tratti o abilità sono cambiati' });
+      }
       if (game.failures.length) break;
       if (game.run('gameOver')) break;
     }
@@ -148,7 +259,11 @@ function runScenario(sc) {
     crashed = e;
   }
   const summary = game.run('__summary()');
-  return { sc, issues, crashed, failures: game.failures, summary, toasts: game.toasts, ms: Date.now() - t0 };
+  for (const e of sc.expect || [])
+    if (!game.toasts.some(t => t.includes(e))) issues.push({ level: 'errore', tick: summary.tick, msg: 'non è mai comparso «' + e + '»' });
+  if (sc.survive && summary.gameOver)
+    issues.push({ level: 'errore', tick: summary.tick, msg: 'la colonia si è estinta col governatore attivo' });
+  return { sc, issues, crashed, failures: game.failures, summary, toasts: game.toasts, traces, ms: Date.now() - t0 };
 }
 
 function report(r) {
@@ -163,7 +278,7 @@ function report(r) {
   if (s) console.log(`   tick ${s.tick}${s.gameOver ? ' · COLONIA PERDUTA' : ''} · coloni ${s.pop} ` +
     `(${s.demo.child}b/${s.demo.adult}a/${s.demo.elder}v) · cibo ${s.res.food} mat ${s.res.mat} en ${s.res.pow} / ${s.cap}` +
     ` · edifici ${s.buildings} · cantieri ${s.sites} · ricerca ${s.tech} · incursioni ${s.raids}` +
-    (s.clans ? ` · ${s.clans}` : ''));
+    (s.clans ? ` · ${s.clans}` : '') + (s.orbit ? ` · orbita: ${s.orbit}` : ''));
   if (r.crashed) console.log('   ECCEZIONE: ' + r.crashed.split('\n').slice(0, 4).join('\n     '));
   for (const f of r.failures) console.log('   fail(): ' + f.split('\n')[0]);
   // lo stesso errore ripetuto a ogni tick si stampa una volta sola, col primo tick
@@ -175,6 +290,7 @@ function report(r) {
   }
   for (const i of seen.values())
     console.log(`   ${i.level === 'errore' ? '✗' : '!'} tick ${i.tick}: ${i.msg}${i.n > 1 ? `  (×${i.n})` : ''}`);
+  for (const t of r.traces || []) console.log('   ' + t);
   if (VERBOSE) for (const t of r.toasts) console.log('     · ' + t);
   return ok;
 }
@@ -193,7 +309,7 @@ const picked = SCENARIOS.map((sc, i) => ({ sc, i })).filter(x => x.sc.name.inclu
 if (!picked.length) { console.log('Nessuno scenario contiene «' + ONLY + '».'); process.exit(1); }
 const t0 = Date.now();
 const results = await Promise.all(picked.map(({ sc, i }) => new Promise(done => {
-  const child = spawn(process.execPath, [self, '--one', String(i), '--ticks', String(TICKS)]);
+  const child = spawn(process.execPath, [self, '--one', String(i), '--ticks', String(TICKS), '--trace', String(TRACE)]);
   let out = '', err = '';
   child.stdout.on('data', d => out += d);
   child.stderr.on('data', d => err += d);
@@ -203,7 +319,12 @@ const results = await Promise.all(picked.map(({ sc, i }) => new Promise(done => 
                    crashed: 'il processo è uscito con codice ' + code + '\n' + err }); }
   });
 })));
-const failed = results.filter(r => !report(r)).length;
+let failed = results.filter(r => !report(r)).length;
+if (!ONLY && TICKS >= 900) {        // in partite più corte molti eventi non fanno in tempo a capitare
+  const all = results.flatMap(r => r.toasts || []);
+  const missing = SUITE_EXPECT.filter(e => !all.some(t => t.includes(e)));
+  if (missing.length) { failed++; console.log('✗ in nessuno scenario è comparso: ' + missing.map(m => '«' + m + '»').join(', ')); }
+}
 console.log((failed ? `\n${failed} scenari falliti` : '\nTutti gli scenari sono passati') +
   ` · ${TICKS} tick · ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 process.exit(failed ? 1 : 0);

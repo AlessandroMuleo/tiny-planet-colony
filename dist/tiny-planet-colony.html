@@ -63,6 +63,87 @@
   .fill.danger{margin-left:0;border-color:rgba(224,97,107,.45);color:var(--rival)}
   .fill.danger:hover:not(:disabled){border-color:var(--rival);color:var(--ink)}
   .demo{display:none;margin-top:9px}
+  .muted{color:var(--ink-dim);font-size:11.5px;font-weight:400}
+  /* albero della ricerca */
+  /* sotto la barra dei comandi, che deve restare cliccabile */
+  .research,.stats{left:50%;top:150px;transform:translateX(-50%);width:min(760px,calc(100vw - 32px));
+    max-height:calc(100vh - 250px);overflow-y:auto;display:none;z-index:55}
+  .research.on,.stats.on{display:block}
+  .research h3,.stats h3{margin:0 0 10px;font-size:13px;font-weight:500;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+  .tree{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+  .branch h4{margin:0 0 6px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-dim)}
+  .node{all:unset;box-sizing:border-box;display:block;width:100%;margin-bottom:6px;padding:7px 8px;border:1px solid var(--line);
+    border-radius:4px;cursor:pointer;font-size:11.5px;color:var(--ink-dim)}
+  .node b{display:block;color:var(--ink);font-weight:500;font-size:12.5px}
+  .node span{display:block;margin:2px 0}
+  .node em{font-style:normal;font-size:11px}
+  .node:hover:not(:disabled){border-color:var(--ember)}
+  .node:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+  .node:disabled{cursor:default;opacity:.45}
+  .node.done{opacity:1;border-color:rgba(143,217,138,.5)} .node.done em{color:var(--moss)}
+  .node.cur{border-color:var(--ember)} .node.cur em{color:var(--ember)}
+  /* statistiche: piccoli multipli, una serie per grafico */
+  .link{all:unset;cursor:pointer;font-size:11.5px;color:var(--ember)}
+  .link:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+  #stats-body{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+  .sc{margin:0}
+  .sc figcaption{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-dim);margin-bottom:3px}
+  .sc figcaption b{color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums}
+  .sc-wrap{position:relative}
+  .sc-svg{display:block;width:100%;height:auto;overflow:visible}
+  .sc-svg .line{fill:none;stroke:#3e95d8;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+  .sc-svg .grid{stroke:var(--line);stroke-width:1}
+  .sc-svg .world{stroke:var(--ink-dim);stroke-width:1;stroke-dasharray:3 3;opacity:.6}
+  .sc-svg .ax{fill:var(--ink-dim);font-size:8.5px;font-family:inherit}
+  .sc-svg .cross{stroke:var(--ink-dim);stroke-width:1}
+  .sc-svg .dot{fill:#3e95d8;stroke:var(--void);stroke-width:2}
+  .sc-svg .hit{fill:transparent;cursor:crosshair}
+  .sc-tip{position:absolute;top:-4px;transform:translate(-50%,-100%);background:var(--void);border:1px solid var(--line);
+    border-radius:3px;padding:3px 6px;font-size:11px;white-space:nowrap;pointer-events:none;opacity:0;font-variant-numeric:tabular-nums}
+  .sc-tip.on{opacity:1}
+  .st-scroll{grid-column:1/-1;overflow-x:auto}
+  /* carte orbitali: il livello in piccolo, quelle già in orbita col bordo pieno */
+  .card small{position:absolute;right:3px;bottom:1px;font-size:9px;color:var(--ember)}
+  .card.built{border-color:rgba(80,210,255,.55)}
+  .ach{grid-column:1/-1;margin-top:6px}
+  .ach h4{margin:0 0 6px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-dim)}
+  .ach-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+  .ach-i{padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:11px;color:var(--ink-dim);opacity:.55}
+  .ach-i b{display:block;font-weight:500;font-size:12px;color:var(--ink)}
+  .ach-i.on{opacity:1;border-color:rgba(255,196,107,.5)}
+  .st{border-collapse:collapse;font-size:11.5px;font-variant-numeric:tabular-nums;width:100%}
+  .st th,.st td{padding:3px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  .st th{font-weight:500;color:var(--ink-dim)}
+  /* una scelta del narratore: in basso al centro, non ferma il gioco */
+  .choice{position:fixed;left:50%;bottom:92px;transform:translate(-50%,8px);width:min(420px,calc(100vw - 32px));
+    background:var(--panel);border:1px solid var(--ember);border-radius:6px;padding:12px 14px;
+    opacity:0;pointer-events:none;transition:.18s;z-index:6}
+  .choice.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+  .choice-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .choice h3{margin:0;font-size:14px;font-weight:500}
+  .choice-head span{font-size:12px;color:var(--ember);font-variant-numeric:tabular-nums}
+  .choice p{margin:5px 0 10px;font-size:12.5px;color:var(--ink-dim)}
+  .choice-acts{display:flex;gap:6px;flex-wrap:wrap}
+  .choice-acts button{all:unset;flex:1;min-width:120px;text-align:center;padding:7px 8px;border:1px solid var(--line);
+    border-radius:3px;font-size:12px;cursor:pointer}
+  .choice-acts button:hover{border-color:var(--ember)}
+  .choice-acts button:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+  /* chi sta sulla casella: bisogni e perché fa quello che fa */
+  .minds{margin-top:10px;display:flex;flex-direction:column;gap:9px}
+  .minds:empty{display:none}
+  .mind{border-top:1px solid var(--line);padding-top:8px;font-size:11.5px;color:var(--ink-dim)}
+  .mind .who{display:flex;justify-content:space-between;gap:6px;color:var(--ink)}
+  .mind .who b{font-weight:500;color:var(--ember)}
+  .mind.followed{border-top-color:var(--ember)}
+  .mind .traits{margin-top:2px;font-size:11px}
+  .mind .needs{display:grid;grid-template-columns:auto 1fr;gap:2px 6px;align-items:center;margin:5px 0}
+  .mind .bar{height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+  .mind .bar i{display:block;height:100%;background:var(--moss)}
+  .mind .bar i.low{background:var(--ember)}
+  .mind ol{margin:0;padding-left:16px}
+  .mind li{font-variant-numeric:tabular-nums}
+  .mind li span{opacity:.75}
+  .mind .more{font-size:11px}
   .kinds{display:none;gap:5px;margin-top:9px}
   .kinds button{all:unset;flex:1;text-align:center;padding:6px 4px;border:1px solid var(--line);
     border-radius:3px;font-size:11.5px;cursor:pointer;color:var(--ink-dim);transition:.12s}
@@ -82,7 +163,16 @@
   .settle .rel.ostile{color:var(--rival)}
   .settle .rel.alleato{color:var(--moss)}
   .settle .meta{font-size:11.5px;color:var(--ink-dim);margin:2px 0 7px}
-  .acts{display:flex;gap:5px}
+  .acts{display:flex;gap:5px;flex-wrap:wrap}
+  .acts+.acts{margin-top:5px}
+  /* benevolenza: una barra da −100 a +100 con lo zero al centro */
+  .gw{display:flex;align-items:center;gap:7px;margin:-3px 0 7px;font-size:11px;color:var(--ink-dim);font-variant-numeric:tabular-nums}
+  .gw-bar{position:relative;flex:1;height:5px;border-radius:3px;
+    background:linear-gradient(90deg,rgba(224,97,107,.55),var(--line) 50%,rgba(143,217,138,.55))}
+  .gw-bar i{position:absolute;top:-2px;width:3px;height:9px;margin-left:-1.5px;border-radius:1px;background:var(--ink)}
+  .settle .war-with{color:var(--rival)}
+  .req{font-size:11.5px;margin:0 0 7px;color:var(--ink)}
+  .req .acts{margin-top:4px}
   .acts button{all:unset;flex:1;text-align:center;padding:6px 4px;border:1px solid var(--line);
     border-radius:3px;font-size:11.5px;cursor:pointer;color:var(--ink-dim);transition:.12s}
   .acts button:hover:not(:disabled){border-color:var(--ember);color:var(--ink)}
@@ -177,6 +267,7 @@
   <div class="stat"><b id="s-food">0</b><span>cibo</span><span class="rate" id="r-food"></span></div>
   <div class="stat"><b id="s-mat">0</b><span>materiali</span><span class="rate" id="r-mat"></span></div>
   <div class="stat"><b id="s-pow">0</b><span>energia</span><span class="rate" id="r-pow"></span></div>
+  <div class="stat"><b id="s-bar">0</b><span>lingotti</span><span class="rate" id="r-bar"></span></div>
   <div class="stat"><b id="s-pop">0</b><span>coloni</span><span class="rate" id="r-pop"></span></div>
   <div class="stat"><b id="s-demo">0·0·0</b><span>bimbi·adulti·anziani</span><span class="rate" id="r-hurt"></span></div>
   <div class="stat"><b id="s-build">0</b><span>al cantiere</span></div>
@@ -201,6 +292,9 @@
       <button id="b-save" title="Salva la partita in questo browser (Ctrl+S). Salvataggio automatico ogni 30 s">salva</button>
       <button id="b-load" title="Riprendi l'ultima partita salvata">carica</button>
       <button id="b-log" title="Registro eventi e scorciatoie (L)">registro</button>
+      <button id="b-research" title="Albero della ricerca (T)">ricerca</button>
+      <button id="b-stats" title="Statistiche della partita (S)">statistiche</button>
+      <button id="b-share" title="Copia un link che riapre questo pianeta">condividi</button>
     </div>
     <div class="ctrl" id="speeds">
       <button data-mul="0" title="Pausa (spazio)" aria-label="Pausa">⏸</button>
@@ -251,6 +345,7 @@
   <div class="demo" id="i-disbandrow">
     <button class="fill" id="i-disband">congeda tutti → coloni</button>
   </div>
+  <div class="minds" id="i-minds"></div>
 </div>
 
 <div class="panel army" id="army">
@@ -279,7 +374,8 @@
   <div class="keys">
     <kbd>spazio</kbd> pausa · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> velocità · <kbd>A</kbd> auto ·
     <kbd>F</kbd> fulmine · <kbd>R</kbd> pioggia · <kbd>C</kbd> cura · <kbd>U</kbd> amplia ·
-    <kbd>Esc</kbd> annulla · <kbd>Ctrl+S</kbd> salva · <kbd>L</kbd> registro
+    <kbd>Esc</kbd> annulla · <kbd>Ctrl+S</kbd> salva · <kbd>L</kbd> registro ·
+    <kbd>T</kbd> ricerca · <kbd>S</kbd> statistiche · clic su un colono: seguilo
   </div>
   <ol id="log-list"></ol>
 </div>
@@ -291,6 +387,19 @@
   </div>
 </div>
 <div class="tip" id="tip"></div>
+<div class="panel research" id="research">
+  <h3>Albero della ricerca <span class="muted">i nodi completati restano quando cambi mondo</span></h3>
+  <div class="tree" id="research-tree"></div>
+</div>
+<div class="panel stats" id="stats">
+  <h3>Statistiche <button id="stats-mode" class="link">tabella</button></h3>
+  <div id="stats-body"></div>
+</div>
+<div class="choice" id="choice" role="dialog" aria-labelledby="choice-title">
+  <div class="choice-head"><h3 id="choice-title">—</h3><span id="choice-time"></span></div>
+  <p id="choice-text"></p>
+  <div class="choice-acts" id="choice-acts"></div>
+</div>
 <div class="toast" id="toast"></div>
 <div class="err" id="err"></div>
 <div class="diag" id="diag">avvio…</div>
@@ -428,7 +537,16 @@ const BIOMES = {
    dps      = spara da solo nel raggio: tuo contro i nemici, rivale contro chi è in guerra
    spawns   = genera un'unità ogni "every" secondi, fino a "cap" per struttura
    core     = cuore di un clan: finché regge, il clan non si assoggetta
-   launch   = da qui si parte per un nuovo mondo (e partono le navette lunari) */
+   launch   = da qui si parte per un nuovo mondo (e partono le navette lunari)
+   granary  = cibo che conserva senza che marcisca (per taglia)
+   tavern   = svago: chi ci passa torna più contento
+   school   = i bambini ci studiano un mestiere
+   embassy  = doni più efficaci, mediazione a metà prezzo
+   watch    = avvista le navette dei predoni prima che atterrino
+   memorial = il lutto pesa la metà e passa prima
+   well     = acqua: sulla sabbia, senza un pozzo vicino, si rende meno
+   control  = controllo missioni: servono addetti per le strutture orbitali avanzate
+   elevator = ascensore spaziale: orbita più economica, navette più veloci  */
 const BUILDINGS = {
   hut:    {cat:'base', name:'Capanna',  cost:{mat:10},        blocks:3,  effect:'4 posti letto',        jobs:0, houses:4, hp:25, store:40, guard:true},
   block:  {cat:'base', name:'Alloggi',  cost:{mat:34},        blocks:7,  effect:'12 posti letto',       jobs:0, houses:12, hp:40, store:30, guard:true},
@@ -440,6 +558,9 @@ const BUILDINGS = {
   workshop:{cat:'base',name:'Officina', cost:{mat:40},        blocks:7,  effect:'converte 1,6 cibo in 1,1 materiali a testa', jobs:3, per:{mat:1.1}, eats:{food:1.6}, ships:'mat', hp:32},
   green:  {cat:'base', name:'Serra',    cost:{mat:48,pow:20}, blocks:8,  effect:'1,5 cibo a testa, immune alle stagioni', jobs:2, per:{food:1.5}, ships:'food', noSeason:true, drain:0.6, hp:28},
   market: {cat:'base', name:'Mercato',  cost:{mat:38},        blocks:6,  effect:'+60% ai tributi e abilita lo scambio', jobs:1, trade:true, hp:30, store:60},
+  foundry:{cat:'base', name:'Fonderia', cost:{mat:45},        blocks:7,  effect:'converte 1,2 materiali in 0,5 lingotti a testa', jobs:2, per:{bar:0.5}, eats:{mat:1.2}, hp:35},
+  granary:{cat:'base', name:'Granaio',  cost:{mat:30},        blocks:5,  effect:'conserva 150 cibo: fuori dai granai il cibo marcisce', jobs:0, granary:150, hp:30},
+  well:   {cat:'base', name:'Pozzo',    cost:{mat:12},        blocks:2,  effect:'acqua per la sabbia: senza, lì si rende il 40% in meno', jobs:0, well:true, range:4.5, hp:20},
   clinic: {cat:'base', name:'Ospedale',  cost:{mat:35},       blocks:6,  effect:'cura i feriti nel raggio', jobs:2, heal:1.6, range:5.5, hp:30},
 
   dock:   {cat:'acqua',name:'Molo',     cost:{mat:12},        blocks:3,  effect:'rende il mare percorribile', jobs:0, water:true, hp:20},
@@ -447,14 +568,22 @@ const BUILDINGS = {
 
   wall:   {cat:'difesa',name:'Mura',    cost:{mat:8},         blocks:2,  effect:'barriera: i nemici non la attraversano', jobs:0, wall:true, quiet:true, hp:120},
   armory: {cat:'difesa',name:'Armeria', cost:{mat:30},        blocks:7,  effect:'addestra lancieri o arcieri', jobs:3, per:{mat:-0.3}, armory:true, guard:true, hp:45},
-  turret: {cat:'difesa',name:'Torretta',cost:{mat:40,pow:15}, blocks:8,  effect:'spara da sola sui nemici', jobs:0, drain:0.4, range:5.0, dps:3.5, hp:35},
+  turret: {cat:'difesa',name:'Torretta',cost:{mat:30,pow:15,bar:8}, blocks:8,  effect:'spara da sola sui nemici', jobs:0, drain:0.4, range:5.0, dps:3.5, hp:35},
   shrine: {cat:'difesa',name:'Santuario',cost:{mat:45,pow:20},blocks:9,  effect:'un guardiano ogni 25s', jobs:0, drain:0.5, spawns:'guardian', every:25, cap:4, guard:true, hp:40,
           spawnMsg:'Il santuario ha generato un guardiano.'},
   fort:   {cat:'difesa',name:'Roccaforte',cost:{mat:80,pow:25},blocks:12,effect:'rifugio per bambini e feriti durante le incursioni', jobs:2, drain:0.3, shelter:true, range:4.0, guard:true, hp:150},
 
+  tavern: {cat:'vita',name:'Taverna',   cost:{mat:36},        blocks:6,  effect:'svago: chi ci passa torna più contento', jobs:1, tavern:true, hp:28},
+  school: {cat:'vita',name:'Scuola',    cost:{mat:40},        blocks:7,  effect:'i bambini studiano un mestiere e crescono già esperti', jobs:1, school:true, hp:30},
+  memorial:{cat:'vita',name:'Memoriale',cost:{mat:30},        blocks:5,  effect:'il lutto pesa la metà e passa prima', jobs:0, memorial:true, fixed:true, hp:40},
+  embassy:{cat:'vita',name:'Ambasciata',cost:{mat:50,bar:10}, blocks:8,  effect:'doni +50%, mediazione a metà prezzo, i clan si avvicinano da soli', jobs:1, embassy:true, hp:35},
+  watch:  {cat:'difesa',name:'Torre di segnalazione',cost:{mat:25}, blocks:5, effect:'avvista le navette 25 s prima e dà l\'allarme', jobs:1, watch:true, hp:30},
+
   lab:    {cat:'scienza',name:'Centro ricerca',cost:{mat:55,pow:30}, blocks:9, effect:'0,9 ricerca a testa', jobs:2, per:{sci:0.9}, hp:35},
 
-  pad:    {cat:'speciale',name:'Rampa di lancio', cost:{mat:70,pow:40}, blocks:14, effect:'parti per un nuovo mondo', jobs:4, launch:true, hp:50},
+  pad:    {cat:'speciale',name:'Rampa di lancio', cost:{mat:70,pow:40,bar:25}, blocks:14, effect:'parti per un nuovo mondo', jobs:4, launch:true, hp:50},
+  control:{cat:'speciale',name:'Controllo missioni', cost:{mat:80,pow:30,bar:15}, blocks:12, effect:'sblocca le strutture orbitali avanzate · 0,5 ricerca a testa', jobs:2, per:{sci:0.5}, control:true, hp:45},
+  elevator:{cat:'speciale',name:'Ascensore spaziale', cost:{mat:160,pow:60,bar:40}, blocks:18, effect:'strutture orbitali −40%, navette due volte più veloci', jobs:2, elevator:true, fixed:true, hp:80},
 
   keep:   {cat:null, name:'Roccaforte rivale', cost:{}, blocks:0, effect:'cuore di un popolo rivale', jobs:0, hp:70, core:true, rivalOnly:true},
   camp:   {cat:null, name:'Accampamento',      cost:{}, blocks:0, effect:'insediamento rivale',      jobs:0, hp:32, rivalOnly:true},
@@ -474,30 +603,62 @@ const ORBITALS = {
   eye:    {name:'Occhio profondo',   cost:{mat:100,pow:70}, effect:'+45s tra un\'incursione e l\'altra',
            drain:0.4, delay:45},
   moonbase:{name:'Base lunare',      cost:{mat:160,pow:90}, effect:'spedizioni sulla luna: +40 materiali ogni 40s',
-           drain:0.8, every:40, haul:40}
+           drain:0.8, every:40, haul:40},
+  // avanzate: oltre alla stazione serve un Controllo missioni con addetti
+  shield:  {name:'Scudo orbitale',    cost:{mat:150,pow:100,bar:20}, effect:'abbatte il 40% di ogni navetta nemica e devia i meteoriti',
+           drain:1.2, cut:0.4, advanced:true},
+  telescope:{name:'Telescopio orbitale',cost:{mat:110,pow:70,bar:10}, effect:'+0,8 ricerca · mostra dove atterreranno i predoni',
+           drain:0.5, sci:0.8, advanced:true},
+  miner:   {name:'Raccoglitore di asteroidi',cost:{mat:170,pow:110,bar:25}, effect:'una capsula ogni 50s: +12 lingotti, +20 materiali',
+           drain:0.9, every:50, bars:12, mat:20, advanced:true},
+  weathersat:{name:'Satellite meteo', cost:{mat:90,pow:80,bar:10}, effect:'niente fulmini, la siccità pesa la metà',
+           drain:0.6, advanced:true},
+  habitat: {name:'Habitat orbitale',  cost:{mat:200,pow:120,bar:30}, effect:'+16 letti in orbita, con vista sulle stelle (+umore)',
+           drain:1.0, houses:16, advanced:true}
 };
+/* livelli delle strutture orbitali: il 2 e il 3 costano lingotti e
+   moltiplicano l'effetto (capienza, danno, ritardo, carico, letti…) */
+const ORBIT_LEVELS = [null, {mul:1}, {mul:1.5, cost:{mat:60,bar:20}}, {mul:2, cost:{mat:100,bar:45}}];
 const ICONS = {
   hut:'🏠', block:'🏘', farm:'🌾', mine:'⛏', plant:'⚡', depot:'📦', clinic:'✚',
   road:'🛣', workshop:'🔧', green:'🌱', market:'⚖',
   dock:'⚓', fishery:'🐟',
   wall:'🧱', armory:'⚔', turret:'🎯', shrine:'🔯', fort:'🏰',
-  lab:'🔬', pad:'🚀',
-  station:'🛰', mirror:'🪞', cannon:'💥', eye:'👁', moonbase:'🌙'
+  lab:'🔬', pad:'🚀', foundry:'🔥', granary:'🌽', well:'💧', tavern:'🍺', school:'📚',
+  memorial:'🕯', embassy:'🤝', watch:'🔭',
+  station:'🛰', mirror:'🪞', cannon:'💥', eye:'👁', moonbase:'🌙',
+  shield:'🛡', telescope:'🔭', miner:'☄', weathersat:'📡', habitat:'🪐', control:'🎛', elevator:'🗼'
 };
 
 const CATALOGS = [
   {id:'base',    label:'Colonia'},
   {id:'acqua',   label:'Mare'},
   {id:'difesa',  label:'Difesa'},
+  {id:'vita',    label:'Vita'},
   {id:'scienza', label:'Ricerca'},
   {id:'speciale',label:'Spazio'},
   {id:'orbita',  label:'Orbita'}
 ];
 
-/* ── ricerca: tre livelli, ognuno migliora resa e armi ────────── */
-const TECH_COST = [0, 90, 240, 480];
-const techProd = () => 1 + 0.18*tech;
-const techWar  = () => 1 + 0.22*tech;
+/* ── costi: materiali, energia e lingotti ─────────────────────────
+   Tutto ciò che si paga passa di qui, così una risorsa nuova non va
+   aggiunta a mano in dieci punti del codice.                          */
+const COST_KEYS = ['mat','pow','bar'];
+const COST_LABEL = {mat:'mat', pow:'en', bar:'lingotti'};
+const canPay = (cost,n=1) => COST_KEYS.every(k=>!cost[k]||res[k]>=cost[k]*n);
+function pay(cost,n=1){ for(const k of COST_KEYS) if(cost[k]) res[k]-=cost[k]*n; }
+const costText = (cost,n=1) => COST_KEYS.filter(k=>cost[k]).map(k=>cost[k]*n+' '+COST_LABEL[k]).join(' · ');
+
+/* ── ricerca: ora è un albero a rami (25-progress.js); resa e armi
+   sommano gli effetti dei nodi completati ─────────────────────────── */
+const techProd = () => 1 + techSum('prod');
+const techWar  = () => 1 + techSum('war');
+/* il costo di un edificio, con gli sconti della ricerca (la rampa) */
+function costOf(key){
+  const c={...BUILDINGS[key].cost};
+  if(key==='pad'&&typeof techSum==='function') for(const k in c) c[k]=Math.round(c[k]*(1-techSum('padCost')));
+  return c;
+}
 
 /* ── unità ────────────────────────────────────────────────────── */
 const UNITS = {
@@ -509,7 +670,8 @@ const UNITS = {
   raider:  {label:'predone',   hp:12, dmg:2.6, range:1.1, speed:.34, color:0x9b3fd4},
   soldier: {label:'soldato',   hp:11, dmg:2.2, range:1.1, speed:.42, color:0xe0616b},
   thrall:  {label:'assoggettato', hp:10, dmg:0.4, range:0.9, speed:.42, color:0xb99a86, civil:true},
-  caravan: {label:'carovana',  hp:14, dmg:0,   range:0,   speed:.34, color:0xe8c88a}
+  caravan: {label:'carovana',  hp:14, dmg:0,   range:0,   speed:.34, color:0xe8c88a},
+  envoy:   {label:'emissario', hp:9,  dmg:0,   range:0,   speed:.38, color:0xffe08a}
 };
 const MILITARY = ['spear','bow','guardian'];
 /* chi conta come popolazione: i soldati restano coloni, solo con un altro mestiere */
@@ -560,8 +722,11 @@ const CLANS=['Vurr','Kesh','Tallim','Oran','Zibbe','Nakar','Serth'];
 let tiles=[], faceToTile=[], terrainMesh=null, terrainColor=null, buildMeshes=new Map(), beams=null;
 let units=[], settlements=[], cargos=[], props=[];
 let selected=null, marker=null;
-let worldSeed=Date.now()%99999, worldIndex=1;
-let res={food:22, mat:60, pow:12}, pop=3;
+/* ?seed=123 riapre lo stesso pianeta, ?mondo=3 parte dal terzo mondo (con i clan),
+   ?auto accende il governatore: così un mondo si può condividere con un link */
+const URLP = typeof location!=='undefined' ? new URLSearchParams(location.search) : new URLSearchParams();
+let worldSeed=(+URLP.get('seed')>0?+URLP.get('seed'):Date.now())%99999, worldIndex=Math.max(1,Math.min(12,+URLP.get('mondo')||1));
+let res={food:22, mat:60, pow:12, bar:0}, pop=3;   // le scorte iniziali le decide la difficoltà (26-main)
 let sci=0, tech=0;
 let season=0, seasonT=0;
 let raidIn=70, raidNo=0, raidActive=false;
@@ -572,6 +737,7 @@ let buildSize=1, showCargo=true, ringPaint=0;
 let padCargoMat=40, padCargoFood=20;
 let activePower=null, activeFX=[], rangeMesh=null, dayCycle=true;
 let quiet=false, eventLog=[], logOpen=false, gameOver=false, autoSaveT=0, lastSpeed=1;
+let raidWarned=false;           // la torre ha avvistato la prossima navetta
 let eventIn=110, boomT=0;       // eventi casuali: prossimo tra N tick; raccolto abbondante per N tick
 
 /* ═══════════════ helper mondo ═══════════════ */
@@ -601,6 +767,9 @@ function generateWorld(seed){
   selected=null; marker=null; launching=null; rangeMesh=null; activeFX=[]; setInspector(null);
   raidIn=160; raidNo=0; raidActive=false; army={size:0,target:null};
   season=0; seasonT=0; worldAge=0;
+  narrator={phase:'calma',t:0,hurt:0}; choice=null; famineT=0; exiles=0; chainT=0;
+  weather={kind:'sereno',t:120}; applyWeather();
+  spaceOffline=0; raidSite=null; minerT=0;
   beams=new THREE.Group(); planetGroup.add(beams);
   ringGroup=new THREE.Group(); planetGroup.add(ringGroup); rings.clear();
   if(orbitGroup) scene.remove(orbitGroup);
@@ -646,7 +815,7 @@ function generateWorld(seed){
 
   document.getElementById('w-name').textContent=NAMES[(worldIndex-1)%NAMES.length];
   document.getElementById('w-count').textContent=
-    (worldIndex===1?'primo mondo':'mondo n° '+worldIndex)+' · '+trait.name+' ('+trait.note+')'+
+    (worldIndex===1?'primo mondo':'mondo n° '+worldIndex)+' · seme '+worldSeed+(difficulty!=='normale'?' · '+diff().label:'')+' · '+trait.name+' ('+trait.note+')'+
     (worldIndex>1?' · eredità +'+Math.round((legacy()-1)*100)+'%':'');
 }
 
@@ -717,7 +886,7 @@ function makeSettlements(start,rnd){
       settlements.every(x=>t.center.dot(x.core.center)<0.55));
     if(!far.length) continue;
     const core=far[Math.floor(rnd()*far.length)];
-    const set={name:'Clan '+CLANS[Math.floor(rnd()*CLANS.length)],
+    const set={name:uniqueClanName('Clan '+CLANS[Math.floor(rnd()*CLANS.length)]),
                core, relation:'neutrale', tiles:[core], mat:30, thinkT:0};
     finish(core,'keep','rival'); core.settlement=set;
     let hasFarm=false, hasTower=false;
@@ -736,6 +905,7 @@ function makeSettlements(start,rnd){
     }
     settlements.push(set);
   }
+  initDiplomacy(rnd);
 }
 
 /* ═══════════════ mesh degli edifici ═══════════════ */
@@ -919,6 +1089,58 @@ function buildingMesh(kind){
     const c=new THREE.Mesh(new THREE.ConeGeometry(.52,.4,6),mat(0xe0616b)); c.position.y=.75; g.add(c);
     const pole=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.5),mat(0xd8d2c4)); pole.position.y=1.15; g.add(pole);
     const flag=new THREE.Mesh(new THREE.BoxGeometry(.26,.16,.02),mat(0xe0616b)); flag.position.set(.14,1.3,0); g.add(flag);
+  } else if(kind==='foundry'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.7,.42,.6),mat(0x5a4f48)); b.position.y=.21; g.add(b);
+    const ch=new THREE.Mesh(new THREE.CylinderGeometry(.1,.13,.7,6),mat(0x3e3632)); ch.position.set(.2,.6,-.12); g.add(ch);
+    const glow=new THREE.Mesh(new THREE.BoxGeometry(.3,.14,.02),new THREE.MeshBasicMaterial({color:0xff8a3c}));
+    glow.position.set(-.1,.2,.31); g.add(glow);
+    const bar=new THREE.Mesh(new THREE.BoxGeometry(.22,.07,.1),mat(0xd9a441)); bar.position.set(-.22,.47,.1); g.add(bar);
+  } else if(kind==='granary'){
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,.6,10),mat(0xd8c49a)); b.position.y=.3; g.add(b);
+    const r=new THREE.Mesh(new THREE.ConeGeometry(.36,.3,10),mat(0x9a6a3c)); r.position.y=.75; g.add(r);
+    const s=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,.4,8),mat(0xc9b284)); s.position.set(.32,.2,.1); g.add(s);
+  } else if(kind==='well'){
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(.26,.28,.22,10),mat(0x9a9488)); b.position.y=.11; g.add(b);
+    const w=new THREE.Mesh(new THREE.CylinderGeometry(.19,.19,.02,10),mat(0x3d8fc4)); w.position.y=.22; g.add(w);
+    for(const x of [-.22,.22]){ const p=new THREE.Mesh(new THREE.BoxGeometry(.05,.4,.05),mat(0x6b5238)); p.position.set(x,.36,0); g.add(p); }
+    const r=new THREE.Mesh(new THREE.ConeGeometry(.34,.18,4),mat(0x8a5a3c)); r.position.y=.64; r.rotation.y=Math.PI/4; g.add(r);
+  } else if(kind==='tavern'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.72,.44,.56),mat(0xb88a5c)); b.position.y=.22; g.add(b);
+    const r=new THREE.Mesh(new THREE.BoxGeometry(.8,.12,.64),mat(0x7a4a2c)); r.position.y=.5; g.add(r);
+    const sign=new THREE.Mesh(new THREE.BoxGeometry(.16,.12,.02),mat(0xffc46b)); sign.position.set(.3,.36,.3); g.add(sign);
+    const w=new THREE.Mesh(new THREE.BoxGeometry(.3,.12,.02),new THREE.MeshBasicMaterial({color:0xffc070}));
+    w.position.set(-.1,.24,.29); w.userData.light=true; w.visible=false; g.add(w);
+  } else if(kind==='school'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.76,.4,.52),mat(0xe2d6c0)); b.position.y=.2; g.add(b);
+    const r=new THREE.Mesh(new THREE.ConeGeometry(.5,.3,4),mat(0x3f7fa8)); r.position.y=.55; r.rotation.y=Math.PI/4; r.scale.set(1.1,1,.8); g.add(r);
+    const bell=new THREE.Mesh(new THREE.SphereGeometry(.07,6,5),mat(0xd9a441)); bell.position.y=.78; g.add(bell);
+  } else if(kind==='memorial'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.5,.12,.5),mat(0x9a9aa2)); b.position.y=.06; g.add(b);
+    const o=new THREE.Mesh(new THREE.BoxGeometry(.14,.7,.14),mat(0xd7dbe2)); o.position.y=.47; g.add(o);
+    const f=new THREE.Mesh(new THREE.SphereGeometry(.06,6,5),new THREE.MeshBasicMaterial({color:0xffe0a0}));
+    f.position.set(.18,.18,.18); f.userData.light=true; f.visible=false; g.add(f);
+  } else if(kind==='embassy'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.74,.36,.6),mat(0xeae4d6)); b.position.y=.18; g.add(b);
+    for(const x of [-.26,-.09,.09,.26]){ const c=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,.34,6),mat(0xffffff)); c.position.set(x,.2,.33); g.add(c); }
+    const d=new THREE.Mesh(new THREE.SphereGeometry(.2,10,6,0,Math.PI*2,0,Math.PI/2),mat(0x8fd98a)); d.position.y=.36; g.add(d);
+  } else if(kind==='watch'){
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(.16,.24,.9,6),mat(0x8a7a64)); b.position.y=.45; g.add(b);
+    const p=new THREE.Mesh(new THREE.CylinderGeometry(.28,.2,.1,6),mat(0x6b5238)); p.position.y=.94; g.add(p);
+    const l=new THREE.Mesh(new THREE.SphereGeometry(.08,6,5),new THREE.MeshBasicMaterial({color:0xffe08a})); l.position.y=1.06; g.add(l);
+  } else if(kind==='control'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.8,.36,.64),mat(0xd7e2ea)); b.position.y=.18; g.add(b);
+    const d=new THREE.Mesh(new THREE.SphereGeometry(.26,10,6,0,Math.PI*2,0,Math.PI/2),mat(0x9aa4b2)); d.position.set(-.18,.36,0); g.add(d);
+    const dish=new THREE.Mesh(new THREE.SphereGeometry(.22,10,5,0,Math.PI*2,0,Math.PI/3),mat(0xffffff));
+    dish.position.set(.24,.62,0); dish.rotation.x=-Math.PI/4; g.add(dish);
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.3),mat(0x8d97a6)); pole.position.set(.24,.48,0); g.add(pole);
+    const w=new THREE.Mesh(new THREE.BoxGeometry(.4,.1,.02),new THREE.MeshBasicMaterial({color:0x50d2ff}));
+    w.position.set(.1,.22,.33); w.userData.light=true; w.visible=false; g.add(w);
+  } else if(kind==='elevator'){
+    // la base a terra e un cavo che sale oltre le nuvole
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(.42,.5,.3,8),mat(0x5b6472)); b.position.y=.15; g.add(b);
+    const t=new THREE.Mesh(new THREE.CylinderGeometry(.12,.2,1.2,6),mat(0x9aa4b2)); t.position.y=.9; g.add(t);
+    const cable=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,6,4),mat(0xd8d2c4)); cable.position.y=4.4; g.add(cable);
+    const car=new THREE.Mesh(new THREE.BoxGeometry(.16,.2,.16),mat(0xffc46b)); car.position.y=2.4; car.userData.lift=true; g.add(car);
   } else if(kind==='camp'){
     const b=new THREE.Mesh(new THREE.ConeGeometry(.36,.5,5),mat(0x8a4a52)); b.position.y=.25; g.add(b);
     const r=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.3),mat(0xd8d2c4)); r.position.y=.62; g.add(r);
@@ -987,7 +1209,7 @@ const DAY_LEN=110;                      // secondi per un giro completo
 function stepDay(dt){
   if(!dayCycle){
     if(nightOn!==false){ nightOn=false; updateLights(); }
-    sun.intensity=1.15; rim.intensity=0.45; scene.children[0].intensity=0.9;
+    sun.intensity=1.15*(weatherNow().light||1); rim.intensity=0.45; scene.children[0].intensity=0.9*(weatherNow().light||1);
     return;
   }
   dayT=(dayT+dt/DAY_LEN)%1;
@@ -996,9 +1218,9 @@ function stepDay(dt){
   // quanto è alto il sole rispetto all'emisfero illuminato
   const h=Math.max(-1,Math.min(1,Math.sin(a)*0.55+Math.cos(a)*0.45));
   const day=Math.max(0,Math.min(1,(h+0.35)/0.9));
-  sun.intensity=0.12+1.05*day;
+  sun.intensity=(0.12+1.05*day)*(weatherNow().light||1);
   rim.intensity=0.5-0.18*day;
-  scene.children[0].intensity=0.34+0.56*day;   // luce ambientale
+  scene.children[0].intensity=(0.34+0.56*day)*Math.min(1.05,weatherNow().light||1);   // luce ambientale
   const isNight=day<0.42;
   if(isNight!==nightOn){ nightOn=isNight; updateLights(); }
 }
@@ -1090,6 +1312,38 @@ function orbitalMesh(kind){
     d.rotation.x=Math.PI/2.2; g.add(d);
     const r=new THREE.Mesh(new THREE.TorusGeometry(.85,.06,5,14),mat(0x9fe3bd));
     r.rotation.y=Math.PI/3; g.add(r);
+  } else if(kind==='shield'){
+    // un anello di generatori con una bolla di campo attorno
+    const core=new THREE.Mesh(new THREE.OctahedronGeometry(.45),mat(0x7fb0c9)); g.add(core);
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(1.2,.08,6,18),mat(0x9aa4b2)); g.add(ring);
+    const bub=new THREE.Mesh(new THREE.SphereGeometry(1.35,14,10),
+      new THREE.MeshBasicMaterial({color:0x7fd4ff,transparent:true,opacity:.14,depthWrite:false}));
+    g.add(bub);
+  } else if(kind==='telescope'){
+    const tube=new THREE.Mesh(new THREE.CylinderGeometry(.32,.4,1.8,10),mat(0xe6ecf5));
+    tube.rotation.x=Math.PI/2; g.add(tube);
+    const lens=new THREE.Mesh(new THREE.CircleGeometry(.3,12),new THREE.MeshBasicMaterial({color:0x3e95d8}));
+    lens.position.z=-.91; lens.rotation.y=Math.PI; g.add(lens);
+    for(const x of [1,-1]){ const p=new THREE.Mesh(new THREE.BoxGeometry(1.1,.05,.6),mat(0x3f6fa8)); p.position.x=x*.9; g.add(p); }
+  } else if(kind==='miner'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.9,.6,.9),mat(0x8a7a64)); g.add(b);
+    const arm=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,1.4,6),mat(0xd9a441));
+    arm.rotation.z=Math.PI/2; arm.position.x=.9; g.add(arm);
+    const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.45,0),mat(0x6f6357)); rock.position.x=1.8; g.add(rock);
+  } else if(kind==='weathersat'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.5,.5,.7),mat(0xc9d2de)); g.add(b);
+    const dish=new THREE.Mesh(new THREE.SphereGeometry(.5,10,6,0,Math.PI*2,0,Math.PI/3),mat(0xffffff));
+    dish.position.z=.5; dish.rotation.x=-Math.PI/2; g.add(dish);
+    for(const x of [1,-1]){ const p=new THREE.Mesh(new THREE.BoxGeometry(.9,.04,.45),mat(0x3f6fa8)); p.position.x=x*.75; g.add(p); }
+  } else if(kind==='habitat'){
+    // anello rotante con i moduli abitativi
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(1.25,.22,8,20),mat(0xd7e2ea)); g.add(ring);
+    const hub=new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,.8,10),mat(0x9aa4b2)); hub.rotation.x=Math.PI/2; g.add(hub);
+    for(let i=0;i<4;i++){ const a=i/4*Math.PI*2;
+      const sp=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,1.2,5),mat(0x8d97a6));
+      sp.position.set(Math.cos(a)*.62,Math.sin(a)*.62,0); sp.rotation.z=a+Math.PI/2; g.add(sp); }
+    const glow=new THREE.Mesh(new THREE.TorusGeometry(1.25,.06,6,20),new THREE.MeshBasicMaterial({color:0xffe0a0}));
+    glow.position.z=.2; g.add(glow);
   }
   return g;
 }
@@ -1144,14 +1398,14 @@ function moonPos(t){
    superficie, atterra, lo lascia lì in tuta, e torna col carico. I coloni
    lunari restano visibili sul satellite e ne aumentano la resa.        */
 const moonCrew=[];
-function moonYield(){ return ORBITALS.moonbase.haul + moonCrew.length*6; }
+function moonYield(){ return Math.round((ORBITALS.moonbase.haul + moonCrew.length*6)*Math.max(1,orbMul('moonbase'))); }
 function stepMoon(dt,clock){
   if(!moon) return;
   moon.position.copy(moonPos(clock));
   moon.rotation.y+=dt*0.15;
 
   const base=orbit.find(o=>o.kind==='moonbase'&&o.built);
-  if(base&&res.pow>0){
+  if(base&&res.pow>0&&!spaceOffline){
     base.fireT=(base.fireT||0)+dt;
     if(base.fireT>=ORBITALS.moonbase.every){
       base.fireT=0;
@@ -1179,7 +1433,7 @@ function stepMoon(dt,clock){
 
   for(let i=moonRuns.length-1;i>=0;i--){
     const r=moonRuns[i];
-    r.t+=dt*(r.phase==='up'?0.5:0.22);
+    r.t+=dt*(r.phase==='up'?0.5:0.22)*(hasElevator()?2:1);   // con l'ascensore la navetta parte già in quota
     const k=Math.min(1,r.t);
     if(r.phase==='up'){
       // accensione: sale dal pianeta prima di puntare la luna
@@ -1244,7 +1498,7 @@ function addOrbital(kind){
   const m=orbitalMesh(kind);
   orbitGroup.add(m);
   // sale dal pianeta invece di apparire già in orbita
-  orbit.push({kind, mesh:m, built:false, rise:0, fireT:0});
+  orbit.push({kind, mesh:m, built:false, rise:0, fireT:0, level:1});
 }
 function stepOrbit(dt,clock){
   if(!orbitGroup) return;
@@ -1345,7 +1599,7 @@ function finish(tile,kind,owner){
   if(old) planetGroup.remove(old);
   tile.building=kind; tile.owner=owner; tile.site=null;
   if(!tile.size) tile.size=1;
-  tile.hp=(BUILDINGS[kind].hp||25)*tile.size; tile.hpMax=tile.hp; tile.spawnT=0; tile.shipT=0;
+  tile.hp=(BUILDINGS[kind].hp||25)*tile.size*(owner==='you'?1+techSum('fort'):1); tile.hpMax=tile.hp; tile.spawnT=0; tile.shipT=0;
   const mesh=buildingMesh(kind);
   // scarto contenuto: si nota che è più grande senza debordare dalla casella
   mesh.scale.setScalar(0.86+0.15*tile.size);
@@ -1364,9 +1618,12 @@ function destroyBuilding(tile){
   tile.building=null; tile.owner=null; tile.workers=0; tile.hp=0; tile.hpMax=0;
   tile.settlement=null; tile.site=null;
   tile.size=1;
+  // se è crollato un magazzino, ciò che non ci sta più va perso subito:
+  // prima restava oltre la capienza fino al tick successivo
+  if(mine){ const cap=capacity(); for(const k of ['food','mat','pow','bar']) res[k]=Math.min(res[k]||0,cap); }
   bumpWalk(); syncJobs(); refreshHUD();
   if(selected===tile) setInspector(tile);
-  if(mine) toast(was+': distrutta.');
+  if(mine){ toast(was+': distrutta.'); narratorHurt(0.5); }
   if(set) checkConquest(set);
 }
 
@@ -1415,10 +1672,13 @@ function spawnUnit(kind,faction,tile){
     mode:'idle',carry:null,site:null,workT:0,bob:Math.random()*6,
     age:0, stage:'adult', wounded:false};
   if(UNITS[kind].civil){ u.age=AGES.child.until+Math.floor(Math.random()*60); applyAge(u); }
+  if(faction==='you'&&UNITS[kind].civil) initPerson(u);
   units.push(u);
   return u;
 }
-function killUnit(u,i){
+function killUnit(u,i,died){
+  releaseAll(u);
+  if(hasNeeds(u)) mournFriend(u,died===true||u.hp<=0);   // morto, o solo andato via
   dropCarry(u);
   planetGroup.remove(u.mesh);
   units.splice(i,1);
@@ -1464,6 +1724,8 @@ function unitDamage(u){
     if(u.stage==='child'||u.wounded) return 0;
     if(u.stage==='elder') d*=0.6;
   }
+  // la tattica raddoppia i colpi della milizia (coloni civili che difendono)
+  if(u.faction==='you'&&UNITS[u.kind].civil) d*=1+techSum('militia');
   return d*(u.faction==='you'?techWar():1);
 }
 const myUnits  = () => units.filter(u=>u.faction==='you');
@@ -1475,12 +1737,14 @@ const raiders  = () => units.filter(u=>u.faction==='raider');
 function capacity(){
   let c=BASE_STORE;
   for(const t of tiles) if(isMine(t)) c+=storeOf(t);
-  for(const o of orbit) if(o.built) c+=ORBITALS[o.kind].store||0;
+  // la capienza in orbita resta anche con l'orbita spenta: le scorte non spariscono
+  for(const o of orbit) if(o.built) c+=(ORBITALS[o.kind].store||0)*ORBIT_LEVELS[o.level||1].mul;
   return c;
 }
 /* lo specchio solare toglie il morso all'inverno */
-const seasonFood = () => hasOrbital('mirror')
-  ? Math.max(1.0, SEASONS[season].food) : SEASONS[season].food;
+/* dal livello 2 lo specchio scalda anche le altre stagioni */
+const seasonFood = () => { const m=orbMul('mirror');
+  return m ? Math.max(1+0.2*(m-1), SEASONS[season].food) : SEASONS[season].food; };
 /* ── taglia della struttura (1–3): più grande = più posti e più capienza ── */
 const sizeOf   = t => t.size||1;
 const jobsOf   = t => (BUILDINGS[t.building].jobs||0)*sizeOf(t);
@@ -1495,32 +1759,74 @@ const idleCount     = () => Math.max(0,workforce()-assignedTotal()-buildersCount
 /* dove si portano i carichi: deposito o capanna più vicini */
 const storageTiles  = () => tiles.filter(t=>isMine(t)&&storeOf(t)>0);
 
+/* FC.mine è la fotografia di inizio fotogramma: un edificio può essere caduto
+   nel frattempo, quindi questi helper riverificano sempre con isMine */
+/* edifici attivi con una certa proprietà: con jobs, solo se hanno addetti */
+const activeFlag = f => FC.mine.some(t=>isMine(t)&&hasFlag(t,f)&&(!jobsOf(t)||(t.workers||0)>0));
+/* un pozzo a portata d'acqua */
+const wellNear = t => FC.mine.some(w=>isMine(w)&&hasFlag(w,'well')&&
+  surfacePos(w).distanceTo(surfacePos(t))<BUILDINGS[w.building].range);
+/* il cibo che i granai conservano; il resto marcisce piano (SPOIL a tick) */
+const SPOIL = 0.01, FRESH_BASE = 60;
+const granaryCover = () => FRESH_BASE+FC.mine.reduce((n,t)=>n+(isMine(t)?(BUILDINGS[t.building].granary||0)*sizeOf(t):0),0);
+
 function rates(){
-  let food=FOOD_DRIP, matr=DRIP, pow=0, scir=0, houses=0, jobs=0, tribute=0;
+  let food=FOOD_DRIP, matr=DRIP, pow=0, scir=0, barr=0, houses=0, jobs=0, tribute=0;
   const S=seasonFood()*(trait.harsh?0.85:1), P=techProd()*legacy(), d=demography();
-  let eat=d.child*AGES.child.eat+d.adult*AGES.adult.eat+d.elder*AGES.elder.eat;
-  for(const u of myTroops()) if(u.kind==='guardian') eat += 0.30;
-  eat += myThralls().length*THRALL_EAT;
+  // eat: quanto mangiano i civili, che vanno da soli al magazzino (qui serve
+  // solo a mostrare il saldo nell'HUD). upkeep: le razioni di soldati e
+  // guardiani, che non hanno bisogni propri e si scalano dalla scorta a ogni tick
+  let eat=0, upkeep=0;
+  for(const u of units){
+    if(u.faction!=='you') continue;
+    if(hasNeeds(u)) eat+=eatRate(u);
+    else if(u.kind==='guardian') upkeep+=0.30;
+    else if(isPerson(u)) upkeep+=AGES[u.stage].eat;
+  }
   for(const t of tiles){
     if(!isMine(t)) continue;
     const B=BUILDINGS[t.building], w=t.workers||0;
     houses+=housesOf(t); jobs+=jobsOf(t);
     const w2=(t.effWorkers!==undefined?t.effWorkers:w);
-    if(B.eats) food-=(B.eats.food||0)*w2;          // l'officina brucia cibo
+    if(B.eats){                                     // l'officina brucia cibo, la fonderia materiali
+      food-=(B.eats.food||0)*w2; matr-=(B.eats.mat||0)*w2;
+    }
     if(B.per){
-      food+=(B.per.food||0)*w2*(B.noSeason?1:S)*P*(trait.food||1)*(boomT>0?1.4:1);
+      food+=(B.per.food||0)*w2*(B.noSeason?1:S)*P*(trait.food||1)*(boomT>0?1.4:1)*(famineT>0&&!B.noSeason?0.5:1)*(1+techSum('food'))
+           *(B.noSeason||!B.per.food?1:weatherFood(t));      // la serra è al riparo dal tempo
       matr+=(B.per.mat||0)*(B.per.mat>0?w2*P*(trait.mat||1):w);
       pow +=(B.per.pow||0)*w2*P*(trait.pow||1);
       scir+=(B.per.sci||0)*w2*P;
+      barr+=(B.per.bar||0)*w2*P*(1+techSum('bar'));
     }
     if(B.drain) pow-=B.drain;
   }
-  for(const o of orbit) if(o.built) pow-=ORBITALS[o.kind].drain||0;
+  if(!spaceOffline) for(const o of orbit) if(o.built) pow-=ORBITALS[o.kind].drain||0;
+  scir+=ORBITALS.telescope.sci*orbMul('telescope');
+  // i letti dell'habitat restano anche al buio: chi ci vive non se ne va
+  for(const o of orbit) if(o.built&&ORBITALS[o.kind].houses) houses+=ORBITALS[o.kind].houses*ORBIT_LEVELS[o.level||1].mul;
   for(const s of settlements) tribute += s.relation==='alleato' ? 0.6 : s.relation==='assoggettato' ? 1.4 : 0;
   if(tiles.some(t=>isMine(t)&&BUILDINGS[t.building].trade&&(t.workers||0)>0)) tribute*=1.6;
-  const block = pop>=houses ? 'servono letti' : (food-eat<=0 && res.food<=8) ? 'serve cibo'
+  tribute*=1+techSum('caravan');
+  const block = pop>=houses ? 'servono letti' : (food-eat-upkeep<=0 && res.food<=8) ? 'serve cibo'
               : res.food<=8 ? 'scorte basse' : null;
-  return {food:food-eat, mat:matr+tribute, pow:pow-pop*USE, sci:scir, houses, jobs, demo:d, block};
+  const spoil=Math.max(0,res.food-granaryCover())*SPOIL*(1-techSum('spoil'));
+  return {food:food-eat-upkeep-spoil, stock:food-upkeep-spoil, spoil, mat:matr+tribute, pow:pow-pop*USE,
+    sci:scir, bar:barr, houses, jobs, demo:d, block};
+}
+/* chi produce davvero: solo chi è al lavoro (o sta portando il raccolto).
+   Un colono che mangia, dorme o scappa non rende, e l'umore pesa sulla resa. */
+function dutyTick(){
+  for(const t of tiles) if(isMine(t)&&jobsOf(t)>0) t.effWorkers=0;
+  for(const u of units){
+    if(u.faction!=='you'||!u.job||!isMine(u.job)) continue;
+    if(hasNeeds(u)&&u.act!=='work') continue;
+    const k=skillKey(u.job);
+    // sulla sabbia, senza un pozzo vicino, si rende il 40% in meno
+    const dry=u.job.biome==='sand'&&!wellNear(u.job)?0.6:1;
+    u.job.effWorkers=(u.job.effWorkers||0)+workPower(u)*moodWork(u)*skillMul(u,k)*dry;
+    if(hasNeeds(u)) practice(u,k,1);
+  }
 }
 
 function setWorkers(tile,delta){
@@ -1565,10 +1871,17 @@ function syncJobs(){
     if(!t.site) continue;                     // completato in questo stesso frame
     blocksLeft += Math.max(0, t.site.need-t.site.have);
   }
-  const wanted=Math.min(6, Math.ceil(blocksLeft/4));
+  // con la utility AI i bambini non portano più blocchi e i portatori si fermano
+  // per mangiare e dormire: la squadra è un po' più grande per compensare
+  const wanted=Math.min(8, Math.ceil(blocksLeft/3));
   const needBuilders=Math.min(wanted, Math.max(0, able.length-1));
-  const crew=able.slice(0,needBuilders);
-  able=able.slice(needBuilders);
+  // la squadra si prende prima tra chi ci è già, poi tra chi non ha un lavoro,
+  // e a parità tra i costruttori più esperti: così i contadini restano nei campi
+  const crewOrder=able.slice().sort((a,b)=>
+    (b.builder?1:0)-(a.builder?1:0) || (a.job?1:0)-(b.job?1:0) ||
+    (a.kind==='thrall'?1:0)-(b.kind==='thrall'?1:0) || skillXp(b,'build')-skillXp(a,'build'));
+  const crew=crewOrder.slice(0,needBuilders);
+  able=able.filter(u=>!crew.includes(u));
   for(const u of crew){
     u.builder=true;
     if(u.job){ u.job=null; u.mode='idle'; dropCarry(u); }
@@ -1577,8 +1890,9 @@ function syncJobs(){
   for(const u of able) u.builder=false;
   const unable=myLabor().filter(u=>workPower(u)===0);
   for(const u of unable){ if(u.job){ u.job=null; u.mode='idle'; dropCarry(u); } }
-  able.forEach((u,i)=>{
-    const t=slots[i]||null;
+  const placed=placeWorkers(able,slots);
+  able.forEach(u=>{
+    const t=placed.get(u)||null;
     if(u.job!==t){ u.mode='idle'; u.workT=0; dropCarry(u); }
     u.job=t;
     let want='idle';
@@ -1590,8 +1904,36 @@ function syncJobs(){
   for(const u of unable) if(u.kind!=='idle'&&u.kind!=='thrall') morph(u,'idle');
   refreshArmy();
 }
+/* Chi ha già un posto lo tiene; i posti liberi vanno a chi è più esperto
+   in quel mestiere (i coloni prima degli assoggettati). Prima si ripartiva
+   da capo a ogni cambiamento e i coloni saltavano da un lavoro all'altro:
+   con le abilità, spostarli a caso butterebbe via l'esperienza.         */
+function placeWorkers(able,slots){
+  const free=new Map();
+  for(const t of slots) free.set(t,(free.get(t)||0)+1);
+  const out=new Map(), rest=[];
+  for(const u of able){
+    if(u.job&&free.get(u.job)>0){ out.set(u,u.job); free.set(u.job,free.get(u.job)-1); }
+    else rest.push(u);
+  }
+  for(const [t,n] of free){
+    const k=skillKey(t);
+    for(let i=0;i<n&&rest.length;i++){
+      let bi=0;
+      for(let j=1;j<rest.length;j++){
+        const a=rest[j], b=rest[bi];
+        const ta=a.kind==='thrall'?1:0, tb=b.kind==='thrall'?1:0;
+        if(ta<tb||(ta===tb&&skillXp(a,k)>skillXp(b,k))) bi=j;
+      }
+      out.set(rest[bi],t); rest.splice(bi,1);
+    }
+  }
+  return out;
+}
 function morph(u,kind){
   const carried=!!u.hasCargo;
+  // un soldato non ragiona più da civile: le sue prenotazioni tornano libere
+  if(!UNITS[kind].civil){ releaseAll(u); u.act=null; }
   dropCarry(u);
   planetGroup.remove(u.mesh);
   const m=unitMesh(kind);
@@ -1615,7 +1957,7 @@ function ageTick(){
       u.age++;
       const st=stageAt(u.age);
       if(u.age>=AGES.elder.until){
-        killUnit(u,i); pop=Math.max(0,pop-1); changed=true;
+        killUnit(u,i,true); pop=Math.max(0,pop-1); changed=true; mourn(0.15);
         toast('Un anziano è morto di vecchiaia.');
         continue;
       }
@@ -1639,22 +1981,24 @@ function ageTick(){
 function economyTick(){
   worldAge++;
   ageTick();
+  if(needsTick()){ trimWorkers(); syncJobs(); }
   // "pop" veniva aggiornato a mano in sei punti diversi e prima o poi si
   // sfasava dai coloni reali: ora si riallinea alla fonte a ogni tick
   pop=myPeople().length;
   if(checkCollapse()) return;
   if(boomT>0) boomT--;
   randomEventTick();
+  dutyTick();
   const r=rates(), cap=capacity(), clamp=v=>Math.min(cap,Math.max(0,v));
-  res.food=clamp(res.food+r.food);
+  res.food=clamp(res.food+r.stock);      // i civili mangiano da soli, al magazzino
   res.mat =clamp(res.mat +r.mat);
   res.pow =clamp(res.pow +r.pow);
+  res.bar =clamp((res.bar||0)+r.bar);
 
-  // ricerca
-  if(r.sci>0 && tech<3){
-    sci+=r.sci;
-    if(sci>=TECH_COST[tech+1]){ tech++; toast('Ricerca completata: livello '+tech+'. Rese e armi migliorate.'); }
-  }
+  // ricerca: va al nodo scelto dell'albero (25-progress.js)
+  researchTick(r.sci);
+  statsTick();
+  if(worldAge%10===0&&$('stats').classList.contains('on')) renderStats();
   // stagioni
   seasonT++;
   if(seasonT>=SEASON_LEN){
@@ -1669,20 +2013,19 @@ function economyTick(){
     baby.age=0; applyAge(baby);           // nasce bambino: non lavora ancora
     syncJobs();
     toast('È nato un colono.');
-  } else if(res.food<=0&&pop>1&&Math.random()<.3){
-    // solo un vero colono (non un assoggettato) conta come popolazione:
-    // prima si cercava un civile qualsiasi, e un assoggettato ucciso
-    // scalava "pop" senza che nessun colono fosse davvero mancante
-    const i=units.findIndex(isPerson);
-    if(i>=0){ pop--; killUnit(units[i],i); }
-    trimWorkers(); syncJobs();
-    toast('Il cibo è finito: un colono se n’è andato.');
   }
+  // la fame non fa più sparire un colono a caso: ognuno ha il suo stomaco
+  // (needsTick, in 15-colonists.js)
 
   sendCaravans();
-  if(!raidActive){ raidIn--; if(raidIn<=0){ spawnRaid();
-    raidIn=Math.round((120+(hasOrbital('eye')?ORBITALS.eye.delay:0))*(trait.raid?0.65:trait.calm?1.5:1)); } }
+  // la torre di segnalazione avvista la navetta 25 secondi prima
+  if(!raidActive&&raidIn===26&&activeFlag('watch')&&!weatherNow().fog){
+    raidWarned=true; logEvent('🔭 La torre avvista una navetta: incursione tra 25 secondi. Bambini al riparo!');
+  }
+  if(!raidActive){ raidIn--; if(raidIn<=0){ raidWarned=false; spawnRaid(); raidIn=raidInterval(); } }
+  raidersTick(); narratorTick(); choiceTick(); chainTick(); socialTick(); achievementTick(); weatherTick(); spaceTick();
   for(const s of settlements) rivalThink(s);
+  diplomacyTick();
   if(auto) autoThink();
   refreshHUD(r);
   // l'ispettore mostrava integrità e addetti fermi al momento del clic
@@ -1806,6 +2149,8 @@ function nearestTile(from,test){
 function hostile(a,b){
   if(a.faction===b.faction) return false;
   if(a.faction==='raider'||b.faction==='raider') return true;
+  // due clan in guerra tra loro si combattono (gli emissari non combattono)
+  if(a.faction==='rival'&&b.faction==='rival') return !!(a.settlement&&b.settlement&&atWar(a.settlement,b.settlement));
   const set=a.faction==='rival'?a.settlement:b.settlement;
   return !!set&&set.relation==='ostile';
 }
@@ -1849,6 +2194,11 @@ function rebuildFrameCache(){
     if(!a){ a=[]; FC.bucket.set(u.from.id,a); }
     a.push(u);
   }
+  // C'è qualcuno con cui combattere? Solo predoni, clan ostili o clan in guerra
+  // tra loro. Senza, la ricerca di nemici intorno a ogni colono (centinaia di
+  // ricerche a fotogramma) è lavoro sprecato: era un quinto del tempo di gioco.
+  FC.danger = FC.raiders.length>0 || settlements.some(s=>!settled(s)&&
+    (s.relation==='ostile'||settlements.some(o=>atWar(s,o))));
 }
 function nearestOf(from,list,filter){
   let best=null,bd=-2;
@@ -1887,70 +2237,394 @@ const openSites = () => FC.sites.filter(t=>t.site);
 const reachableSites = from => FC.sites.filter(t=>t.site&&reachable(from,t));
 
 /* ═══════════════ logistica: chi porta cosa, e dove ═══════════ */
-function civilBrain(u,dt){
-  // 0. milizia: se un nemico è a tiro, il colono molla tutto e lo affronta.
-  //    Fa poco danno, ma dieci coloni valgono un lanciere.
+/* ═══════════════ utility AI ═══════════════
+   Schema "Infinite Axis Utility System" (Dave Mark, GDC 2013/2015).
+   Ogni azione ha un peso e una lista di considerazioni. Una considerazione
+   legge un dato del mondo, lo porta tra 0 e 1 (input) e lo fa passare per
+   una curva di risposta: il risultato dice quanto quell'azione ha senso
+   *per quel motivo*. Le considerazioni si moltiplicano: basta uno zero
+   per escludere l'azione (un bambino non combatte, punto).
+   Si sceglie l'azione col punteggio più alto.
+
+   Il vantaggio rispetto a una lista di if: il comportamento si regola
+   cambiando le curve, non il codice, e si può sempre spiegare perché un
+   colono ha scelto una cosa invece di un'altra (vedi explain()).        */
+
+const clamp01 = x => x<0?0 : x>1?1 : x;
+
+/* ── curve di risposta: x in [0,1] → y in [0,1] ──────────────────── */
+const CURVES = {
+  linear:   (m=1, b=0)   => x => clamp01(m*x+b),
+  // k>1: resta bassa e sale tardi · k<1: sale subito e poi si appiattisce
+  power:    (k=2)        => x => clamp01(Math.pow(clamp01(x), k)),
+  // a gradino morbido: mid è dove vale 0,5, steep quanto è ripida
+  logistic: (mid=.5, steep=10) => x => clamp01(1/(1+Math.exp(-steep*(x-mid)))),
+  // vale 1 da threshold in su, 0 sotto
+  step:     (threshold=.5) => x => x>=threshold?1:0,
+  // costante: una considerazione che conta solo come interruttore
+  constant: (v=1)        => () => v
+};
+
+/* Una considerazione: {name, input(ctx) → [0,1], curve}.
+   Il nome serve solo a spiegare le decisioni. */
+const consider = (name, input, curve) => ({name, input, curve: curve||(x=>clamp01(x))});
+
+/* Punteggio di un'azione: peso × prodotto delle considerazioni, con la
+   "compensazione" di Dave Mark. Senza, un'azione con 6 considerazioni
+   a 0,9 (0,53) perderebbe contro una con 1 considerazione a 0,6, solo
+   perché ha più fattori: ogni fattore viene rialzato in proporzione a
+   quanti sono.                                                          */
+function scoreAction(action, ctx, detail){
+  const cs=action.considerations, n=cs.length;
+  const mod=n>0 ? 1-1/n : 0;
+  let score=action.weight===undefined?1:action.weight;
+  if(typeof score==='function') score=score(ctx);
+  for(const c of cs){
+    let v=c.curve(clamp01(c.input(ctx)));
+    if(detail) detail.push({name:c.name, value:v});
+    if(v<=0){ score=0; break; }
+    v=v+(1-v)*mod*v;          // compensazione
+    score*=v;
+  }
+  return score;
+}
+
+/* Sceglie l'azione migliore. current è l'azione in corso: riceve un
+   piccolo bonus (inerzia), così un colono non cambia idea a ogni
+   ragionamento per differenze di pochi centesimi.                      */
+const INERTIA = 1.15;
+function chooseAction(actions, ctx, current){
+  let best=null, bestScore=0;
+  for(const key in actions){
+    let s=scoreAction(actions[key], ctx);
+    if(key===current) s*=INERTIA;
+    if(s>bestScore){ bestScore=s; best=key; }
+  }
+  return {action:best, score:bestScore};
+}
+
+/* Tutti i punteggi, in ordine, con il contributo di ogni considerazione:
+   è quello che l'ispettore mostra alla voce "perché". */
+function explain(actions, ctx, current){
+  const out=[];
+  for(const key in actions){
+    const detail=[];
+    let s=scoreAction(actions[key], ctx, detail);
+    if(key===current) s*=INERTIA;
+    out.push({action:key, label:actions[key].label||key, score:s, detail});
+  }
+  return out.sort((a,b)=>b.score-a.score);
+}
+
+/* I coloni non seguono più una lista fissa di priorità: a ogni ragionamento
+   danno un punteggio a ogni azione possibile (14-utility.js) e fanno quella
+   che vale di più. Le azioni stanno in COLONIST_ACTIONS; la loro esecuzione
+   (dove andare, cosa fare all'arrivo) nelle funzioni run().             */
+
+/* ── bisogni ──────────────────────────────────────────────────────
+   Valgono tutti tra 0 e 1: 1 = sazio, riposato, contento.
+   Li hanno solo i civili (coloni e assoggettati): i soldati mangiano
+   dalla scorta comune, come prima, e non dormono.                    */
+const NEEDS = {
+  FULL:      60,     // tick che un colono regge a stomaco pieno
+  AWAKE:     140,    // tick di veglia prima di essere esausto
+  BED_REST:  25,     // tick per un sonno completo in un letto
+  GROUND_REST: 40,   // ... e per terra, senza letto
+  MOOD_EASE: 0.03,   // quanto l'umore si avvicina al suo obiettivo a ogni tick
+  LEAVE_AT:  0.2,    // sotto questo umore il colono può andarsene
+  LEAVE_P:   0.01,   // probabilità a tick di andarsene, sotto LEAVE_AT
+  STARVE_P:  0.04    // probabilità a tick di andarsene a stomaco vuoto
+};
+const hasNeeds = u => u.faction==='you' && UNITS[u.kind].civil && u.kind!=='caravan';
+const needsOf = u => u.needs || (u.needs={food:1, rest:0.5+Math.random()*0.5, mood:0.6});
+const eatRate = u => u.kind==='thrall' ? THRALL_EAT : AGES[u.stage].eat;
+/* l'umore pesa sul lavoro: 0,5 è la resa normale, 1 dà +40%, 0 dà −40% */
+const moodWork = u => hasNeeds(u) ? 0.6+0.8*needsOf(u).mood : 1;
+/* lutto della colonia: sale a ogni morte, scende da solo */
+let grief=0;
+const mourn = k => { grief=Math.min(1,grief+k*(activeFlag('memorial')?0.5:1)); };
+
+/* obiettivo dell'umore: da dove viene, voce per voce (lo mostra l'ispettore) */
+function moodFactors(u){
+  const n=needsOf(u), f=[];
+  f.push(['di base', 0.6]);
+  if(n.food<=0) f.push(['affamato', -0.45]);
+  else if(n.food<0.25) f.push(['ha fame', -0.15]);
+  if(n.rest<0.1) f.push(['esausto', -0.25]);
+  if(u.slept==='bed') f.push(['ha dormito in un letto', 0.08]);
+  else if(u.slept==='ground') f.push(['ha dormito per terra', -0.12]);
+  if(u.wounded) f.push(['ferito', -0.15]);
+  if(pop>housesTotal()) f.push(['sovraffollamento', -0.1]);
+  if(grief>0.05) f.push(['lutto', -0.3*grief]);
+  if(boomT>0) f.push(['annata abbondante', 0.08]);
+  if(u.funT>0) f.push(['svago in taverna', 0.15]);
+  if(weatherNow().mood&&!(u.act==='sleep'&&u.bed&&u.from===u.bed)) f.push([weatherNow().label+' fuori', weatherNow().mood]);
+  if(u.bonds&&friendNear(u)) f.push(['un amico vicino', 0.06]);
+  if(orbitalOn('habitat')) f.push(['vista sulle stelle', 0.03]);
+  if(u.sorrowT>0) f.push(['ha perso un amico', -0.2]);
+  if(u.kind==='thrall') f.push(['assoggettato', -0.2]);
+  for(const id of u.traits||[]) if(PERSON_TRAITS[id].mood) f.push([PERSON_TRAITS[id].label, PERSON_TRAITS[id].mood]);
+  return f;
+}
+/* FC.beds è la fotografia di inizio fotogramma: un alloggio può essere caduto
+   nel frattempo, quindi si riverifica con isMine (vedi openSites) */
+const housesTotal = () => FC.beds.reduce((n,t)=>n+(isMine(t)?housesOf(t):0),0);
+const moodTarget = u => clamp01(moodFactors(u).reduce((s,[,v])=>s+v,0));
+
+/* un tick di bisogni per tutti; restituisce true se qualcuno se n'è andato */
+function needsTick(){
+  let left=0, starved=0;
+  grief=Math.max(0,grief-(activeFlag('memorial')?0.02:0.01));
+  for(let i=units.length-1;i>=0;i--){
+    const u=units[i];
+    if(!hasNeeds(u)) continue;
+    const n=needsOf(u);
+    n.food=Math.max(0, n.food-diff().needs/NEEDS.FULL);
+    if(u.act==='sleep'&&u.from===u.goal)
+      n.rest=Math.min(1, n.rest+1/(u.bed&&u.from===u.bed?NEEDS.BED_REST:NEEDS.GROUND_REST));
+    else n.rest=Math.max(0, n.rest-diff().needs/(NEEDS.AWAKE*traitMul(u,'awake')));
+    n.mood+=(moodTarget(u)-n.mood)*NEEDS.MOOD_EASE;
+    if(u.funT>0) u.funT--;
+    if(u.sorrowT>0) u.sorrowT--;
+    // a scuola: il bambino studia il suo mestiere, e da adulto parte avvantaggiato
+    if(u.act==='study'&&u.from===u.goal&&u.stage==='child') practice(u,u.study||(u.study=pickStudy()),1.5);
+    // gli assoggettati non se ne vanno: il loro malcontento finisce in rivolta (17-diplomacy)
+    if(u.kind==='thrall'||myPeople().length<=1) continue;
+    const hungry=n.food<=0&&Math.random()<NEEDS.STARVE_P;
+    const unhappy=!hungry&&n.mood<NEEDS.LEAVE_AT&&Math.random()<NEEDS.LEAVE_P;
+    if(hungry||unhappy){
+      if(hungry) starvedAway(u);
+      // chi se ne va scontento non sparisce: va dal clan che ci è più amico
+      else if(emigrate(u)){ killUnit(u,i); pop=Math.max(0,pop-1); continue; }
+      killUnit(u,i); pop=Math.max(0,pop-1);
+      if(hungry) starved++; else left++;
+    }
+  }
+  if(starved) toast(starved===1?'Il cibo è finito: un colono se n’è andato.':'Il cibo è finito: '+starved+' coloni se ne sono andati.');
+  if(left) toast(left===1?'Un colono scontento ha lasciato la colonia.':left+' coloni scontenti hanno lasciato la colonia.');
+  return starved+left>0;
+}
+
+/* ── chi è: nome, tratti, abilità ──────────────────────────────────
+   I tratti non hanno codice proprio: cambiano i pesi delle azioni, la
+   fame, il sonno, l'umore o quanto in fretta si impara. Un tratto nuovo
+   si aggiunge qui.                                                     */
+const PERSON_NAMES=['Ada','Bruno','Carla','Dario','Elsa','Fabio','Gea','Ivo','Lia','Marco',
+  'Nora','Otto','Pia','Rino','Sara','Tito','Una','Vito','Zeno','Alba','Ciro','Dora','Enzo',
+  'Irma','Leo','Mia','Nico','Olga','Piero','Rita','Sesto','Teo','Vera','Aldo','Bice','Elio'];
+const PERSON_TRAITS={
+  lazy:    {label:'pigro',      note:'lavora e costruisce meno volentieri, dorme di più',
+            weights:{work:0.85, build:0.85, sleep:1.15}},
+  brave:   {label:'coraggioso', note:'difende invece di scappare', weights:{fight:1.3, flee:0.7}, not:'timid'},
+  timid:   {label:'pauroso',    note:'scappa prima', weights:{flee:1.35, fight:0.75}, not:'brave'},
+  clever:  {label:'ingegnoso',  note:'impara il 50% più in fretta', learn:1.5},
+  glutton: {label:'goloso',     note:'ha fame prima degli altri', hunger:1.2},
+  sturdy:  {label:'robusto',    note:'regge il 30% in più senza dormire', awake:1.3},
+  cheerful:{label:'allegro',    note:'di umore migliore', mood:0.1},
+  friendly:{label:'socievole',  note:'fa amicizia il doppio più in fretta', social:2, not:'loner'},
+  loner:   {label:'solitario',  note:'fa amicizia a fatica', social:0.4, not:'friendly'}
+};
+/* prodotto di un campo numerico su tutti i tratti del colono (1 se nessuno lo ha) */
+function traitMul(u,field,key){
+  let m=1;
+  for(const id of u.traits||[]){
+    const T=PERSON_TRAITS[id]; if(!T) continue;
+    const v=key?(T[field]&&T[field][key]):T[field];
+    if(typeof v==='number') m*=v;
+  }
+  return m;
+}
+/* chiamata da spawnUnit per ogni civile tuo: nasce con un nome e 0–2 tratti */
+function initPerson(u){
+  u.name=PERSON_NAMES[Math.floor(Math.random()*PERSON_NAMES.length)];
+  const r=Math.random(), want=r<0.35?0:r<0.8?1:2, ids=Object.keys(PERSON_TRAITS);
+  u.traits=[];
+  for(let tries=0; u.traits.length<want&&tries<10; tries++){
+    const id=ids[Math.floor(Math.random()*ids.length)];
+    if(u.traits.includes(id)||u.traits.includes(PERSON_TRAITS[id].not)) continue;
+    u.traits.push(id);
+  }
+  u.skills={};
+}
+
+/* abilità: si impara lavorando. A SKILL_HALF punti di esperienza la resa
+   è +30%, e non supera mai il +60%: i primi tick valgono più degli ultimi */
+const SKILLS={food:'agricoltura', mat:'estrazione', pow:'energia', sci:'ricerca', bar:'fusione', build:'costruzione'};
+const SKILL_HALF=200;
+/* il mestiere di un edificio è la sua prima produzione positiva (l'armeria non ne ha) */
+const skillKey = t => {
+  const B=t&&t.building&&BUILDINGS[t.building];
+  if(!B||!B.per) return null;
+  for(const k in B.per) if(B.per[k]>0) return k;
+  return null;
+};
+const skillXp = (u,k) => (u.skills&&u.skills[k])||0;
+const skillMul = (u,k) => k ? 1+0.6*skillXp(u,k)/(skillXp(u,k)+SKILL_HALF) : 1;
+function practice(u,k,amount){
+  if(!k||!u.skills) return;
+  u.skills[k]=skillXp(u,k)+amount*traitMul(u,'learn');
+}
+/* a scuola si studia un mestiere produttivo, scelto a caso per ogni bambino */
+const pickStudy = () => { const k=['food','mat','pow','sci']; return k[Math.floor(Math.random()*k.length)]; };
+/* il mestiere in cui il colono è più bravo, per l'ispettore */
+function bestSkill(u){
+  let best=null, xp=0;
+  for(const k in u.skills||{}) if(u.skills[k]>xp){ xp=u.skills[k]; best=k; }
+  return best?{key:best, label:SKILLS[best], bonus:skillMul(u,best)-1}:null;
+}
+
+/* ── prenotazioni ──────────────────────────────────────────────────
+   Un portatore che sceglie un cantiere prenota un blocco; un colono che
+   va a dormire prenota un letto. Così tre coloni non corrono per l'ultimo
+   blocco dello stesso cantiere, e in una capanna da 4 non dormono in 9.
+   Una prenotazione vive finché dura l'azione che l'ha presa.           */
+const freeBlocks = t => t.site ? t.site.need-t.site.have-(t.site.claims||0) : 0;
+/* la prenotazione si lega al cantiere (t.site), non alla casella: se sulla
+   stessa casella si apre un cantiere nuovo, non eredita i conti del vecchio */
+function claimBlock(u,t){ releaseBlock(u); t.site.claims=(t.site.claims||0)+1; u.claim=t; u.claimed=t.site; }
+function releaseBlock(u){
+  if(u.claimed) u.claimed.claims--;
+  u.claim=null; u.claimed=null;
+}
+const holdsBlock = u => !!(u.claim && u.claimed && u.claim.site===u.claimed);
+const freeBeds = t => isMine(t) ? housesOf(t)-(t.sleepers||0) : 0;
+function claimBed(u,t){ releaseBed(u); t.sleepers=(t.sleepers||0)+1; u.bed=t; }
+function releaseBed(u){
+  if(u.bed) u.bed.sleepers=Math.max(0,(u.bed.sleepers||0)-1);
+  u.bed=null;
+}
+/* chiamata da killUnit: chi esce di scena lascia libero ciò che aveva preso */
+function releaseAll(u){ releaseBlock(u); releaseBed(u); }
+
+/* ── contesto: cosa sa il colono quando ragiona ───────────────────── */
+function colonistContext(u){
   const canFight = !u.wounded && u.stage!=='child' && u.kind!=='thrall';
-  let foe=null, bd=canFight?MILITIA_RANGE:FLEE_RANGE;
-  for(const o of nearbyUnits(u.from,true)){
+  let foe=null, bd=Math.max(MILITIA_RANGE,FLEE_RANGE);
+  if(FC.danger) for(const o of nearbyUnits(u.from,true)){
     if(!hostile(u,o)||o.state==='landing') continue;
     const d=u.mesh.position.distanceTo(o.mesh.position);
     if(d<bd){ bd=d; foe=o; }
   }
-  if(foe){
-    dropCarry(u); u.mode='idle';
-    // adulti sani: milizia. Bambini, feriti e assoggettati: al riparo.
-    if(canFight) return foe.from;
+  const able = workPower(u)>0;
+  // il cantiere si cerca solo se serve: chi ha un lavoro non ci va
+  let site=null;
+  if(able&&!u.job){
+    if(holdsBlock(u)) site=u.claim;
+    else site=reachableSites(u.from).filter(t=>freeBlocks(t)>0)
+      .sort((a,b)=>b.center.dot(u.from.center)-a.center.dot(u.from.center))[0]||null;
+  }
+  // i tratti moltiplicano i pesi delle azioni: tw.fight = 1,3 per un coraggioso
+  const tw={};
+  for(const k in COLONIST_ACTIONS) tw[k]=traitMul(u,'weights',k);
+  return {u, n:needsOf(u), tw, hungerMul:traitMul(u,'hunger'), canFight, able, foe, foeDist:foe?bd:Infinity,
+    raid:FC.raiders.length>0, site, night:!!nightOn, current:u.act,
+    hpRatio:u.hp/u.hpMax};
+}
+
+/* ── le azioni ─────────────────────────────────────────────────────
+   Ogni azione: label, weight, considerations, run(u,ctx) → casella
+   obiettivo. Le curve sono il posto dove si regola il comportamento.  */
+const is = v => v?1:0;
+/* peso di base, corretto dai tratti del colono */
+const W = (base,key) => c => base*(c.tw[key]||1);
+const COLONIST_ACTIONS = {
+  fight:{label:'difendere', weight:W(1.0,'fight'), considerations:[
+    consider('sa combattere',  c=>is(c.canFight), CURVES.step(.5)),
+    consider('nemico vicino',  c=>1-c.foeDist/MILITIA_RANGE, CURVES.power(.5)),
+    consider('in salute',      c=>c.hpRatio, CURVES.logistic(.45,12))
+  ], run:(u,c)=>c.foe.from},
+
+  flee:{label:'scappare', weight:W(1.2,'flee'), considerations:[
+    consider('nemico vicino',  c=>1-c.foeDist/FLEE_RANGE, CURVES.power(.5)),
+    consider('vulnerabile',    c=>c.canFight ? (1-c.hpRatio) : 1, CURVES.power(2))
+  ], run:(u,c)=>{
     const refuge = nearestOf(u.from,FC.mine,t=>!!BUILDINGS[t.building].shelter)
                 || nearestOf(u.from,FC.beds,t=>reachable(u.from,t));
     if(refuge&&refuge!==u.from) return refuge;
     const away=u.from.neighbors.map(n=>tiles[n]).filter(walkable)
-      .sort((a,b)=>a.center.dot(foe.from.center)-b.center.dot(foe.from.center));
-    if(away.length) return away[0];
-  }
-  // 0a. durante un'incursione, chi non sa difendersi corre al rifugio
-  if(FC.raiders.length&&(u.stage==='child'||u.wounded)){
-    dropCarry(u); u.mode='idle';
-    const f=nearestOf(u.from,FC.mine,t=>!!BUILDINGS[t.building].shelter);
-    if(f) return f;
-  }
-  // 0b. ferito: smette tutto e cerca l'ospedale più vicino
-  if(u.wounded){
-    dropCarry(u); u.mode='idle';
-    return nearestOf(u.from,FC.mine,t=>!!BUILDINGS[t.building].heal)||u.from;
-  }
-  // 1. senza incarico: fa il portatore per i cantieri aperti
-  if(!u.job){
-    if(u.site&&!u.site.site){ u.site=null; }   // il cantiere è finito mentre arrivava
-    if(u.mode==='fetch'||u.mode==='deliver'){
-      if(!u.site||!u.site.site){ u.mode='idle'; dropCarry(u); }
+      .sort((a,b)=>a.center.dot(c.foe.from.center)-b.center.dot(c.foe.from.center));
+    return away[0]||u.from;
+  }},
+
+  shelter:{label:'al riparo', weight:W(0.95,'shelter'), considerations:[
+    consider('incursione',     c=>is(c.raid||raidWarned), CURVES.step(.5)),
+    consider('indifeso',       c=>is(c.u.stage==='child'||c.u.wounded), CURVES.step(.5)),
+    consider('c\'è un rifugio',c=>is(FC.mine.some(t=>BUILDINGS[t.building].shelter)), CURVES.step(.5))
+  ], run:u=>nearestOf(u.from,FC.mine,t=>!!BUILDINGS[t.building].shelter)},
+
+  heal:{label:'curarsi', weight:W(0.85,'heal'), considerations:[
+    consider('ferito',         c=>is(c.u.wounded), CURVES.step(.5)),
+    consider('salute persa',   c=>1-c.hpRatio, CURVES.linear(.6,.4))
+  ], run:u=>nearestOf(u.from,FC.mine,t=>!!BUILDINGS[t.building].heal)
+          || u.bed || nearestOf(u.from,FC.beds,t=>reachable(u.from,t)) || u.from},
+
+  eat:{label:'mangiare', weight:W(1.0,'eat'), considerations:[
+    consider('fame',           c=>(1-c.n.food)*c.hungerMul, CURVES.logistic(.6,10)),
+    consider('c\'è cibo',      c=>res.food>=0.5?1:0.05),
+    consider('un magazzino',   c=>is(FC.storage.length||FC.mine.length), CURVES.step(.5))
+  ], run:u=>{
+    const st=nearestStorage(u.from);
+    if(st&&u.from!==st) return st;
+    // al magazzino: mangia quanto gli manca, se c'è
+    const n=needsOf(u), per=NEEDS.FULL*eatRate(u);
+    const take=Math.min((1-n.food)*per, Math.max(0,res.food));
+    res.food-=take; n.food=Math.min(1,n.food+take/per);
+    u.act=null;                         // fatto: al prossimo ragionamento si sceglie di nuovo
+    return u.from;
+  }},
+
+  sleep:{label:'dormire', weight:W(0.9,'sleep'), considerations:[
+    // chi dorme già continua finché non è riposato: senza, si sveglierebbe
+    // appena la stanchezza scende sotto la soglia che l'ha fatto coricare
+    consider('stanchezza',     c=>c.current==='sleep' ? (c.n.rest<0.95?1:0) : 1-c.n.rest, CURVES.logistic(.6,10)),
+    consider('è notte',        c=>c.night||c.current==='sleep'?1:0.55),
+    consider('al sicuro',      c=>is(!c.raid))
+  ], run:u=>{
+    if(u.bed&&!isMine(u.bed)) releaseBed(u);     // l'alloggio è crollato
+    if(!u.bed){
+      const bed=nearestOf(u.from,FC.beds,t=>freeBeds(t)>0&&reachable(u.from,t));
+      if(bed) claimBed(u,bed);
     }
-    if(u.mode==='idle'){
-      const site=reachableSites(u.from)
-        .sort((a,b)=>b.center.dot(u.from.center)-a.center.dot(u.from.center))[0];
-      if(site){ u.site=site; u.mode='fetch'; return nearestStorage(u.from); }
-      // niente da costruire: si raduna al villaggio invece di girare a vuoto
-      return nearestOf(u.from,FC.beds,t=>reachable(u.from,t))
-          || nearestOf(u.from,FC.mine,t=>reachable(u.from,t));
-    }
-    if(u.mode==='fetch'){
-      const st=nearestStorage(u.from);
-      if(!st) { u.mode='idle'; return null; }
-      if(u.from===st){ takeCarry(u,0xb8925e); u.mode='deliver'; return u.site; }
-      return st;
-    }
-    if(u.mode==='deliver'){
-      if(u.from===u.site){
-        dropCarry(u);
-        addBlockToSite(u.site);
-        u.mode=u.site && u.site.site ? 'fetch' : 'idle';
-        return null;
-      }
-      return u.site;
-    }
-    return null;
-  }
-  // 2. con un incarico: lavora sul posto e ogni tanto porta il raccolto
+    const spot=u.bed||u.from;
+    if(u.from===spot) u.slept=u.bed?'bed':'ground';
+    return spot;
+  }},
+
+  relax:{label:'svago', weight:W(0.7,'relax'), considerations:[
+    consider('umore basso',    c=>1-c.n.mood, CURVES.logistic(.5,10)),
+    consider('taverna aperta', c=>is(activeFlag('tavern'))),
+    consider('non già svagato',c=>is(!(c.u.funT>0))),
+    consider('al sicuro',      c=>is(!c.raid))
+  ], run:u=>{
+    const t=nearestOf(u.from,FC.mine,x=>hasFlag(x,'tavern')&&(x.workers||0)>0&&reachable(u.from,x));
+    if(!t) { u.act=null; return u.from; }
+    if(u.from!==t) return t;
+    u.funT=90; u.act=null;              // una serata basta per un po'
+    return u.from;
+  }},
+
+  study:{label:'a scuola', weight:W(0.5,'study'), considerations:[
+    consider('è un bambino',   c=>is(c.u.stage==='child')),
+    consider('scuola aperta',  c=>is(activeFlag('school'))),
+    consider('è giorno',       c=>is(!c.night)),
+    consider('al sicuro',      c=>is(!c.raid))
+  ], run:u=>nearestOf(u.from,FC.mine,x=>hasFlag(x,'school')&&(x.workers||0)>0&&reachable(u.from,x))||u.from},
+
+  work:{label:'lavorare', weight:W(0.6,'work'), considerations:[
+    consider('ha un lavoro',   c=>is(c.u.job), CURVES.step(.5))
+  ], run:(u,c,dt)=>workRun(u,dt)},
+
+  build:{label:'costruire', weight:W(0.55,'build'), considerations:[
+    consider('può lavorare',   c=>is(c.able&&!c.u.job), CURVES.step(.5)),
+    consider('un cantiere libero', c=>is(c.site), CURVES.step(.5))
+  ], run:(u,c)=>buildRun(u,c.site)},
+
+  gather:{label:'tornare a casa', weight:W(0.1,'gather'), considerations:[], run:u=>
+    nearestOf(u.from,FC.beds,t=>reachable(u.from,t)) || nearestOf(u.from,FC.mine,t=>reachable(u.from,t))}
+};
+
+/* lavoro: fermo sull'edificio, e ogni tanto porta il raccolto al magazzino */
+function workRun(u,dt){
   const B=BUILDINGS[u.job.building];
   if(u.mode==='haul'){
     const st=nearestStorage(u.from);
@@ -1959,7 +2633,6 @@ function civilBrain(u,dt){
   }
   if(u.mode!=='work'){ u.mode='work'; u.workT=0; }
   if(u.from!==u.job) return u.job;
-  // fermo sull'edificio: sta lavorando
   u.workT+=dt;
   if(B.ships && u.workT>harvestTime()){
     u.workT=0;
@@ -1969,6 +2642,46 @@ function civilBrain(u,dt){
   }
   return u.job;
 }
+/* costruzione: prende un blocco al magazzino e lo porta al cantiere prenotato */
+function buildRun(u,site){
+  if(u.claim!==site||!holdsBlock(u)) claimBlock(u,site);
+  if(u.mode!=='fetch'&&u.mode!=='deliver'){ u.mode='fetch'; dropCarry(u); }
+  if(u.mode==='fetch'){
+    const st=nearestStorage(u.from);
+    if(!st){ releaseBlock(u); u.mode='idle'; return null; }
+    if(u.from!==st) return st;
+    takeCarry(u,0xb8925e); u.mode='deliver';
+  }
+  if(u.from!==site) return site;
+  dropCarry(u);
+  releaseBlock(u);
+  addBlockToSite(site);
+  practice(u,'build',8);
+  u.mode='idle';
+  return null;
+}
+
+/* lascia l'azione in corso: prenotazioni, carichi e stati intermedi */
+function leaveAction(u,next){
+  releaseBlock(u);
+  if(next!=='sleep'&&next!=='heal') releaseBed(u);   // chi si cura può farlo a letto
+  dropCarry(u); u.mode='idle';                       // il carico in mano va perso
+  u.mesh.visible=true;
+}
+
+function civilBrain(u,dt){
+  const ctx=colonistContext(u);
+  const pick=chooseAction(COLONIST_ACTIONS,ctx,u.act);
+  const next=pick.action||'gather';
+  if(next!==u.act){ leaveAction(u,next); u.act=next; }
+  u.actScore=pick.score;
+  const goal=COLONIST_ACTIONS[next].run(u,ctx,dt);
+  // chi dorme nel suo letto non si vede: è in casa (le finestre sono accese)
+  u.mesh.visible=!(u.act==='sleep'&&u.bed&&u.from===u.bed);
+  return goal;
+}
+/* per l'ispettore e per i test: tutti i punteggi del colono, spiegati */
+function explainColonist(u){ return explain(COLONIST_ACTIONS,colonistContext(u),u.act); }
 
 function goalTile(u,dt){
   if(u.faction==='raider'){
@@ -1982,6 +2695,7 @@ function goalTile(u,dt){
   if(u.faction==='rival'){
     const set=u.settlement;
     if(u.kind==='caravan') return caravanGoal(u);
+    if(u.kind==='envoy') return envoyGoal(u);
     if(FC.raiders.length){
       let best=null,bd=-2;
       for(const e of FC.raiders){ const d=u.from.center.dot(e.from.center);
@@ -1989,6 +2703,11 @@ function goalTile(u,dt){
       if(best) return best;
     }
     if(set&&set.relation==='ostile') return nearestOf(u.from,FC.mine);
+    // in guerra con un altro clan: marciano sulle sue strutture
+    if(set) for(const o of settlements) if(atWar(set,o)){
+      const t=nearestOf(u.from,FC.rivalB,x=>x.settlement===o);
+      if(t) return t;
+    }
     return set?set.core:u.from;
   }
   if(UNITS[u.kind].civil) return civilBrain(u,dt);
@@ -2043,7 +2762,8 @@ function stepUnits(dt){
     // solo strade finite: un cantiere ha già il tipo dell'edificio e dava il bonus
     const road=t=>hasFlag(t,'road')&&!t.site;
     const onRoad=road(u.from)||road(u.to);
-    u.t+=dt*u.speed*(onRoad?1.6:1);
+    // un costruttore esperto fa la spola più in fretta
+    u.t+=dt*u.speed*(onRoad?1.6:1)*(u.act==='build'?skillMul(u,'build'):1);
     if(u.t>=1){
       u.t=0; u.from=u.to;
       if(goal&&goal!==u.from) u.to=stepToward(u.from,goal,fly,u.faction!=='you');
@@ -2085,11 +2805,12 @@ function rebuildProtection(){
 }
 const sheltered = u => u.faction==='you' &&
   (u.stage==='child'||u.wounded||u.kind==='thrall') && shelterTiles.has(u.from.id);
+const hostileToYou = u => u.faction==='raider'||(u.settlement&&u.settlement.relation==='ostile');
 const behindWalls = u => u.faction==='you' && wallTiles.has(u.from.id);
 function resolveCombat(dt){
   if(beams) beams.clear();
   rebuildProtection();
-  for(const u of units){
+  if(FC.danger) for(const u of units){
     if(u.state==='landing') continue;
     const U=UNITS[u.kind], dmg=unitDamage(u);
     if(!dmg) continue;
@@ -2111,10 +2832,14 @@ function resolveCombat(dt){
     const t=u.from, dmg=unitDamage(u);
     if(!dmg||!t.building) continue;
     if(u.faction==='raider'&&(t.owner==='you'||t.owner==='rival')) damageBuilding(t,dmg*dt);
-    else if(u.faction!=='you'&&t.owner==='you') damageBuilding(t,dmg*dt);
+    // solo un clan ostile danneggia i tuoi edifici: prima bastava che un soldato
+    // di un clan neutrale ci passasse sopra
+    else if(u.faction==='rival'&&u.settlement&&u.settlement.relation==='ostile'&&t.owner==='you') damageBuilding(t,dmg*dt);
     // la mura che sbarra il passo successivo viene abbattuta
-    if(u.faction!=='you'&&u.to&&u.to!==t&&blocksFoe(u.to)) damageBuilding(u.to,dmg*dt);
+    if(u.faction!=='you'&&hostileToYou(u)&&u.to&&u.to!==t&&blocksFoe(u.to)) damageBuilding(u.to,dmg*dt);
     if(u.faction==='you'&&t.owner==='rival'&&t.settlement&&t.settlement.relation==='ostile')
+      damageBuilding(t,dmg*dt);
+    if(u.faction==='rival'&&u.settlement&&t.settlement&&atWar(u.settlement,t.settlement))
       damageBuilding(t,dmg*dt);
   }
   for(const t of FC.turrets){
@@ -2125,7 +2850,7 @@ function resolveCombat(dt){
       const foe=o.faction==='raider'||
         (o.faction==='rival'&&o.settlement&&o.settlement.relation==='ostile');
       if(!foe) continue;
-      if(tp.distanceTo(o.mesh.position)<B.range){
+      if(tp.distanceTo(o.mesh.position)<(B.range+(hasTech('forts')?1:0))*turretReach()){
         o.hp-=B.dps*techWar()*dt;
         if(beams){
           const g=new THREE.BufferGeometry().setFromPoints([tp,o.mesh.position.clone()]);
@@ -2153,7 +2878,7 @@ function resolveCombat(dt){
   }
   // cannone orbitale: un colpo alla volta, dall'alto
   for(const o of orbit){
-    if(!o.built||o.kind!=='cannon'||res.pow<=0) continue;
+    if(!o.built||o.kind!=='cannon'||res.pow<=0||spaceOffline) continue;
     let best=null,bd=1e9;
     for(const e of units){
       if(e.faction!=='raider'||e.state==='landing') continue;
@@ -2161,7 +2886,7 @@ function resolveCombat(dt){
       if(d<bd){ bd=d; best=e; }
     }
     if(best){
-      best.hp-=ORBITALS.cannon.dps*techWar()*dt;
+      best.hp-=ORBITALS.cannon.dps*ORBIT_LEVELS[o.level||1].mul*techWar()*dt;
       if(beams) beams.add(new THREE.Line(
         new THREE.BufferGeometry().setFromPoints([o.mesh.position.clone(),best.mesh.position.clone()]),
         new THREE.LineBasicMaterial({color:0xffc46b})));
@@ -2171,25 +2896,57 @@ function resolveCombat(dt){
     const u=units[i];
     if(u.hp>0) continue;
     const wasMine=u.faction==='you', kind=u.kind, set=u.settlement;
+    if(kind==='raider') raiderFellNear(u);
+    // un emissario ucciso prima di consegnare il messaggio è un incidente diplomatico
+    if(kind==='envoy'&&set&&!u.delivered){
+      shiftGoodwill(set,-30,'emissario ucciso');
+      logEvent('⚠ L\'emissario di '+set.name+' è stato ucciso: incidente diplomatico.');
+    }
     killUnit(u,i);
     if(wasMine){
       // guardiani e assoggettati non sono "pop": non vanno scalati dalla popolazione
-      if(kind!=='guardian'&&kind!=='thrall'){ pop=Math.max(1,pop-1); trimWorkers(); }
+      if(kind!=='guardian'&&kind!=='thrall'){ pop=Math.max(1,pop-1); trimWorkers(); mourn(0.3); narratorHurt(1); }
       syncJobs();
       toast('Hai perso '+(kind==='guardian'?'un guardiano.':kind==='thrall'?'un assoggettato.':'un combattente.'));
       refreshHUD();
     }
     if(set) checkConquest(set);
   }
-  if(raidActive&&raiders().length===0){ raidActive=false; toast('Incursione respinta.'); refreshHUD(); }
+  if(raidActive&&raiders().length===0&&!props.some(p=>p.payload)){
+    raidActive=false; if(weather.kind==='temporale') achFlags.stormRaid=true;
+    toast('Incursione respinta.'); refreshHUD();
+  }
 }
 
 /* ═══════════════ incursioni: la navetta li sbarca ═══════════ */
-function spawnRaid(){
-  const n=Math.min(9,1+Math.floor(worldIndex/2)+Math.floor(raidNo/3));
+/* Saccheggio e ritirata: dopo RAID_STAY tick a terra i predoni prendono
+   quello che possono e ripartono. Prima restavano finché qualcuno non li
+   uccideva: se morivano i coloni in grado di combattere, due predoni
+   radevano al suolo tutto, alloggi compresi, e la colonia non poteva più
+   rinascere. La simulazione lo mostrava come estinzioni "per sfortuna". */
+const RAID_STAY = 60;
+function raidersTick(){
+  const rs=raiders().filter(u=>u.state!=='landing');
+  if(!rs.length) return;
+  for(const u of rs) u.lifeT=(u.lifeT||0)+1;
+  if(Math.max(...rs.map(u=>u.lifeT))<RAID_STAY) return;
+  const cap=n=>Math.min(Math.floor(res.mat),n);
+  const mat=cap(12*rs.length), food=Math.min(Math.floor(res.food),10*rs.length);
+  res.mat-=mat; res.food-=food;
+  for(let i=units.length-1;i>=0;i--) if(units[i].faction==='raider') killUnit(units[i],i);
+  raidActive=false;
+  logEvent('I predoni ripartono col bottino: −'+mat+' materiali, −'+food+' cibo.');
+  refreshHUD();
+}
+/* la forza la decide il narratore (19-events.js), in base a quanto vale la colonia */
+function spawnRaid(){ spawnRaidOf(raidSize()); }
+function spawnRaidOf(n){
   const spots=tiles.filter(t=>!t.building&&BIOMES[t.biome].build);
   if(!spots.length) return;
-  const site=spots[Math.floor(Math.random()*spots.length)];
+  n=shieldCut(n);
+  // se il telescopio ha già calcolato la rotta, atterrano lì
+  const site=raidSite&&!raidSite.building?raidSite:spots[Math.floor(Math.random()*spots.length)];
+  raidSite=null;
   const ship=dropshipMesh();
   planetGroup.add(ship);
   props.push({mesh:ship, tile:site, phase:'down', t:0, payload:n});
@@ -2231,16 +2988,11 @@ function stepProps(dt){
 }
 
 /* ═══════════════ diplomazia e conquista ═══════════════ */
-const ALLY_COST={mat:40,food:20};
-const canAlly = s => s.relation==='neutrale'&&res.mat>=ALLY_COST.mat&&res.food>=ALLY_COST.food;
-function allyWith(s){
-  if(!canAlly(s)) return;
-  res.mat-=ALLY_COST.mat; res.food-=ALLY_COST.food;
-  s.relation='alleato';
-  toast(s.name+' accetta il dono: alleanza stretta.'); refreshHUD();
-}
+/* l'alleanza non si compra più con un dono solo: i doni alzano la
+   benevolenza (vedi giftTo, più sotto), e a 75 il clan diventa alleato */
 function declareWar(s){
   if(s.relation==='conquistato') return;
+  if(s.relation!=='assoggettato'){ s.goodwill=-100; s.log.unshift('−100 guerra dichiarata'); }
   s.relation='ostile'; army.target=s;
   if(army.size===0) army.size=myTroops().length;
   applyDeploy();
@@ -2259,13 +3011,13 @@ const canSubjugate = s => (s.relation==='ostile') &&
   !units.some(u=>u.settlement===s);
 function subjugate(s){
   if(!canSubjugate(s)) return;
-  s.relation='assoggettato';
+  s.relation='assoggettato'; s.unrest=0; s.request=null;
   const camps=tiles.filter(t=>t.settlement===s&&t.building).length;
   const n=Math.min(6,Math.max(1,Math.floor(camps*0.7)));
   const home=tiles.find(t=>t.settlement===s&&t.building)||s.core;
   for(let i=0;i<n;i++){
     const u=spawnUnit('thrall','you',home);
-    u.stage='adult'; u.age=AGES.child.until;
+    u.stage='adult'; u.age=AGES.child.until; u.origin=s;   // da dove viene: serve per le rivolte
   }
   if(army.target===s) recall();
   syncJobs();
@@ -2276,8 +3028,12 @@ function subjugate(s){
 function checkConquest(s){
   if(s.relation==='conquistato'||s.relation==='assoggettato') return;
   if(tiles.some(t=>t.settlement===s&&t.building)) return;
+  const byYou=s.relation==='ostile';
   s.relation='conquistato';
   for(let i=units.length-1;i>=0;i--) if(units[i].settlement===s) killUnit(units[i],i);
+  // il bottino è tuo solo se eri in guerra con loro: se li hanno distrutti
+  // un altro clan o i predoni, non ti spetta niente
+  if(!byYou){ if(army.target===s) recall(); logEvent(s.name+' è stato spazzato via.'); refreshHUD(); return; }
   // unico punto del codice dove il bottino non era clampato alla capienza:
   // dopo una conquista le scorte potevano superare il tetto mostrato in HUD
   const cap=capacity();
@@ -2307,7 +3063,7 @@ function rivalThink(s){
   // il tetto cresce col tempo e col mondo: l'unico limite vero resta la
   // terra libera intorno a loro. Se li ignori, si prendono il pianeta.
   const cap=12+worldIndex*6+Math.floor(worldAge/150);
-  const troops=units.filter(u=>u.settlement===s).length;
+  const troops=units.filter(u=>u.settlement===s&&u.kind==='soldier').length;
 
   // 1. senza roccaforte non c'è clan: la ricostruiscono per prima cosa
   if(!has('keep')&&s.mat>=RIVAL_COST.keep){
@@ -2332,7 +3088,7 @@ function rivalThink(s){
     }
   }
   // 3. se non c'è più spazio o soldi per costruire, addestrano
-  if(s.mat>=20&&troops<Math.ceil(owned.length*0.8)+2){
+  if(s.mat>=20&&troops<(Math.ceil(owned.length*0.8)+2)*personalityOf(s).troops){
     s.mat-=20;
     const home=owned[Math.floor(Math.random()*owned.length)];
     spawnUnit('soldier','rival',home).settlement=s;
@@ -2355,21 +3111,286 @@ let trait=TRAITS[0];
 const legacy = () => 1 + 0.06*(worldIndex-1);   // +6% a tutto per mondo colonizzato
 
 /* ═══════════════ commercio e carovane ═══════════════ */
+
+/* ═══════════════ benevolenza ═══════════════
+   Il rapporto con un clan non è più una parola ma un numero, da −100 a
+   +100, come in RimWorld. La parola (ostile, neutrale, alleato) si ricava
+   dal numero, con un margine perché non si ribalti per un punto:
+   si diventa ostili a −40 e si torna neutrali sopra −25; alleati a 75,
+   e si smette sotto 60. Col tempo il numero torna verso il carattere
+   naturale del clan.                                                  */
+const GOODWILL = {HOSTILE:-40, UNHOSTILE:-25, ALLY:75, UNALLY:60, DRIFT:0.02};
+const PERSONALITIES = {
+  mercanti:     {label:'mercanti',     natural:20,  gift:1.3, border:0.7, caravan:1.4, troops:0.8,
+                 note:'apprezzano doni e scambi, mandano carovane ricche'},
+  guerrieri:    {label:'guerrieri',    natural:-15, gift:0.8, border:1.2, caravan:0.7, troops:1.4,
+                 note:'si armano in fretta e perdonano poco'},
+  isolazionisti:{label:'isolazionisti',natural:0,   gift:0.7, border:2.0, caravan:0,   troops:1.0,
+                 note:'non commerciano e odiano chi costruisce ai loro confini'}
+};
+const GIFT_COST={mat:40, food:20}, PEACE_COST={mat:60}, MEDIATE_COST={mat:40};
+const personalityOf = s => PERSONALITIES[s.personality]||PERSONALITIES.mercanti;
+const settled = s => s.relation==='conquistato'||s.relation==='assoggettato';
+
+/* dopo aver creato i clan di un mondo: carattere, benevolenza, rapporti tra loro */
+function initDiplomacy(rnd){
+  const ids=Object.keys(PERSONALITIES);
+  for(const s of settlements){
+    s.personality=ids[Math.floor(rnd()*ids.length)];
+    s.goodwill=Math.round(personalityOf(s).natural+rnd()*20-10);
+    s.ties={}; s.request=null; s.reqT=90+Math.floor(rnd()*120);
+    s.unrest=0; s.giftT=0; s.log=[];
+    updateRelation(s,true);
+  }
+  for(const a of settlements) for(const b of settlements)
+    if(a!==b&&a.ties[b.name]===undefined){
+      setTie(a,b,Math.round(rnd()*80-40));
+    }
+}
+/* la parola che corrisponde al numero, con il margine di isteresi */
+function updateRelation(s,silent){
+  if(settled(s)) return;
+  const g=s.goodwill, was=s.relation;
+  let rel=was;
+  if(was==='ostile'){ if(g>GOODWILL.UNHOSTILE) rel=g>=GOODWILL.ALLY?'alleato':'neutrale'; }
+  else if(was==='alleato'){ if(g<GOODWILL.UNALLY) rel=g<=GOODWILL.HOSTILE?'ostile':'neutrale'; }
+  else rel = g<=GOODWILL.HOSTILE?'ostile' : g>=GOODWILL.ALLY?'alleato' : 'neutrale';
+  if(rel===was) return;
+  s.relation=rel;
+  if(rel!=='ostile'&&army.target===s) recall();
+  if(!silent) logEvent(s.name+(rel==='ostile'?' ci è ora ostile.':rel==='alleato'?' è ora nostro alleato.':' torna neutrale.'));
+}
+/* ogni variazione passa di qui: il motivo resta nel registro del clan */
+function shiftGoodwill(s,delta,why){
+  if(!s||settled(s)||!delta) return;
+  s.goodwill=Math.max(-100,Math.min(100,s.goodwill+delta));
+  if(why&&Math.abs(delta)>=1){
+    s.log.unshift((delta>0?'+':'')+Math.round(delta)+' '+why);
+    if(s.log.length>5) s.log.length=5;
+  }
+  updateRelation(s);
+}
+
+/* ── azioni del giocatore ── */
+const canGift = s => !settled(s)&&s.relation!=='ostile'&&(s.giftT||0)<=0&&
+  res.mat>=GIFT_COST.mat&&res.food>=GIFT_COST.food;
+function giftTo(s){
+  if(!canGift(s)) return;
+  res.mat-=GIFT_COST.mat; res.food-=GIFT_COST.food; s.giftT=30;
+  shiftGoodwill(s,25*personalityOf(s).gift*(activeFlag('embassy')?1.5:1)*(1+techSum('gift')),'dono');
+  // aiutare un clan in guerra irrita il suo nemico
+  for(const o of settlements) if(o!==s&&atWar(s,o)) shiftGoodwill(o,-10,'hai aiutato '+s.name);
+  toast(s.name+' accetta il dono ('+Math.round(s.goodwill)+').'); refreshHUD();
+}
+const canMakePeace = s => s.relation==='ostile'&&!settled(s)&&res.mat>=PEACE_COST.mat;
+function makePeace(s){
+  if(!canMakePeace(s)) return;
+  res.mat-=PEACE_COST.mat;
+  if(army.target===s) recall();
+  shiftGoodwill(s,Math.max(35,GOODWILL.UNHOSTILE+5-s.goodwill),'trattato di pace');
+  toast('Offerta di pace a '+s.name+': '+(s.relation==='ostile'?'rifiutata.':'accettata.')); refreshHUD();
+}
+
+/* ── clan tra loro: si alleano o si fanno guerra, e tu puoi mediare ── */
+/* guerra con margine: comincia a −60 e finisce solo sopra −30, altrimenti
+   un rapporto che oscilla intorno alla soglia accendeva e spegneva la
+   guerra ogni pochi secondi */
+const WAR_AT=-60, TRUCE_AT=-30;
+const tie = (a,b) => (a.ties&&a.ties[b.name])||0;
+const atWar = (a,b) => a!==b&&!settled(a)&&!settled(b)&&!!(a.wars&&a.wars[b.name]);
+function setTie(a,b,v){
+  v=Math.max(-100,Math.min(100,v)); a.ties[b.name]=v; b.ties[a.name]=v;
+  a.wars=a.wars||{}; b.wars=b.wars||{};
+  const w = a.wars[b.name] ? v<=TRUCE_AT : v<=WAR_AT;
+  a.wars[b.name]=w; b.wars[a.name]=w;
+}
+const mediateCost = () => MEDIATE_COST.mat*(activeFlag('embassy')?0.5:1);
+const canMediate = (a,b) => atWar(a,b)&&res.mat>=mediateCost();
+function mediate(a,b){
+  if(!canMediate(a,b)) return;
+  res.mat-=mediateCost();
+  setTie(a,b,tie(a,b)+45);
+  shiftGoodwill(a,10,'mediazione'); shiftGoodwill(b,10,'mediazione');
+  if(!atWar(a,b)) achFlags.mediated=true;
+  toast('Mediazione tra '+a.name+' e '+b.name+(atWar(a,b)?': la guerra continua.':': tregua firmata.')); refreshHUD();
+}
+
+/* ── richieste a tempo, portate da un emissario a piedi ── */
+function sendEnvoy(s){
+  const home=tiles.find(t=>t.settlement===s&&t.building);
+  if(!home||!FC.storage.length) return;
+  const kind=s.personality==='guerrieri'?'mat':s.personality==='isolazionisti'?'food':(Math.random()<0.5?'food':'mat');
+  const req={kind, amount:30+10*Math.floor(Math.random()*4), deadline:60};
+  // su un altro continente non si arriva a piedi: il messaggio viene via mare
+  if(!FC.storage.some(t=>reachable(home,t))){ receiveRequest(s,req,' (via mare)'); return; }
+  const u=spawnUnit('envoy','rival',home);
+  u.settlement=s; u.lifeT=0; u.delivered=false; u.req=req;
+  takeCarry(u,0xffe08a);
+}
+function receiveRequest(s,req,how){
+  if(settled(s)||s.relation==='ostile'||s.request) return;
+  s.request={...req, accepted:false};
+  logEvent('📜 '+s.name+' chiede '+req.amount+(req.kind==='food'?' cibo':' materiali')+
+    ' entro '+req.deadline+' secondi'+(how||'')+'.');
+  if(auto) govAnswer(s);
+}
+function envoyGoal(u){
+  if(u.delivered) return u.settlement?u.settlement.core:u.from;
+  const st=nearestStorage(u.from);
+  if(st&&u.from===st){
+    u.delivered=true; dropCarry(u);
+    if(u.settlement) receiveRequest(u.settlement,u.req);
+  }
+  return st||u.from;
+}
+function answerRequest(s,yes){
+  const r=s.request; if(!r||r.accepted) return;
+  if(!yes){ s.request=null; shiftGoodwill(s,-5,'richiesta rifiutata'); toast('Richiesta di '+s.name+' rifiutata.'); refreshHUD(); return; }
+  r.accepted=true; toast('Richiesta di '+s.name+' accettata: consegna entro '+r.deadline+' secondi.'); refreshHUD();
+}
+function deliverRequest(s){
+  const r=s.request; if(!r||!r.accepted||res[r.kind]<r.amount) return;
+  res[r.kind]-=r.amount; s.request=null;
+  shiftGoodwill(s,15*personalityOf(s).gift*(1+techSum('gift')),'richiesta esaudita');
+  toast(s.name+' ringrazia: richiesta esaudita.'); refreshHUD();
+}
+/* il governatore risponde da solo: accetta solo se può permetterselo */
+function govAnswer(s){
+  const r=s.request; if(!r) return;
+  if(res[r.kind]>=r.amount*1.5){ answerRequest(s,true); deliverRequest(s); }
+  else answerRequest(s,false);
+}
+
+/* ── un tick di diplomazia ── */
+function diplomacyTick(){
+  for(const s of settlements){
+    if(s.relation==='conquistato') continue;
+    if(s.relation==='assoggettato'){ unrestTick(s); continue; }
+    const P=personalityOf(s);
+    // deriva verso il carattere naturale
+    const diff=P.natural-s.goodwill;
+    s.goodwill+=Math.sign(diff)*Math.min(GOODWILL.DRIFT,Math.abs(diff));
+    // un'ambasciata aperta avvicina i clan da sola, fino a 50
+    if(activeFlag('embassy')&&s.goodwill<50) s.goodwill+=0.03;
+    // costruire ai loro confini li irrita, di continuo
+    let near=0;
+    for(const t of FC.mine) for(const x of s.tiles) if(x.building&&t.center.dot(x.center)>0.985){ near++; break; }
+    if(near){ s.borderAcc=(s.borderAcc||0)+near*0.03*P.border;
+      if(s.borderAcc>=1){ shiftGoodwill(s,-Math.floor(s.borderAcc),'costruisci ai loro confini'); s.borderAcc%=1; } }
+    else updateRelation(s);
+    if(s.giftT>0) s.giftT--;
+    // richieste: una alla volta, portata da un emissario
+    if(s.request){
+      if(--s.request.deadline<=0){
+        const acc=s.request.accepted; s.request=null;
+        shiftGoodwill(s,acc?-20:-8,acc?'promessa non mantenuta':'richiesta ignorata');
+        logEvent(s.name+(acc?': non hai consegnato quanto promesso.':': la richiesta è scaduta senza risposta.'));
+      }
+    } else if(s.relation!=='ostile'&&--s.reqT<=0){
+      s.reqT=150+Math.floor(Math.random()*150);
+      if(!units.some(u=>u.kind==='envoy'&&u.settlement===s&&!u.delivered)) sendEnvoy(s);
+    }
+    // rapporti con gli altri clan: oscillano, i guerrieri litigano più spesso
+    for(const o of settlements){
+      if(o===s||settled(o)||s.name>o.name) continue;
+      const pull=(s.personality==='guerrieri'||o.personality==='guerrieri')?-0.06:
+                 (s.personality==='mercanti'&&o.personality==='mercanti')?0.06:0;
+      const was=atWar(s,o);
+      setTie(s,o,tie(s,o)+pull+(Math.random()-0.5)*0.8);
+      if(atWar(s,o)!==was) logEvent(was?'Tregua tra '+s.name+' e '+o.name+'.':'⚔ '+s.name+' e '+o.name+' sono in guerra.');
+    }
+    marriageTick(s);
+    // migranti: dai clan amici arriva gente, se ci sono letti
+    if(s.goodwill>60&&rates().houses>pop&&Math.random()<0.004*(1+techSum('migrants'))){
+      const u=spawnUnit('worker','you',s.core);
+      u.age=AGES.child.until+10; applyAge(u); pop++; syncJobs();
+      shiftGoodwill(s,2,'un loro migrante accolto');
+      logEvent(u.name+', dal '+s.name+', si unisce alla colonia.');
+    }
+  }
+}
+/* migrazioni in uscita: un colono scontento passa al clan più amico, se c'è.
+   Il clan si rafforza e ti è un po' più vicino. */
+function emigrate(u){
+  const to=settlements.filter(s=>!settled(s)&&s.relation!=='ostile'&&s.goodwill>0)
+    .sort((a,b)=>b.goodwill-a.goodwill)[0];
+  if(!to) return false;
+  to.mat+=15; shiftGoodwill(to,2,'un tuo colono si è unito a loro');
+  logEvent((u.name||'Un colono')+', scontento, lascia la colonia per il '+to.name+'.');
+  return true;
+}
+/* matrimoni: con un alleato molto amico, ogni tanto qualcuno si sposa.
+   Se hai un letto libero lo sposo viene da te, altrimenti il tuo colono va da loro. */
+function marriageTick(s){
+  if(s.relation!=='alleato'||s.goodwill<80||Math.random()>0.0025) return;
+  const adults=myPeople().filter(u=>u.stage==='adult'&&u.kind==='worker'&&u.name);
+  if(!adults.length) return;
+  const u=adults[Math.floor(Math.random()*adults.length)];
+  shiftGoodwill(s,8,'matrimonio'); achFlags.married=true;
+  for(const o of settlements) if(o!==s&&!settled(o)) setTie(s,o,tie(s,o)+3);
+  if(rates().houses>pop){
+    const spouse=spawnUnit('worker','you',u.from);
+    spouse.age=AGES.child.until+20; applyAge(spouse); pop++; syncJobs();
+    logEvent('💍 '+u.name+' sposa '+spouse.name+' del '+s.name+', che viene a vivere nella colonia.');
+  } else {
+    const i=units.indexOf(u); killUnit(u,i); pop=Math.max(0,pop-1); trimWorkers(); syncJobs();
+    logEvent('💍 '+u.name+' si sposa nel '+s.name+' e va a vivere da loro: qui non c\'erano letti.');
+  }
+}
+/* un predone ucciso vicino a un clan, con tue unità lì accanto: li hai aiutati */
+function raiderFellNear(u){
+  for(const s of settlements){
+    if(settled(s)||s.relation==='ostile') continue;
+    if(!s.tiles.some(t=>t.building&&t.center.dot(u.from.center)>0.97)) continue;
+    const helped=units.some(o=>o.faction==='you'&&o.mesh.position.distanceTo(u.mesh.position)<3.5);
+    if(helped) shiftGoodwill(s,6,'aiuto contro i predoni');
+  }
+}
+
+/* ── rivolte: gli assoggettati non restano buoni per sempre ──
+   Il malcontento sale se vicino a loro non c'è una guarnigione e se chi
+   lavora per te è scontento; a 100 si ribellano.                       */
+function garrisonNear(s){
+  return units.filter(u=>u.faction==='you'&&!UNITS[u.kind].civil&&
+    u.from.center.dot(s.core.center)>0.9).length;
+}
+function unrestTick(s){
+  const thralls=units.filter(u=>u.kind==='thrall'&&u.origin===s);
+  const needed=Math.ceil(thralls.length/3)+1;
+  const guard=garrisonNear(s);
+  const mood=thralls.length?thralls.reduce((m,u)=>m+needsOf(u).mood,0)/thralls.length:0.5;
+  const grow=(Math.max(0,1-guard/needed)*0.4+Math.max(0,0.45-mood)*1.5)*(1-techSum('unrest'));
+  s.unrest=Math.max(0,Math.min(100,(s.unrest||0)+grow-0.2));
+  if(s.unrest<100) return;
+  // rivolta: il clan torna ostile e i suoi assoggettati impugnano le armi
+  s.relation='ostile'; s.goodwill=-80; s.unrest=0;
+  s.log.unshift('rivolta');
+  for(let i=units.length-1;i>=0;i--){
+    const u=units[i];
+    if(u.kind!=='thrall'||u.origin!==s) continue;
+    const at=u.from;
+    killUnit(u,i);
+    spawnUnit('soldier','rival',at).settlement=s;
+  }
+  trimWorkers(); syncJobs();
+  logEvent('🔥 Rivolta! '+s.name+' si ribella: gli assoggettati hanno preso le armi.');
+}
 const hasMarket = () => FC.mine.some(t=>hasFlag(t,'trade')&&(t.workers||0)>0);
 /* una carovana parte dal clan alleato, cammina fino a un tuo magazzino e scarica */
 function caravanGoal(u){
   if(u.delivered) return u.settlement?u.settlement.core:u.from;
   const st=nearestStorage(u.from);
-  if(st&&u.from===st){
-    const bonus=hasMarket()?1.6:1;
-    const mat=Math.round(u.load*bonus), food=Math.round(u.load*0.5*bonus);
-    res.mat=Math.min(capacity(),res.mat+mat);
-    res.food=Math.min(capacity(),res.food+food);
-    u.delivered=true; dropCarry(u);
-    toast('Carovana di '+(u.settlement?u.settlement.name:'un alleato')+': +'+mat+' materiali, +'+food+' cibo.');
-    refreshHUD();
-  }
+  if(st&&u.from===st) unloadCaravan(u.settlement,u.load,'');
+  if(st&&u.from===st){ u.delivered=true; dropCarry(u); }
   return st||u.from;
+}
+function unloadCaravan(s,load,how){
+  const bonus=hasMarket()?1.6:1;
+  const mat=Math.round(load*bonus), food=Math.round(load*0.5*bonus);
+  res.mat=Math.min(capacity(),res.mat+mat);
+  res.food=Math.min(capacity(),res.food+food);
+  toast('Carovana di '+(s?s.name:'un alleato')+how+': +'+mat+' materiali, +'+food+' cibo.');
+  refreshHUD();
 }
 function sendCaravans(){
   for(const s of settlements){
@@ -2379,15 +3400,20 @@ function sendCaravans(){
     if(s.tradeT<every) continue;
     s.tradeT=0;
     const home=tiles.find(t=>t.settlement===s&&t.building);
-    if(!home||!FC.storage.length) continue;
+    const P=personalityOf(s);
+    if(!home||!FC.storage.length||!P.caravan&&s.relation!=='assoggettato') continue;
+    const load=Math.round((s.relation==='alleato'?22:14)*(s.relation==='alleato'?P.caravan:1)*(1+techSum('caravan')));
+    // prima una carovana da un altro continente vagava per 160 tick e spariva:
+    // ora, se a piedi non si arriva, il carico viene via mare
+    if(!FC.storage.some(t=>reachable(home,t))){ unloadCaravan(s,load,' (via mare)'); continue; }
     const u=spawnUnit('caravan','rival',home);
-    u.settlement=s; u.load=s.relation==='alleato'?22:14; u.delivered=false; u.lifeT=0;
+    u.settlement=s; u.load=load; u.delivered=false; u.lifeT=0;
     takeCarry(u,0xd9a441);
   }
   // le carovane che hanno consegnato tornano a casa e spariscono
   for(let i=units.length-1;i>=0;i--){
     const u=units[i];
-    if(u.kind!=='caravan') continue;
+    if(u.kind!=='caravan'&&u.kind!=='envoy') continue;
     u.lifeT=(u.lifeT||0)+1;
     if(u.lifeT>160||(u.delivered&&u.settlement&&u.from===u.settlement.core)) killUnit(u,i);
   }
@@ -2399,10 +3425,12 @@ function tradeWith(s,dir){
   if(dir==='buy'){
     if(res.food<40){ toast('Servono 40 cibo.'); return; }
     res.food-=40; res.mat=Math.min(capacity(),res.mat+32);
+    shiftGoodwill(s,3,'scambio al mercato');
     toast('Scambiati 40 cibo per 32 materiali.');
   } else {
     if(res.mat<40){ toast('Servono 40 materiali.'); return; }
     res.mat-=40; res.food=Math.min(capacity(),res.food+32);
+    shiftGoodwill(s,3,'scambio al mercato');
     toast('Scambiati 40 materiali per 32 cibo.');
   }
   refreshHUD();
@@ -2439,6 +3467,8 @@ const EVENTS={
   meteor:{weight:1, run(){
     // tre impatti: uno vicino alla colonia, due a caso. Danneggiano ciò che
     // colpiscono ma lasciano frammenti di minerale da raccogliere
+    // lo scudo orbitale devia i meteoriti prima che tocchino terra
+    if(orbitalOn('shield')){ logEvent('🛡 Lo scudo orbitale devia una pioggia di meteoriti.'); return; }
     const land=tiles.filter(t=>BIOMES[t.biome].build);
     const home=playerBuildings();
     const hits=[];
@@ -2463,6 +3493,7 @@ const EVENTS={
       u.hp=u.hpMax*0.3; u.wounded=true; applyAge(u);
     }
     trimWorkers(); syncJobs();
+    chainT=45;                            // tra 45 secondi: carestia, se nessuno cura
     logEvent('🦠 Epidemia: '+n+(n===1?' colono si è ammalato':' coloni si sono ammalati')+
       (clinic?' (l\'ospedale ha contenuto il contagio).':'. Un ospedale con addetti la conterrebbe.'));
   }},
@@ -2475,6 +3506,8 @@ const EVENTS={
     syncJobs();
     logEvent('🧳 Sono arrivati '+n+(n===1?' profugo: ora è un colono.':' profughi: ora sono coloni.'));
   }},
+  // solo se c'è qualcosa in orbita da spegnere
+  flare:{get weight(){ return orbit.some(o=>o.built)?0.7:0; }, run(){ return solarFlare(); }},
   harvest:{weight:1, run(){
     boomT=35;
     logEvent('🌾 Annata eccezionale: +40% cibo dai campi per 35 secondi.');
@@ -2493,7 +3526,12 @@ function randomEventTick(){
   if(worldAge<60||raidActive) return;
   if(--eventIn>0) return;
   eventIn=90+Math.floor(Math.random()*80);
-  fireEvent(pickEvent());
+  // una volta su tre l'evento chiede una scelta; in picco di tensione mai
+  // eventi buoni per caso, in ripresa più spesso l'annata abbondante
+  if(Math.random()<0.35&&offerChoice()) return;
+  let k=pickEvent();
+  if(narrator.phase==='ripresa'&&Math.random()<0.5) k='harvest';
+  fireEvent(k);
 }
 function fireEvent(kind){
   if(EVENTS[kind].run()===false) return;   // non è successo niente: HUD invariato
@@ -2599,6 +3637,211 @@ function castPower(kind,tile){
 }
 
 /* ═══════════════ modalità automatica ═══════════════ */
+
+/* ═══════════════ il narratore ═══════════════
+   Al posto del timer fisso, come i narratori di RimWorld:
+   · la forza di un'incursione dipende da quanto vale la colonia;
+   · la tensione segue un ciclo: calma, tensione che cresce, picco;
+   · dopo una batosta la pressione cala per un po' (ripresa), così ci si
+     può rialzare invece di crollare a cascata.                          */
+const NARRATOR_PHASES = {
+  calma:    {label:'calma',     len:180, every:1.45, size:0.8, next:'tensione'},
+  tensione: {label:'tensione',  len:140, every:1.0,  size:1.0, next:'picco'},
+  picco:    {label:'picco',     len:90,  every:0.6,  size:1.3, next:'calma'},
+  ripresa:  {label:'ripresa',   len:150, every:2.0,  size:0.6, next:'calma'}
+};
+let narrator={phase:'calma', t:0, hurt:0};
+const narratorPhase = () => NARRATOR_PHASES[narrator.phase]||NARRATOR_PHASES.calma;
+/* quanto vale la colonia: scorte, edifici, persone */
+function colonyWealth(){
+  let w=res.food*0.3+res.mat+res.pow*0.5+(res.bar||0)*3;
+  for(const t of FC.mine) if(isMine(t)) w+=(BUILDINGS[t.building].cost.mat||0)*sizeOf(t)*0.6;
+  w+=myPeople().length*15;
+  return w;
+}
+/* quanti predoni: cresce con la radice della ricchezza, non in proporzione,
+   altrimenti una colonia grande verrebbe schiacciata */
+function raidSize(){
+  const pts=Math.sqrt(Math.max(0,colonyWealth()))*0.12*(1+0.15*(worldIndex-1));
+  return Math.max(1,Math.min(14,Math.round(pts*narratorPhase().size*diff().raid)));
+}
+function raidInterval(){
+  return Math.round((100+ORBITALS.eye.delay*orbMul('eye'))*
+    (trait.raid?0.65:trait.calm?1.5:1)*narratorPhase().every);
+}
+/* le perdite recenti: ogni colono perso vale 1, ogni edificio 0,5 */
+function narratorHurt(k){ narrator.hurt+=k; }
+function narratorTick(){
+  narrator.hurt=Math.max(0,narrator.hurt-0.02);
+  // una batosta è relativa: 4 perdite contano per un villaggio, non per una città
+  if(narrator.phase!=='ripresa'&&narrator.hurt>=Math.max(4,pop*0.08)){
+    narrator.phase='ripresa'; narrator.t=0; narrator.hurt=0;
+    raidIn=Math.max(raidIn,raidInterval());
+    logEvent('🌤 Dopo le perdite, la pressione cala: un periodo di ripresa.');
+    return;
+  }
+  if(++narrator.t<narratorPhase().len) return;
+  narrator.t=0; narrator.phase=narratorPhase().next;
+  if(narrator.phase==='picco') logEvent('🌩 Il pericolo cresce: incursioni più fitte e più forti.');
+}
+
+/* ── eventi con una scelta ──────────────────────────────────────────
+   Due opzioni, due conseguenze. Una finestra chiede cosa fare; se non
+   rispondi in tempo vale la prima opzione (la più prudente). In modalità
+   automatica sceglie il governatore, con lo stesso motore a punteggio:
+   ogni opzione ha uno score(c) sul contesto della colonia.            */
+const CHOICE_EVENTS = {
+  chased:{weight:1, when:()=>rates().houses-pop>=2,
+    title:'Profughi inseguiti',
+    text:()=>'Tre profughi chiedono asilo, ma li inseguono dei predoni. Se li accogli, i predoni arrivano subito.',
+    options:[
+      {label:'respingili', run:()=>{ logEvent('I profughi proseguono il loro viaggio.'); },
+       score:c=>0.4},
+      {label:'accoglili (+3 coloni, arrivano 3 predoni)', run:()=>{
+        for(let i=0;i<3;i++) spawnUnit('worker','you',randomHome());
+        pop=myPeople().length; syncJobs();
+        if(!raidActive) spawnRaidOf(3);
+        logEvent('🧳 Tre profughi accolti. I loro inseguitori sono già qui.');
+      }, score:c=>c.troops>=3||c.turrets>=2?0.8:0.25}
+    ]},
+  merchant:{weight:1, when:()=>res.food>=50,
+    title:'Mercante di passaggio',
+    text:()=>'Un mercante offre 60 materiali in cambio di 50 cibo.',
+    options:[
+      {label:'lascia perdere', run:()=>{}, score:c=>0.3},
+      {label:'scambia (−50 cibo, +60 materiali)', run:()=>{
+        res.food-=50; res.mat=Math.min(capacity(),res.mat+60);
+        logEvent('Scambio col mercante: +60 materiali.');
+      }, score:c=>c.foodDays>60&&res.mat<capacity()*0.7?0.8:0.2}
+    ]},
+  traveler:{weight:0.8, when:()=>rates().houses-pop>=1,
+    title:'Viandante malato',
+    text:()=>'Un viandante febbricitante bussa alla porta. Accoglierlo è giusto, ma può contagiare.',
+    options:[
+      {label:'mandalo via (umore −)', run:()=>{
+        for(const u of units) if(hasNeeds(u)&&u.needs) u.needs.mood=Math.max(0,u.needs.mood-0.05);
+        logEvent('Il viandante se ne va. Qualcuno non l\'ha presa bene.');
+      }, score:c=>0.35},
+      {label:'accoglilo (+1 colono, rischio epidemia)', run:()=>{
+        spawnUnit('worker','you',randomHome()); pop=myPeople().length; syncJobs();
+        if(Math.random()<0.5) fireEvent('plague');
+        else logEvent('Il viandante guarisce e resta con voi.');
+      }, score:c=>c.clinic?0.8:0.3}
+    ]},
+  deserters:{weight:0.8, when:()=>settlements.some(s=>!settled(s)&&s.relation!=='alleato'),
+    title:'Disertori',
+    text:()=>{ const s=narrator.target; return 'Due soldati del '+(s?s.name:'clan')+' disertano e chiedono di unirsi a voi. Il clan non gradirà.'; },
+    options:[
+      {label:'rifiuta', run:()=>{}, score:c=>0.4},
+      {label:'accoglili (+2 coloni, −15 benevolenza)', run:()=>{
+        for(let i=0;i<2;i++) spawnUnit('worker','you',randomHome());
+        pop=myPeople().length; syncJobs();
+        if(narrator.target) shiftGoodwill(narrator.target,-15,'hai accolto i loro disertori');
+        logEvent('Due disertori si uniscono alla colonia.');
+      }, score:c=>narrator.target&&narrator.target.goodwill<0?0.7:0.3}
+    ], prepare:()=>{ const c=settlements.filter(s=>!settled(s)&&s.relation!=='alleato');
+      narrator.target=c[Math.floor(Math.random()*c.length)]||null; }}
+};
+let choice=null;               // {id, deadline}: la scelta in attesa di risposta
+const CHOICE_TIME = 30;
+function offerChoice(){
+  const ids=Object.keys(CHOICE_EVENTS).filter(k=>CHOICE_EVENTS[k].when());
+  if(!ids.length||choice) return false;
+  const total=ids.reduce((n,k)=>n+CHOICE_EVENTS[k].weight,0);
+  let r=Math.random()*total, id=ids[ids.length-1];
+  for(const k of ids){ r-=CHOICE_EVENTS[k].weight; if(r<0){ id=k; break; } }
+  const E=CHOICE_EVENTS[id];
+  if(E.prepare) E.prepare();
+  choice={id, deadline:CHOICE_TIME};
+  logEvent('❓ '+E.title+': '+E.text());
+  if(auto) govChoose(); else showChoice();
+  return true;
+}
+function resolveChoice(i){
+  if(!choice) return;
+  const E=CHOICE_EVENTS[choice.id], opt=E.options[i]||E.options[0];
+  choice=null; hideChoice();
+  opt.run(); refreshHUD();
+}
+function choiceTick(){
+  if(!choice) return;
+  if(auto){ govChoose(); return; }      // «auto» acceso con una scelta aperta: decide il governatore
+  if(--choice.deadline<=0){ logEvent('Nessuna risposta: si fa la scelta prudente.'); resolveChoice(0); }
+  else if(!auto) showChoice();
+}
+/* il governatore sceglie l'opzione col punteggio più alto */
+function govChoose(){
+  if(!choice) return;
+  const E=CHOICE_EVENTS[choice.id];
+  const c={troops:myTroops().length, turrets:FC.mine.filter(t=>isMine(t)&&hasFlag(t,'dps')).length,
+    foodDays:res.food/Math.max(0.5,rates().stock-rates().food), clinic:activeFlag('heal')};
+  let best=0, bs=-1;
+  E.options.forEach((o,i)=>{ const s=o.score(c); if(s>bs){ bs=s; best=i; } });
+  logEvent('Il governatore sceglie: '+E.options[best].label+'.');
+  resolveChoice(best);
+}
+function showChoice(){
+  if(!choice) return;
+  const E=CHOICE_EVENTS[choice.id], box=$('choice');
+  if(box.dataset.id!==choice.id){
+    box.dataset.id=choice.id;
+    $('choice-title').textContent=E.title;
+    $('choice-text').textContent=E.text();
+    const acts=$('choice-acts'); acts.innerHTML='';
+    E.options.forEach((o,i)=>{
+      const b=document.createElement('button'); b.textContent=o.label;
+      b.addEventListener('click',()=>resolveChoice(i)); acts.appendChild(b);
+    });
+  }
+  $('choice-time').textContent=choice.deadline+'s';
+  box.classList.add('on');
+}
+function hideChoice(){ const box=$('choice'); box.classList.remove('on'); box.dataset.id=''; }
+
+/* ── catene di eventi ──────────────────────────────────────────────
+   Un'epidemia non curata diventa carestia (i campi rendono la metà);
+   durante la carestia chi se ne va per fame non sparisce: se sono in
+   tre, fondano un clan rivale di esuli, che ce l'ha con te.            */
+let famineT=0, exiles=0, chainT=0;   // exiles<0: questa carestia ha già i suoi esuli
+function chainTick(){
+  if(chainT>0&&--chainT===0){
+    if(!activeFlag('heal')){
+      famineT=80;
+      logEvent('🥀 L\'epidemia non curata ha svuotato i campi: carestia per 80 secondi.');
+    } else logEvent('L\'ospedale ha fermato il contagio prima che toccasse i raccolti.');
+  }
+  if(famineT>0&&--famineT===0){ exiles=0; logEvent('La carestia è finita.'); }
+}
+/* chiamata quando un colono se ne va per fame */
+function starvedAway(u){
+  if(famineT<=0||exiles<0) return;
+  exiles++;
+  if(exiles<3) return;
+  exiles=-1;                          // un solo clan di esuli per carestia
+  foundExileClan(u.from);
+}
+/* i rapporti tra clan sono indicizzati per nome: due clan con lo stesso
+   nome si confondevano (una guerra "da una parte sola") */
+function uniqueClanName(base){
+  const roman=['',' II',' III',' IV',' V',' VI'];
+  for(const r of roman) if(!settlements.some(s=>s.name===base+r)) return base+r;
+  return base+' '+settlements.length;
+}
+function foundExileClan(near){
+  const spots=tiles.filter(t=>BIOMES[t.biome].build&&!t.building&&
+    near.center.dot(t.center)<0.5&&settlements.every(s=>s.core.center.dot(t.center)<0.8));
+  if(!spots.length) return;
+  const core=spots[Math.floor(Math.random()*spots.length)];
+  const s={name:uniqueClanName('Esuli di '+NAMES[(worldIndex-1)%NAMES.length]), core, relation:'neutrale', tiles:[core],
+    mat:20, thinkT:0, personality:'guerrieri', goodwill:-35, ties:{}, wars:{}, request:null,
+    reqT:200, unrest:0, giftT:0, log:['−35 ci hanno lasciati alla fame']};
+  finish(core,'keep','rival'); core.settlement=s;
+  for(const o of settlements) setTie(s,o,0);
+  settlements.push(s);
+  for(let i=0;i<3;i++) spawnUnit('soldier','rival',core).settlement=s;
+  $('a-list').dataset.sig='';
+  logEvent('⚑ Gli esuli della carestia hanno fondato un loro clan: '+s.name+'. Non vi hanno perdonato.');
+}
 /* Quanto è lontano un punto dal magazzino più vicino, in passi reali.
    Serve a non aprire cantieri dall'altra parte del continente. */
 function haulSteps(t){
@@ -2607,56 +3850,197 @@ function haulSteps(t){
   const d=distField(st)[t.id];
   return d<0?99:d;
 }
-function autoThink(){
+/* ── governatore a utility ─────────────────────────────────────────
+   Stesso motore dei coloni (14-utility.js), applicato alla colonia intera.
+   Ogni progetto di costruzione riceve un punteggio dalle "pressioni" della
+   colonia; si apre il cantiere del migliore. Se il migliore costa più di
+   quanto c'è, si aspetta e si risparmia: non si ripiega su qualcosa di
+   meno utile solo perché costa poco.                                    */
+function govContext(){
   const r=rates();
-  if(idleCount()>0){
-    const open=workedTiles().filter(t=>(t.workers||0)<jobsOf(t));
-    const pref=r.food<0.6?['farm','fishery','mine','lab','plant','armory']
-             : raidActive?['armory','farm','fishery','mine','plant','lab']
-                         :['farm','fishery','mine','plant','lab','armory','fort'];
-    open.sort((a,b)=>pref.indexOf(a.building)-pref.indexOf(b.building));
-    for(const t of open)
-      while((t.workers||0)<jobsOf(t)&&idleCount()>0) t.workers++;
-    syncJobs();
-  }
+  const mineOrSite=t=>isMine(t)||(t.site&&t.owner==='you');
+  const count={};
+  for(const t of tiles) if(t.building&&mineOrSite(t)) count[t.building]=(count[t.building]||0)+1;
+  const eat=Math.max(0.5, r.stock-r.food);            // quanto si mangia a tick
+  let freeJobs=0;
+  for(const t of workedTiles()) freeJobs+=jobsOf(t)-(t.workers||0);
+  const idle=idleCount();
+  return {r, count:k=>count[k]||0, cap:capacity(), eat,
+    foodDays: res.food/eat,                           // tick di cibo in magazzino
+    freeBeds: r.houses-pop,
+    jobless: Math.max(0, idle-freeJobs),              // disoccupati: servono posti di lavoro
+    threat: Math.min(1,(raidNo+1)/6)*(raidIn<40||raidActive?1:0.7),
+    wounded: myPeople().filter(u=>u.wounded).length,
+    allies: settlements.some(s=>s.relation==='alleato'||s.relation==='assoggettato'),
+    winter: SEASONS[season].food<0.8,
+    spoil: r.spoil,
+    moodAvg: (()=>{ const m=units.filter(u=>hasNeeds(u)&&u.needs); return m.length?m.reduce((s,u)=>s+u.needs.mood,0)/m.length:0.6; })(),
+    children: myPeople().filter(u=>u.stage==='child').length,
+    // lavori all'asciutto: sulla sabbia sempre, in siccità anche i campi
+    dryJobs: FC.mine.filter(t=>isMine(t)&&jobsOf(t)>0&&!wellNear(t)&&
+      (t.biome==='sand'||(weather.kind==='siccita'&&BUILDINGS[t.building].per&&BUILDINGS[t.building].per.food>0))).length,
+    // lingotti: servono per torrette, ambasciata e rampa
+    wantBars: (tech>=1||raidNo>=2||settlements.length>0)&&(res.bar||0)<40};
+}
+/* considerazioni che ricorrono */
+const gAfford = key => consider('si può pagare', c=>{
+  const cost=costOf(key);
+  return Math.min(...COST_KEYS.map(k=>cost[k]?(res[k]||0)/cost[k]:1));
+}, CURVES.linear(0.7,0.3));
+const gNone = (key,n=1) => consider('ne mancano', c=>1-c.count(key)/n, CURVES.step(.01));
+/* i disoccupati non sono una condizione ma un bonus: moltiplicarli come le
+   altre considerazioni abbassava tutti i progetti produttivi quando tutti
+   avevano un lavoro, e con il cibo a zero la fattoria perdeva con le capanne */
+const withJobs = base => c => base*(1+0.5*Math.min(1,c.jobless/6));
+const gFood = consider('cibo scarso', c=>Math.max(1-c.foodDays/80, c.r.food<0?0.75:0), CURVES.logistic(.45,8));
 
-  const have=k=>tiles.filter(t=>(isMine(t)||t.site)&&(t.building===k)).length;
-  let want=null;
-  if(r.food<0.4) want='farm';
-  else if(pop>=r.houses-1) want = res.mat>60 ? 'block' : 'hut';
-  else if(have('mine')===0) want='mine';
-  else if(r.pow<0.3) want='plant';
-  else if(res.mat>capacity()*0.85) want='depot';
-  else if(have('armory')===0&&worldIndex>1) want='armory';
-  else if(myPeople().some(u=>u.wounded)&&have('clinic')===0) want='clinic';
-  else if(have('turret')<1+Math.floor(raidNo/3)) want='turret';
-  else if(have('lab')===0&&res.mat>110) want='lab';
-  else if(have('shrine')===0&&res.mat>120) want='shrine';
-  else if(have('fort')===0&&res.mat>160) want='fort';
-  else if(have('market')===0&&settlements.some(s=>s.relation==='alleato')) want='market';
-  else if(have('green')===0&&SEASONS[season].food<0.8&&res.mat>90) want='green';
-  else if(have('workshop')===0&&res.food>capacity()*0.6) want='workshop';
-  else if(have('wall')<Math.min(8,Math.floor(pop/3))) want='wall';
-  else if(r.food<1.2) want='farm';
-  else if(idleCount()>0) want='mine';
+const GOV_PROJECTS={
+  farm:    {label:'Fattoria', weight:withJobs(1.1), considerations:[gFood, gAfford('farm')]},
+  fishery: {label:'Peschiera', weight:withJobs(1.0), considerations:[gFood, gAfford('fishery')]},
+  green:   {label:'Serra', weight:0.85, considerations:[gFood,
+    consider('inverno o carestia', c=>is(c.winter||c.r.food<0)), gAfford('green')]},
+  // i letti vengono subito dopo il cibo: senza letti non nasce nessuno,
+  // ed è la crescita a tenere viva la colonia
+  hut:     {label:'Capanna', weight:1.25, considerations:[
+    consider('letti finiti', c=>1-c.freeBeds/4, CURVES.logistic(.6,10)),
+    consider('pochi materiali', c=>1-res.mat/120, CURVES.linear(0.7,0.3)), gAfford('hut')]},
+  block:   {label:'Alloggi', weight:1.25, considerations:[
+    consider('letti finiti', c=>1-c.freeBeds/8, CURVES.logistic(.6,10)),
+    consider('materiali in abbondanza', c=>res.mat/120, CURVES.power(1.5)), gAfford('block')]},
+  mine:    {label:'Miniera', weight:withJobs(0.9), considerations:[
+    consider('materiali scarsi', c=>Math.max(1-res.mat/Math.min(c.cap,220), 1-c.count('mine')), CURVES.linear(0.8,0.2)),
+    gAfford('mine')]},
+  workshop:{label:'Officina', weight:withJobs(0.6), considerations:[
+    consider('cibo in avanzo', c=>c.foodDays/150, CURVES.logistic(.6,8)),
+    consider('materiali scarsi', c=>1-res.mat/Math.min(c.cap,220)), gAfford('workshop')]},
+  // l'energia non è vitale come cibo e letti, ma ricerca, torrette e santuari
+  // la chiedono: sotto i letti, alla pari con la miniera
+  plant:   {label:'Centrale', weight:0.85, considerations:[
+    consider('energia in calo', c=>0.6-c.r.pow, CURVES.logistic(.3,8)),
+    consider('poca energia in scorta', c=>1-res.pow/Math.min(c.cap,120), CURVES.linear(0.8,0.2)),
+    gAfford('plant')]},
+  depot:   {label:'Deposito', weight:0.9, considerations:[
+    // l'energia piena non chiede spazio: serve per cibo e materiali
+    consider('magazzini pieni', c=>Math.max(res.food,res.mat)/c.cap, CURVES.logistic(.85,18)),
+    gAfford('depot')]},
+  clinic:  {label:'Ospedale', weight:0.9, considerations:[
+    consider('feriti', c=>c.wounded/3, CURVES.linear(0.7,0.3)), gNone('clinic'), gAfford('clinic')]},
+  turret:  {label:'Torretta', weight:0.8, considerations:[
+    consider('minaccia', c=>c.threat),
+    consider('poche difese', c=>1-c.count('turret')/(1+Math.floor(raidNo/3))), gAfford('turret')]},
+  armory:  {label:'Armeria', weight:0.8, considerations:[
+    consider('minaccia', c=>Math.max(c.threat, worldIndex>1?0.8:0)), gNone('armory'), gAfford('armory')]},
+  wall:    {label:'Mura', weight:0.5, considerations:[
+    consider('minaccia', c=>c.threat),
+    consider('mura da completare', c=>1-c.count('wall')/Math.max(1,Math.min(8,Math.floor(pop/3)))), gAfford('wall')]},
+  lab:     {label:'Centro ricerca', weight:0.7, considerations:[
+    consider('ricerca da fare', c=>is(researchLeft()>0)), gNone('lab'),
+    consider('colonia avviata', c=>res.mat/110, CURVES.logistic(.8,10)), gAfford('lab')]},
+  shrine:  {label:'Santuario', weight:0.55, considerations:[
+    consider('minaccia', c=>c.threat), gNone('shrine'),
+    consider('colonia ricca', c=>res.mat/120, CURVES.logistic(.85,10)), gAfford('shrine')]},
+  fort:    {label:'Roccaforte', weight:0.55, considerations:[
+    consider('minaccia', c=>c.threat), gNone('fort'),
+    consider('colonia ricca', c=>res.mat/160, CURVES.logistic(.85,10)), gAfford('fort')]},
+  foundry: {label:'Fonderia', weight:withJobs(0.75), considerations:[
+    consider('servono lingotti', c=>is(c.wantBars)), gNone('foundry'),
+    consider('materiali per fonderli', c=>res.mat/100, CURVES.logistic(.6,8)), gAfford('foundry')]},
+  granary: {label:'Granaio', weight:0.9, considerations:[
+    consider('cibo che marcisce', c=>c.spoil/2, CURVES.logistic(.4,8)), gAfford('granary')]},
+  well:    {label:'Pozzo', weight:0.8, considerations:[
+    consider('lavori all\'asciutto', c=>c.dryJobs/2, CURVES.linear(1,0)), gAfford('well')]},
+  tavern:  {label:'Taverna', weight:0.7, considerations:[
+    consider('umore basso', c=>1-c.moodAvg, CURVES.logistic(.45,10)), gNone('tavern', 1+Math.floor(pop/60)),
+    gAfford('tavern')]},
+  school:  {label:'Scuola', weight:0.6, considerations:[
+    consider('bambini', c=>c.children/8, CURVES.linear(1,0)), gNone('school'), gAfford('school')]},
+  memorial:{label:'Memoriale', weight:0.6, considerations:[
+    consider('lutto', c=>grief*2, CURVES.linear(1,0)), gNone('memorial'), gAfford('memorial')]},
+  embassy: {label:'Ambasciata', weight:0.6, considerations:[
+    consider('ci sono clan', c=>is(settlements.some(s=>!settled(s)))), gNone('embassy'), gAfford('embassy')]},
+  watch:   {label:'Torre di segnalazione', weight:0.6, considerations:[
+    consider('minaccia', c=>c.threat), gNone('watch'), gAfford('watch')]},
+  control: {label:'Controllo missioni', weight:0.6, considerations:[
+    consider('stazione in orbita', c=>is(hasOrbital('station'))), gNone('control'),
+    consider('colonia ricca', c=>res.mat/200, CURVES.logistic(.8,10)), gAfford('control')]},
+  elevator:{label:'Ascensore spaziale', weight:0.5, considerations:[
+    consider('molta orbita', c=>orbit.filter(o=>o.built).length/4, CURVES.linear(1,0)), gNone('elevator'),
+    consider('colonia ricca', c=>res.mat/300, CURVES.logistic(.8,10)), gAfford('elevator')]},
+  market:  {label:'Mercato', weight:0.6, considerations:[
+    consider('alleati', c=>is(c.allies)), gNone('market'), gAfford('market')]}
+};
+/* Rendimenti decrescenti: un cantiere aperto risponde già in parte alla sua
+   pressione, ma la pressione resta finché non è finito. Senza questo il
+   progetto in testa (quasi sempre il cibo) vinceva tre cantieri su tre e
+   i bisogni secondari, come l'energia, non arrivavano mai. Ogni cantiere
+   aperto della stessa categoria moltiplica il punteggio per GOV_DECAY.   */
+const GOV_DECAY = 0.45;
+const projectKind = k => {
+  const B=BUILDINGS[k];
+  if(B.houses) return 'houses';
+  if(B.per) for(const r in B.per) if(B.per[r]>0) return r;
+  return k;
+};
+function rankProjects(c){
+  const open={};
+  for(const t of openSites()) if(t.owner==='you'){ const k=projectKind(t.site.kind); open[k]=(open[k]||0)+1; }
+  return explain(GOV_PROJECTS,c,null)
+    .map(p=>({...p, score:p.score*Math.pow(GOV_DECAY, open[projectKind(p.action)]||0)}))
+    .sort((a,b)=>b.score-a.score);
+}
+/* sotto questa soglia il progetto migliore non vale un cantiere */
+const GOV_MIN = 0.25;
+let govLast=null;                 // l'ultima decisione, con i motivi (tooltip di «auto»)
+
+/* gli addetti: ogni posto libero ha un punteggio secondo la risorsa che produce */
+function govStaff(c){
+  const need={
+    food: 0.4+0.6*clamp01(1-c.foodDays/80)+(c.r.food<0?0.4:0),
+    mat:  0.3+0.6*clamp01(1-res.mat/Math.min(c.cap,220)),
+    pow:  0.3+0.7*clamp01(0.6-c.r.pow),
+    sci:  researchLeft()?0.45:0.05,
+    bar:  c.wantBars?0.6:0.1
+  };
+  const score=t=>{
+    const B=BUILDINGS[t.building];
+    if(B.armory) return 0.2+0.8*c.threat;
+    if(B.launch) return 0.1;
+    const k=skillKey(t);
+    return k?need[k]:0.3;
+  };
+  const open=workedTiles().filter(t=>(t.workers||0)<jobsOf(t)).sort((a,b)=>score(b)-score(a));
+  for(const t of open) while((t.workers||0)<jobsOf(t)&&idleCount()>0) t.workers++;
+  syncJobs();
+}
+
+function autoThink(){
+  const c=govContext();
+  if(idleCount()>0) govStaff(c);
 
   // non apre più cantieri di quanti la manodopera ne possa servire
-  const maxSites=Math.max(1,Math.min(3,Math.floor(workforce()/4)));
-  if(want&&openSites().length<maxSites){
-    const B=BUILDINGS[want];
-    // taglia scelta in base a quanto è ricca e popolosa la colonia
-    let sz=1;
-    if(B.jobs>0||B.houses){
-      if(res.mat>(B.cost.mat||0)*4&&pop>14) sz=3;
-      else if(res.mat>(B.cost.mat||0)*2.5&&pop>8) sz=2;
-    }
-    while(sz>1&&(res.mat<(B.cost.mat||0)*sz||res.pow<(B.cost.pow||0)*sz)) sz--;
-    if(res.mat>=(B.cost.mat||0)*sz&&res.pow>=(B.cost.pow||0)*sz){
-      const spot=pickSpot(want,sz);
-      if(spot){
-        res.mat-=(B.cost.mat||0)*sz; res.pow-=(B.cost.pow||0)*sz;
-        startSite(spot,want,'you',sz);
+  // uno ogni 4 braccia, fino a 6: con 3 fissi una colonia grande restava con
+  // decine di coloni fermi e i materiali accumulati in magazzino
+  const maxSites=Math.max(1,Math.min(6,Math.floor(workforce()/4)));
+  if(openSites().length<maxSites){
+    const ranked=rankProjects(c);
+    const best=ranked[0];
+    govLast=ranked.slice(0,3);
+    $('b-auto').title='Governatore — '+ranked.slice(0,3).map(p=>p.label+' '+p.score.toFixed(2)).join(' · ');
+    if(best&&best.score>=GOV_MIN){
+      const want=best.action, B=BUILDINGS[want];
+      // taglia scelta in base a quanto è ricca e popolosa la colonia
+      let sz=1;
+      if((B.jobs>0||B.houses||B.granary)&&!B.fixed){
+        if(canPay(costOf(want),4)&&pop>14) sz=3;
+        else if(canPay(costOf(want),2.5)&&pop>8) sz=2;
       }
+      const cost=costOf(want);
+      while(sz>1&&!canPay(cost,sz)) sz--;
+      if(canPay(cost,sz)){
+        const spot=pickSpot(want,sz);
+        if(spot){ pay(cost,sz); startSite(spot,want,'you',sz); }
+      }
+      // altrimenti si aspetta: il progetto migliore resta quello, si risparmia
     }
   }
   // se un deposito è troppo lontano dai cantieri, ne piazza uno in mezzo
@@ -2670,7 +4054,18 @@ function autoThink(){
       }
     }
   }
-  for(const s of settlements) if(canAlly(s)&&res.mat>110) allyWith(s);
+  // diplomazia: doni finché non sono alleati, pace con chi è ostile se non c'è
+  // un esercito schierato, e le richieste in sospeso
+  govOrbit(c);
+  for(const s of settlements){
+    if(canGift(s)&&s.goodwill<GOODWILL.ALLY&&res.mat>110) giftTo(s);
+    else if(canMakePeace(s)&&army.target!==s&&res.mat>140) makePeace(s);
+    // due clan amici in guerra tra loro: meglio la pace, i commerci ne soffrono
+    for(const o of settlements)
+      if(atWar(s,o)&&s.goodwill>20&&o.goodwill>20&&res.mat>150&&canMediate(s,o)) mediate(s,o);
+    if(s.request&&!s.request.accepted) govAnswer(s);
+    else if(s.request&&s.request.accepted&&res[s.request.kind]>=s.request.amount) deliverRequest(s);
+  }
 }
 /* Prima sceglieva a caso tra le caselle confinanti, e la colonia si sfilacciava.
    Ora ogni candidata riceve un punteggio: quanti tuoi edifici tocca, quanto è
@@ -2725,6 +4120,7 @@ function refreshHUD(r){
   $('s-food').textContent=fmt(res.food);
   $('s-mat').textContent =fmt(res.mat)+'/'+capacity();
   $('s-pow').textContent =fmt(res.pow);
+  $('s-bar').textContent =fmt(res.bar||0);
   $('s-pop').textContent =pop;
   $('s-war').textContent =myTroops().length;
   const d=r.demo||demography();
@@ -2737,19 +4133,24 @@ function refreshHUD(r){
     (orbit.some(o=>!o.built)?' (+1)':'');
   const set=(el,v)=>{const e=$(el);e.textContent=sign(v);e.className='rate'+(v<0?' neg':'');};
   set('r-food',r.food); set('r-mat',r.mat); set('r-pow',r.pow);
+  $('r-bar').textContent=r.bar?sign(r.bar):''; $('r-bar').className='rate'+(r.bar<0?' neg':'');
+  $('r-food').title=r.spoil>0.05?'di cui '+r.spoil.toFixed(1)+' marcisce a ogni tick: servono granai':'';
   const idle=idleCount();
+  const minds=units.filter(u=>hasNeeds(u)&&u.needs);
+  const mood=minds.length?minds.reduce((s,u)=>s+u.needs.mood,0)/minds.length:0;
   $('r-pop').textContent=pop+'/'+r.houses+' posti · '+idle+' liber'+(idle===1?'o':'i')+
-    (r.block?' · '+r.block:'');
+    (minds.length?' · umore '+Math.round(mood*100)+'%':'')+(r.block?' · '+r.block:'');
   $('r-pop').className='rate'+((idle>0||r.block)?' neg':'');
   $('s-raid').textContent=raidActive?'in corso':Math.max(0,raidIn)+'s';
-  $('r-raid').textContent=raidActive?raiders().length+' nemici':'';
+  $('r-raid').textContent=raidActive?raiders().length+' nemici':narratorPhase().label+(famineT>0?' · carestia':'');
+  $('r-raid').title='Prossima incursione: circa '+raidSize()+' predoni';
   $('r-raid').className='rate'+(raidActive||raidIn<15?' neg':'');
-  $('s-season').textContent=SEASONS[season].name+(boomT>0?' · abbondanza '+boomT+'s':'');
-  $('s-tech').textContent='liv. '+tech;
-  $('r-tech').textContent = tech>0
-    ? '+'+Math.round((techProd()-1)*100)+'% rese, +'+Math.round((techWar()-1)*100)+'% danno'+
-      (tech<3?' · '+Math.floor(sci)+'/'+TECH_COST[tech+1]:'')
-    : Math.floor(sci)+'/'+TECH_COST[1]+' al 1° livello';
+  $('s-season').textContent=SEASONS[season].name+(weather.kind!=='sereno'?' · '+weatherNow().label:'')+(boomT>0?' · abbondanza '+boomT+'s':'');
+  $('s-tech').textContent=tech+'/'+Object.keys(RESEARCH).length;
+  $('r-tech').textContent = researching
+    ? RESEARCH[researching].name+' '+Math.floor(sci)+'/'+RESEARCH[researching].cost
+    : researchLeft()?'scegli cosa studiare':'albero completo';
+  renderResearch();
   $('s-thrall').textContent=myThralls().length;
   refreshTray(); refreshArmy();
 }
@@ -2770,8 +4171,8 @@ function setInspector(tile){
     const canUp=sizeOf(tile)<3&&B.blocks>0&&!B.fixed;
     up.style.display=canUp?'':'none';
     if(canUp){
-      up.textContent='amplia a '+(sizeOf(tile)+1)+'× · '+(B.cost.mat||0)+'m'+(B.cost.pow?' '+B.cost.pow+'e':'');
-      up.disabled=raidActive||res.mat<(B.cost.mat||0)||res.pow<(B.cost.pow||0);
+      up.textContent='amplia a '+(sizeOf(tile)+1)+'× · '+costText(costOf(tile.building));
+      up.disabled=raidActive||!canPay(costOf(tile.building));
       up.title=raidActive?'Non durante un\'incursione':'Torna cantiere per '+B.blocks+' blocchi, poi rende di più (U)';
     }
     const hurt=tile.hp<tile.hpMax-0.5;
@@ -2825,10 +4226,42 @@ function setInspector(tile){
       : BIOMES[tile.biome].build ? 'Libera. Apri un catalogo e scegli cosa costruirci.'
                                  : 'Qui non si può costruire.';
   }
+  renderMinds(tile);
   box.classList.add('on');
 }
+/* I coloni sulla casella, con i bisogni e i tre punteggi più alti: per
+   ogni azione, la considerazione che la frena di più. È la risposta a
+   "perché sta facendo questo?".                                       */
+function renderMinds(tile){
+  const here=units.filter(u=>hasNeeds(u)&&u.needs&&(u.from===tile||u.to===tile))
+    .sort((a,b)=>(b===followed)-(a===followed));      // il colono seguito in cima
+  const pct=v=>Math.round(v*100);
+  const bar=(label,v)=>'<span>'+label+'</span><div class="bar"><i class="'+(v<0.3?'low':'')+
+    '" style="width:'+pct(v)+'%"></i></div>';
+  let html='';
+  for(const u of here.slice(0,3)){
+    const n=u.needs, why=explainColonist(u).slice(0,3);
+    const cur=COLONIST_ACTIONS[u.act];
+    const sk=bestSkill(u);
+    const tr=(u.traits||[]).map(id=>'<span title="'+PERSON_TRAITS[id].note+'">'+PERSON_TRAITS[id].label+'</span>').join(', ');
+    const fr=friendsOf(u).map(v=>v.name).filter(Boolean);
+    html+='<div class="mind'+(u===followed?' followed':'')+'"><div class="who">'+(u===followed?'◎ ':'')+(u.name||UNITS[u.kind].label)+' · '+AGES[u.stage].label+
+      (u.kind==='thrall'?' · assoggettato':'')+'<b>'+(cur?cur.label:'—')+'</b></div>'+
+      ((tr||sk)?'<div class="traits">'+[tr, sk&&sk.bonus>=0.01?sk.label+' +'+Math.round(sk.bonus*100)+'%':''].filter(Boolean).join(' · ')+'</div>':'')+
+      (fr.length?'<div class="traits">amici: '+fr.slice(0,3).join(', ')+(fr.length>3?'…':'')+'</div>':'')+
+      '<div class="needs">'+
+      bar('sazio',n.food)+bar('riposato',n.rest)+bar('umore',n.mood)+'</div><ol>'+
+      why.map(w=>{
+        const worst=w.detail.slice().sort((a,b)=>a.value-b.value)[0];
+        return '<li>'+w.label+' '+w.score.toFixed(2)+
+          (worst&&worst.value<0.9?' <span>· '+worst.name+' '+worst.value.toFixed(2)+'</span>':'')+'</li>';
+      }).join('')+'</ol></div>';
+  }
+  if(here.length>3) html+='<div class="more">e altri '+(here.length-3)+'</div>';
+  $('i-minds').innerHTML=html;
+}
 
-const canAfford=B=>(!B.cost.mat||res.mat>=B.cost.mat)&&(!B.cost.pow||res.pow>=B.cost.pow);
+const canAfford=B=>canPay(B.cost);   // (orbitali e UI generica)
 function tileAllows(tile,key){
   if(!tile||tile.building||tile.site) return false;
   const B=BUILDINGS[key], bio=BIOMES[tile.biome];
@@ -2861,18 +4294,26 @@ function refreshTray(){
         const O=ORBITALS[key];
         const b=document.createElement('button');
         b.className='card launch'; b.dataset.orb=key;
-        b.textContent=ICONS[key]||'●';
-        attachTip(b,O.name,O.cost.mat+' mat · '+O.cost.pow+' en',O.effect);
-        b.addEventListener('click',()=>buildOrbital(key));
+        b.innerHTML=(ICONS[key]||'●')+'<small></small>';
+        attachTip(b,O.name,'',O.effect);
+        b.addEventListener('click',()=>orbitalAction(key));
         tray.appendChild(b);
       }
     }
+    // una carta per struttura: se non c'è la si lancia, se c'è la si migliora
     for(const b of tray.children){
-      const k=b.dataset.orb, O=ORBITALS[k];
-      const need=!O.hub&&!hasOrbital('station');
-      b.disabled = hasOrbital(k)||orbit.some(o=>o.kind===k)||need||
-                   res.mat<O.cost.mat||res.pow<O.cost.pow;
-      b.title = need ? 'Serve prima la Stazione orbitale' : '';
+      const k=b.dataset.orb, o=orbitOf(k), up=upgradeCost(k);
+      const lv=o&&o.built?(o.level||1):0;
+      b.querySelector('small').textContent=lv?'L'+lv:'';
+      b.classList.toggle('built',!!lv);
+      if(!o){
+        const why=orbitBlock(k);
+        b.disabled=!!why;
+        b._tipCost=costText(orbitCost(k))+(why?'  ·  '+why:'');
+      } else if(!o.built){ b.disabled=true; b._tipCost='in salita verso l\'orbita'; }
+      else if(!up){ b.disabled=true; b._tipCost='livello massimo'+(orbitalOn(k)?'':' · spenta'); }
+      else { b.disabled=!canPay(up); b._tipCost='migliora al livello '+(lv+1)+': '+costText(up)+
+        '  ·  effetto ×'+String(ORBIT_LEVELS[lv+1].mul).replace('.',',')+(orbitalOn(k)?'':'  ·  ora spenta'); }
     }
     return;
   }
@@ -2886,7 +4327,7 @@ function refreshTray(){
       b.className='card'+(B.launch?' launch':'');
       b.dataset.key=key;
       b.textContent=ICONS[key]||'●';
-      b.dataset.mat=B.cost.mat||0; b.dataset.pow=B.cost.pow||0; b.dataset.bl=B.blocks;
+      b.dataset.bl=B.blocks;
       attachTip(b,B.name,'',B.effect);
       b.addEventListener('click',()=>construct(key));
       tray.appendChild(b);
@@ -2894,12 +4335,12 @@ function refreshTray(){
   }
   for(const b of tray.children){
     const B=BUILDINGS[b.dataset.key];
-    const m=(+b.dataset.mat)*buildSize, p=(+b.dataset.pow)*buildSize, bl=(+b.dataset.bl)*buildSize;
-    b._tipCost=m+' mat'+(p?' · '+p+' en':'')+' · '+bl+' blocchi'+(buildSize>1?'  ·  taglia '+buildSize+'×':'');
+    const bl=(+b.dataset.bl)*buildSize;
+    b._tipCost=costText(costOf(b.dataset.key),buildSize)+' · '+bl+' blocchi'+(buildSize>1?'  ·  taglia '+buildSize+'×':'');
     b.disabled=!selected||!tileAllows(selected,b.dataset.key)||!canAffordSize(B);
   }
 }
-const canAffordSize=B=>res.mat>=(B.cost.mat||0)*buildSize&&res.pow>=(B.cost.pow||0)*buildSize;
+const canAffordSize=B=>canPay(costOf(Object.keys(BUILDINGS).find(k=>BUILDINGS[k]===B)),buildSize);
 
 function refreshArmy(){
   const troops=myTroops();
@@ -2920,57 +4361,65 @@ function refreshArmy(){
   // a cavallo del ridisegno finiva su un pulsante già rimosso e si perdeva.
   // Ora si ridisegna solo se cambia qualcosa che si vede.
   const noTroops=myTroops().length===0, mk=hasMarket();
-  const sig=JSON.stringify(settlements.map(s=>[s.name,s.relation,
+  const sig=JSON.stringify(settlements.map(s=>[s.name,s.relation,Math.round(s.goodwill/5),
     tiles.filter(t=>t.settlement===s&&t.building).length,
-    units.filter(u=>u.settlement===s).length,
-    canAlly(s),canSubjugate(s),army.target===s,
+    units.filter(u=>u.settlement===s&&u.kind==='soldier').length,
+    canGift(s),canMakePeace(s),canSubjugate(s),army.target===s,
+    s.request&&[s.request.accepted,s.request.deadline>>2,res[s.request.kind]>=s.request.amount],
+    Math.round((s.unrest||0)/5),settlements.map(o=>atWar(s,o)&&canMediate(s,o)),
     mk&&res.food>=40,mk&&res.mat>=40,noTroops]));
   if(list.dataset.sig===sig) return;
   list.dataset.sig=sig;
   list.innerHTML='';
+  const btn=(parent,label,on,fn,cls)=>{
+    const b=document.createElement('button'); b.textContent=label; b.disabled=!on;
+    if(cls) b.className=cls;
+    b.addEventListener('click',fn); parent.appendChild(b); return b;
+  };
   for(const s of settlements){
     const alive=tiles.filter(t=>t.settlement===s&&t.building).length;
-    const guards=units.filter(u=>u.settlement===s).length;
+    const guards=units.filter(u=>u.settlement===s&&u.kind==='soldier').length;
+    const P=personalityOf(s), g=Math.round(s.goodwill||0);
     const d=document.createElement('div'); d.className='settle';
+    const wars=settlements.filter(o=>atWar(s,o));
     d.innerHTML='<div class="nm">'+s.name+'<span class="rel '+s.relation+'">'+s.relation+'</span></div>'+
-      '<div class="meta">'+alive+' strutture · '+guards+' soldati</div>';
-    const acts=document.createElement('div'); acts.className='acts';
-    if(s.relation!=='conquistato'&&s.relation!=='assoggettato'){
-      const a=document.createElement('button');
-      a.textContent='alleati ('+ALLY_COST.mat+'m)';
-      a.disabled=!canAlly(s);
-      a.addEventListener('click',()=>allyWith(s));
-      acts.appendChild(a);
-      if(canSubjugate(s)){
-        const sub=document.createElement('button');
-        sub.textContent='assoggetta';
-        sub.addEventListener('click',()=>subjugate(s));
-        acts.appendChild(sub);
-      }
-      if(s.relation==='alleato'){
-        const b1=document.createElement('button');
-        b1.textContent='40 cibo → 32 mat';
-        b1.disabled=!hasMarket()||res.food<40;
-        b1.addEventListener('click',()=>tradeWith(s,'buy'));
-        acts.appendChild(b1);
-        const b2=document.createElement('button');
-        b2.textContent='40 mat → 32 cibo';
-        b2.disabled=!hasMarket()||res.mat<40;
-        b2.addEventListener('click',()=>tradeWith(s,'sell'));
-        acts.appendChild(b2);
-      }
-      const w=document.createElement('button'); w.className='war';
-      w.textContent=army.target===s?'richiama':'attacca';
-      w.disabled=myTroops().length===0&&army.target!==s;
-      w.addEventListener('click',()=>army.target===s?recall():declareWar(s));
-      acts.appendChild(w);
-    } else {
-      const a=document.createElement('button');
-      a.textContent=s.relation==='assoggettato'?'assoggettato · tributo 1,4':'conquistato';
-      a.disabled=true;
-      acts.appendChild(a);
+      '<div class="meta"><span title="'+P.note+'">'+P.label+'</span> · '+alive+' strutture · '+guards+' soldati'+
+      (wars.length?' · <span class="war-with">in guerra con '+wars.map(o=>o.name).join(', ')+'</span>':'')+'</div>'+
+      (settled(s)?'':'<div class="gw" title="'+(s.log||[]).join('\n')+'"><div class="gw-bar"><i style="left:'+
+        ((g+100)/2)+'%"></i></div><span>'+(g>0?'+':'')+g+'</span></div>')+
+      (s.relation==='assoggettato'?'<div class="meta">malcontento '+Math.round(s.unrest||0)+'% · guarnigione '+
+        garrisonNear(s)+'</div>':'');
+    if(s.request){
+      const r=s.request, what=r.amount+(r.kind==='food'?' cibo':' materiali');
+      const q=document.createElement('div'); q.className='req';
+      q.innerHTML='<span>📜 chiede '+what+' · '+r.deadline+'s</span>';
+      const qa=document.createElement('div'); qa.className='acts';
+      if(!r.accepted){
+        btn(qa,'accetta',true,()=>answerRequest(s,true));
+        btn(qa,'rifiuta',true,()=>answerRequest(s,false));
+      } else btn(qa,'consegna '+what,res[r.kind]>=r.amount,()=>deliverRequest(s));
+      q.appendChild(qa); d.appendChild(q);
     }
-    d.appendChild(acts); list.appendChild(d);
+    const acts=document.createElement('div'); acts.className='acts';
+    if(!settled(s)){
+      if(s.relation==='ostile') btn(acts,'pace ('+PEACE_COST.mat+'m)',canMakePeace(s),()=>makePeace(s));
+      else btn(acts,'dono ('+GIFT_COST.mat+'m '+GIFT_COST.food+'c)',canGift(s),()=>giftTo(s));
+      if(canSubjugate(s)) btn(acts,'assoggetta',true,()=>subjugate(s));
+      if(s.relation==='alleato'){
+        btn(acts,'40 cibo → 32 mat',hasMarket()&&res.food>=40,()=>tradeWith(s,'buy'));
+        btn(acts,'40 mat → 32 cibo',hasMarket()&&res.mat>=40,()=>tradeWith(s,'sell'));
+      }
+      btn(acts,army.target===s?'richiama':'attacca',!(myTroops().length===0&&army.target!==s),
+        ()=>army.target===s?recall():declareWar(s),'war');
+    } else btn(acts,s.relation==='assoggettato'?'assoggettato · tributo 1,4':'conquistato',false,()=>{});
+    d.appendChild(acts);
+    for(const o of wars){
+      if(s.name>o.name) continue;              // un pulsante per coppia
+      const m=document.createElement('div'); m.className='acts';
+      btn(m,'media la pace con '+o.name+' ('+mediateCost()+'m)',canMediate(s,o),()=>mediate(s,o));
+      d.appendChild(m);
+    }
+    list.appendChild(d);
   }
 }
 
@@ -3045,11 +4494,9 @@ function upgradeBuilding(tile){
   if(!tile||!isMine(tile)) return;
   if(raidActive){ toast('Non si amplia durante un\'incursione.'); return; }
   if(!canUpgrade(tile)) return;
-  const B=BUILDINGS[tile.building], cm=B.cost.mat||0, cp=B.cost.pow||0;
-  if(res.mat<cm||res.pow<cp){
-    toast('Per ampliare servono '+cm+' materiali'+(cp?' e '+cp+' energia':'')+'.'); return;
-  }
-  res.mat-=cm; res.pow-=cp;
+  const B=BUILDINGS[tile.building], cost=costOf(tile.building);
+  if(!canPay(cost)){ toast('Per ampliare servono '+costText(cost)+'.'); return; }
+  pay(cost);
   const hp=tile.hp;
   tile.size=sizeOf(tile)+1;
   openSite(tile,tile.building,'you',B.blocks,true);
@@ -3079,17 +4526,25 @@ function snapshot(){
   const si=s=>s?settlements.indexOf(s):-1;
   return {v:1, when:Date.now(), worldIndex, worldSeed, trait:trait.id,
     res:{...res}, pop, sci, tech, season, seasonT, raidIn, raidNo, worldAge, dayT,
-    eventIn, boomT, padCargoMat, padCargoFood,
+    eventIn, boomT, padCargoMat, padCargoFood, grief, raidWarned,
+    narrator:{phase:narrator.phase,t:narrator.t,hurt:narrator.hurt}, choice, famineT, exiles, chainT,
+    researched:[...researched], researching, stats, achFlags, weather, difficulty,
     army:{size:army.size, target:si(army.target)},
     settlements:settlements.map(s=>({name:s.name, core:s.core.id, relation:s.relation,
-      mat:s.mat, thinkT:s.thinkT, tradeT:s.tradeT||0})),
+      mat:s.mat, thinkT:s.thinkT, tradeT:s.tradeT||0,
+      pers:s.personality, gw:s.goodwill, ties:s.ties, req:s.request, reqT:s.reqT,
+      unrest:s.unrest||0, giftT:s.giftT||0, log:s.log, wars:s.wars})),
     tiles:tiles.filter(t=>t.building).map(t=>({id:t.id, b:t.building, o:t.owner, sz:sizeOf(t),
       hp:t.hp, w:t.workers||0, un:t.unit, set:si(t.settlement), sp:t.spawnT||0,
       st:t.site?{need:t.site.need, have:t.site.have, up:!!t.site.upgrade}:null})),
     units:units.map(u=>({k:u.kind, f:u.faction, at:u.from.id, hp:u.hp, age:u.age,
       wd:!!u.wounded, set:si(u.settlement), dep:!!u.deployed,
-      load:u.load, dl:!!u.delivered, life:u.lifeT||0})),
-    orbit:orbit.map(o=>o.kind), moonCrew:moonCrew.length};
+      load:u.load, dl:!!u.delivered, life:u.lifeT||0,
+      nd:u.needs?[u.needs.food,u.needs.rest,u.needs.mood]:null,
+      nm:u.name, tr:u.traits, sk:u.skills, org:si(u.origin), rq:u.req||null, fun:u.funT||0, st:u.study||null,
+      uid:u.uid||0, bd:u.bonds||null, sor:u.sorrowT||0})),
+    orbit:orbit.filter(o=>o.built).map(o=>({k:o.kind, lv:o.level||1})), moonCrew:moonCrew.length,
+    spaceOffline, minerT, raidSite:raidSite?raidSite.id:-1};
 }
 function saveGame(silent){
   if(launching||gameOver) return;           // a metà volo o a colonia perduta non si salva
@@ -3126,6 +4581,14 @@ function restore(d){
     trait=TRAITS.find(x=>x.id===d.trait)||trait;
     settlements=d.settlements.map(s=>({name:s.name, core:tiles[s.core], relation:s.relation,
       tiles:[], mat:s.mat, thinkT:s.thinkT, tradeT:s.tradeT}));
+    // salvataggi di prima della benevolenza: si ricava un numero dalla parola
+    const gw0={ostile:-60, neutrale:0, alleato:80};
+    settlements.forEach((s,i)=>{
+      const e=d.settlements[i];
+      Object.assign(s,{personality:PERSONALITIES[e.pers]?e.pers:'mercanti',
+        goodwill:e.gw!==undefined?e.gw:(gw0[s.relation]||0), ties:e.ties||{}, request:e.req||null,
+        reqT:e.reqT||120, unrest:e.unrest||0, giftT:e.giftT||0, log:e.log||[], wars:e.wars||{}});
+    });
     for(const e of d.tiles){
       const t=tiles[e.id];
       if(!t||!BUILDINGS[e.b]) continue;
@@ -3150,14 +4613,35 @@ function restore(d){
       if(isPerson(u)||u.kind==='thrall') applyAge(u);
       u.settlement=e.set>=0?settlements[e.set]||null:null;
       u.deployed=e.dep;
+      // salvataggi di prima dei bisogni: il colono parte sazio e riposato
+      if(e.nd) u.needs={food:e.nd[0], rest:e.nd[1], mood:e.nd[2]};
+      u.funT=e.fun||0; u.study=e.st||null; u.sorrowT=e.sor||0;
+      if(e.uid){ u.uid=e.uid; nextUid=Math.max(nextUid,e.uid+1); } if(e.bd) u.bonds={...e.bd};
+      if(e.nm){ u.name=e.nm; u.traits=(e.tr||[]).filter(id=>PERSON_TRAITS[id]); u.skills={...(e.sk||{})}; }
+      if(e.org>=0&&settlements[e.org]) u.origin=settlements[e.org];
+      if(e.k==='envoy'){ u.lifeT=e.life; u.req=e.rq; u.delivered=e.dl||!e.rq; if(!u.delivered) takeCarry(u,0xffe08a); }
       if(e.k==='caravan'){ u.load=e.load; u.delivered=e.dl; u.lifeT=e.life; if(!e.dl) takeCarry(u,0xd9a441); }
     }
-    Object.assign(res,d.res);
-    pop=myPeople().length; sci=d.sci; tech=d.tech; season=d.season; seasonT=d.seasonT;
+    Object.assign(res,d.res); res.bar=res.bar||0;
+    pop=myPeople().length; sci=d.sci;
+    // salvataggi di prima dell'albero: i vecchi livelli diventano i primi nodi dell'economia e dell'esercito
+    researched=new Set((d.researched||['tools','weapons','rotation'].slice(0,d.tech||0)).filter(id=>RESEARCH[id]));
+    tech=researched.size; achFlags=d.achFlags||{};
+    difficulty=DIFFICULTY[d.difficulty]?d.difficulty:'normale';
+    weather=d.weather&&WEATHER[d.weather.kind]?{...d.weather}:{kind:'sereno',t:120}; applyWeather(); researching=RESEARCH[d.researching]?d.researching:null; stats=d.stats||[]; season=d.season; seasonT=d.seasonT;
     raidIn=d.raidIn; raidNo=d.raidNo; worldAge=d.worldAge; dayT=d.dayT;
-    eventIn=d.eventIn; boomT=d.boomT; padCargoMat=d.padCargoMat; padCargoFood=d.padCargoFood;
+    eventIn=d.eventIn; boomT=d.boomT; grief=d.grief||0; raidWarned=!!d.raidWarned;
+    narrator=d.narrator&&NARRATOR_PHASES[d.narrator.phase]?{...d.narrator}:{phase:'calma',t:0,hurt:0};
+    choice=d.choice&&CHOICE_EVENTS[d.choice.id]?d.choice:null; famineT=d.famineT||0; exiles=d.exiles||0; chainT=d.chainT||0;
+    hideChoice(); if(choice&&!auto) showChoice(); padCargoMat=d.padCargoMat; padCargoFood=d.padCargoFood;
     army.size=d.army.size; army.target=d.army.target>=0?settlements[d.army.target]||null:null;
-    for(const k of d.orbit){ addOrbital(k); const o=orbit[orbit.length-1]; o.built=true; o.rise=1; }
+    // salvataggi vecchi: solo il nome; nuovi: nome e livello
+    for(const e of d.orbit){
+      const k=typeof e==='string'?e:e.k; if(!ORBITALS[k]) continue;
+      addOrbital(k); const o=orbit[orbit.length-1]; o.built=true; o.rise=1; o.level=e.lv||1;
+      o.mesh.scale.setScalar(1+0.15*(o.level-1));
+    }
+    spaceOffline=d.spaceOffline||0; minerT=d.minerT||0; raidSite=d.raidSite>=0?tiles[d.raidSite]:null;
     for(let i=0;i<d.moonCrew;i++) landOnMoon();
     raidActive=units.some(u=>u.faction==='raider');
     document.getElementById('w-count').textContent=
@@ -3175,7 +4659,7 @@ function checkCollapse(){
   if(myPeople().length>0||myThralls().length>0) return false;
   gameOver=true;
   $('over-body').textContent='Non resta nessuno a portare avanti il villaggio. Hai raggiunto il mondo n° '+
-    worldIndex+' e il livello di ricerca '+tech+'.';
+    worldIndex+' con '+tech+' ricerche completate su '+Object.keys(RESEARCH).length+'.';
   $('over').classList.add('on');
   $('over-restart').focus();
   return true;
@@ -3184,7 +4668,8 @@ function restartGame(){
   $('over').classList.remove('on');
   gameOver=false;
   worldIndex=1; worldSeed=Date.now()%99999;
-  res={food:22,mat:60,pow:12}; pop=3; sci=0; tech=0; eventIn=110; boomT=0;
+  res=startingRes(); pop=3; sci=0; tech=0; eventIn=110; boomT=0;
+  researched=new Set(); researching=null; stats=[]; veterans=[];
   generateWorld(worldSeed); applySeason(); refreshHUD();
   toast('Una nuova colonia atterra su '+NAMES[0]+'.');
 }
@@ -3195,22 +4680,13 @@ function construct(key){
   const B=BUILDINGS[key];
   if(!selected||!tileAllows(selected,key)||!canAffordSize(B)) return;
   const s=buildSize;
-  res.mat-=(B.cost.mat||0)*s; res.pow-=(B.cost.pow||0)*s;
+  pay(costOf(key),s);
   startSite(selected,key,'you',s);
   setInspector(selected); refreshHUD();
   toast('Cantiere '+s+'× aperto: servono '+(B.blocks*s)+' blocchi dal magazzino.');
 }
 /* mandare in orbita: parte subito, ma ci mette qualche secondo a salire */
-function buildOrbital(kind){
-  const O=ORBITALS[kind];
-  if(hasOrbital(kind)||orbit.some(o=>o.kind===kind)) return;
-  if(!O.hub&&!hasOrbital('station')){ toast('Serve prima la Stazione orbitale.'); return; }
-  if(res.mat<O.cost.mat||res.pow<O.cost.pow) return;
-  res.mat-=O.cost.mat; res.pow-=O.cost.pow;
-  addOrbital(kind);
-  toast(O.name+': lancio in corso.');
-  refreshHUD();
-}
+/* buildOrbital e i miglioramenti orbitali sono in 25-space.js */
 
 /* demolire: restituisce metà dei materiali spesi */
 function demolish(tile){
@@ -3228,18 +4704,20 @@ function launchFrom(tile){
   padCargoMat =Math.min(padCargoMat, cargoMax('mat'));
   padCargoFood=Math.min(padCargoFood,cargoMax('food'));
   res.mat-=padCargoMat; res.food-=padCargoFood;   // sottratti dalle scorte qui
+  const crew=boardVeterans(tile);
   const m=rocketMesh(); orientTo(m,tile);
   planetGroup.add(m);
   launching={mesh:m, tile, t:0};
-  toast('Decollo: '+padCargoMat+' materiali e '+padCargoFood+' cibo a bordo.');
+  toast('Decollo: '+crew+' veterani, '+padCargoMat+' materiali e '+padCargoFood+' cibo a bordo.');
   refreshHUD();
 }
 function nextWorld(){
   worldIndex++; worldSeed=(worldSeed*1103515245+12345)%2147483647;
-  res.mat=padCargoMat; res.food=padCargoFood; res.pow=12;   // sbarca solo il carico
-  pop=Math.max(3,Math.floor(pop/2));
-  generateWorld(worldSeed); applySeason(); refreshHUD();
+  res.mat=padCargoMat; res.food=padCargoFood; res.pow=12; res.bar=0;   // sbarca solo il carico
+  pop=Math.max(3,veterans.length);
+  generateWorld(worldSeed); applySeason();
   toast('Atterrati su '+NAMES[(worldIndex-1)%NAMES.length]+'.');
+  landVeterans(); refreshHUD();
 }
 
 /* comandi */
@@ -3306,12 +4784,23 @@ for(const b of $('speeds').children)
 $('b-save').addEventListener('click',()=>saveGame(false));
 $('b-load').addEventListener('click',loadGame);
 $('b-log').addEventListener('click',toggleLog);
+$('b-research').addEventListener('click',toggleResearch);
+$('b-share').addEventListener('click',()=>{
+  const url=location.origin+location.pathname+'?seed='+worldSeed+(worldIndex>1?'&mondo='+worldIndex:'')+
+    (difficulty!=='normale'?'&difficolta='+difficulty:'');
+  const done=()=>toast('Link copiato: riapre questo pianeta (seme '+worldSeed+').');
+  if(navigator.clipboard) navigator.clipboard.writeText(url).then(done,()=>toast(url));
+  else toast(url);
+});
+$('b-stats').addEventListener('click',toggleStats);
+$('stats-mode').addEventListener('click',()=>{ statsTable=!statsTable; renderStats(); });
 $('i-upgrade').addEventListener('click',()=>upgradeBuilding(selected));
 $('i-repair').addEventListener('click',()=>repairBuilding(selected));
 $('over-restart').addEventListener('click',restartGame);
 
 /* scorciatoie: le azioni più frequenti senza dover inseguire i pulsanti */
 function deselect(){
+  followed=null;
   selected=null; setInspector(null); refreshTray();
   if(marker){ planetGroup.remove(marker); marker=null; }
 }
@@ -3329,6 +4818,8 @@ addEventListener('keydown',e=>{
   else if(k==='2') setSpeed(2);
   else if(k==='3') setSpeed(4);
   else if(k==='a') $('b-auto').click();
+  else if(k==='t') toggleResearch();
+  else if(k==='s') toggleStats();
   else if(k==='f') setPower('bolt');
   else if(k==='r') setPower('rain');
   else if(k==='c') setPower('heal');
@@ -3351,6 +4842,7 @@ el.addEventListener('pointermove',e=>{
   const dx=e.clientX-lastX, dy=e.clientY-lastY;
   lastX=e.clientX; lastY=e.clientY; moved+=Math.abs(dx)+Math.abs(dy);
   theta-=dx*0.006; phi=Math.min(Math.PI-0.12,Math.max(0.12,phi-dy*0.006));
+  if(moved>5) followed=null;             // trascinare la vista smette di seguire
   updateCamera();
 });
 el.addEventListener('pointerup',e=>{dragging=false; if(moved<5) pick(e.clientX,e.clientY);});
@@ -3361,10 +4853,51 @@ el.addEventListener('wheel',e=>{
 },{passive:false});
 
 const ray=new THREE.Raycaster(), ndc=new THREE.Vector2();
+/* il colono seguito dalla camera: si sceglie cliccandolo, Esc o un
+   trascinamento della vista lo lasciano andare */
+let followed=null;
+/* i coloni sono minuscoli: vale un clic entro 0,35 dalla figura, purché
+   il pianeta non la nasconda */
+function pickColonist(terrainDist){
+  const tmp=new THREE.Vector3();
+  let best=null, bd=Infinity;
+  for(const u of units){
+    if(!hasNeeds(u)||!u.mesh.visible) continue;
+    u.mesh.getWorldPosition(tmp);
+    if(ray.ray.distanceToPoint(tmp)>0.35) continue;
+    const along=tmp.clone().sub(ray.ray.origin).dot(ray.ray.direction);
+    if(along<0||along>terrainDist+0.6) continue;
+    if(along<bd){ bd=along; best=u; }
+  }
+  return best;
+}
+function follow(u){
+  followed=u; autoSpin=false;
+  if(marker){ planetGroup.remove(marker); marker=null; }
+  selected=u.from; setInspector(selected); refreshTray(); clearRange();
+  toast('Segui '+(u.name||'il colono')+'. Esc o trascina la vista per smettere.');
+}
+/* la camera si porta dolcemente sopra il colono seguito */
+function followTick(dt){
+  if(!followed) return;
+  if(!units.includes(followed)){ followed=null; return; }
+  const p=new THREE.Vector3(); followed.mesh.getWorldPosition(p); p.normalize();
+  const phiT=Math.min(Math.PI-0.12,Math.max(0.12,Math.acos(p.y))), thetaT=Math.atan2(p.z,p.x);
+  let d=thetaT-theta; d=Math.atan2(Math.sin(d),Math.cos(d));
+  const k=Math.min(1,dt*3);
+  theta+=d*k; phi+=(phiT-phi)*k;
+  updateCamera();
+  if(selected!==followed.from){ selected=followed.from; setInspector(selected); }
+}
 function pick(cx,cy){
   ndc.x=(cx/innerWidth)*2-1; ndc.y=-(cy/innerHeight)*2+1;
   ray.setFromCamera(ndc,camera);
   const hit=ray.intersectObject(terrainMesh)[0];
+  if(!activePower){
+    const u=pickColonist(hit?hit.distance:Infinity);
+    if(u){ follow(u); return; }
+  }
+  followed=null;
   if(!hit){
     if(!activePower){ selected=null; setInspector(null); refreshTray(); }
     return;
@@ -3385,11 +4918,582 @@ addEventListener('resize',()=>{
 });
 
 /* ═══════════════ avvio e loop ═══════════════ */
+/* ═══════════════ progressione tra mondi ═══════════════
+   Tre cose: un albero della ricerca a rami (al posto dei tre livelli in
+   fila), i veterani che salgono sulla rampa e portano nel mondo nuovo
+   quello che hanno imparato, e le statistiche della partita.           */
+
+/* ── albero della ricerca ────────────────────────────────────────────
+   Quattro rami da tre nodi. Un nodo richiede il precedente dello stesso
+   ramo. La ricerca accumulata va al nodo scelto; se non ne scegli uno, lo
+   sceglie il governatore (o il primo disponibile). I nodi restano tuoi
+   quando cambi mondo.                                                  */
+const RESEARCH = {
+  tools:    {branch:'economia',   tier:1, name:'Attrezzi',          cost:90,  effect:'+18% a tutte le rese',            prod:0.18},
+  rotation: {branch:'economia',   tier:2, name:'Rotazione colture', cost:200, effect:'+20% cibo, il cibo marcisce la metà', food:0.2, spoil:0.5},
+  metallurgy:{branch:'economia',  tier:3, name:'Metallurgia',       cost:400, effect:'+50% lingotti e +10% a tutte le rese', bar:0.5, prod:0.1},
+  weapons:  {branch:'militare',   tier:1, name:'Armi',              cost:90,  effect:'+22% danno di truppe e torrette', war:0.22},
+  forts:    {branch:'militare',   tier:2, name:'Fortificazioni',    cost:200, effect:'edifici +50% integrità, torrette +1 di portata', fort:0.5},
+  tactics:  {branch:'militare',   tier:3, name:'Tattica',           cost:400, effect:'la milizia colpisce il doppio, +22% danno', militia:1, war:0.22},
+  languages:{branch:'diplomazia', tier:1, name:'Lingue',            cost:90,  effect:'doni e richieste esaudite +50% benevolenza', gift:0.5},
+  commerce: {branch:'diplomazia', tier:2, name:'Commercio',         cost:200, effect:'carovane +50%, tributi +50%', caravan:0.5},
+  charisma: {branch:'diplomazia', tier:3, name:'Carisma',           cost:400, effect:'malcontento degli assoggettati dimezzato, migranti ×2', unrest:0.5, migrants:1},
+  rocketry: {branch:'spazio',     tier:1, name:'Propulsione',       cost:90,  effect:'la rampa costa il 30% in meno', padCost:0.3},
+  orbital:  {branch:'spazio',     tier:2, name:'Meccanica orbitale',cost:200, effect:'strutture orbitali −25%', orbitCost:0.25},
+  cryo:     {branch:'spazio',     tier:3, name:'Criogenia',         cost:400, effect:'+4 veterani a bordo della rampa', veterans:4}
+};
+const BRANCHES = ['economia','militare','diplomazia','spazio'];
+let researched=new Set(), researching=null;
+const hasTech = id => researched.has(id);
+/* somma di un effetto su tutti i nodi completati */
+const techSum = key => { let s=0; for(const id of researched) s+=RESEARCH[id][key]||0; return s; };
+const canResearch = id => !researched.has(id) &&
+  Object.values(RESEARCH).filter(n=>n.branch===RESEARCH[id].branch&&n.tier<RESEARCH[id].tier)
+    .every(n=>researched.has(Object.keys(RESEARCH).find(k=>RESEARCH[k]===n)));
+const researchOpen = () => Object.keys(RESEARCH).filter(canResearch);
+const researchLeft = () => Object.keys(RESEARCH).length-researched.size;
+
+function chooseResearch(id){
+  if(!canResearch(id)) return;
+  researching=id; renderResearch();
+  toast('Ricerca: '+RESEARCH[id].name+'.');
+}
+/* il governatore sceglie secondo le pressioni: minaccia → militare,
+   clan → diplomazia, rampa già costruita o vicina → spazio, altrimenti economia */
+function govResearch(){
+  const open=researchOpen();
+  if(!open.length) return null;
+  const threat=Math.min(1,(raidNo+1)/6), clans=settlements.some(s=>!settled(s));
+  const score=id=>{
+    const n=RESEARCH[id];
+    const b={economia:0.8, militare:0.3+0.6*threat, diplomazia:clans?0.6:0.05,
+             spazio:FC.mine.some(t=>isMine(t)&&hasFlag(t,'launch'))?0.7:0.25}[n.branch];
+    return b/n.tier;
+  };
+  return open.sort((a,b)=>score(b)-score(a))[0];
+}
+/* chiamata a ogni tick con la ricerca prodotta */
+function researchTick(points){
+  if(points<=0||!researchLeft()) return;
+  if(!researching||!canResearch(researching)) researching=auto?govResearch():researchOpen()[0];
+  if(!researching) return;
+  sci+=points;
+  const n=RESEARCH[researching];
+  if(sci<n.cost) return;
+  sci-=n.cost; researched.add(researching); tech=researched.size;
+  logEvent('🔬 Ricerca completata: '+n.name+' — '+n.effect+'.');
+  researching=null;
+  bumpWalk(); renderResearch();
+}
+
+/* ── pannello della ricerca ── */
+function toggleResearch(){
+  const on=!$('research').classList.contains('on');
+  $('research').classList.toggle('on',on); $('b-research').classList.toggle('on',on);
+  if(on) renderResearch();
+}
+function renderResearch(){
+  const box=$('research-tree');
+  if(!$('research').classList.contains('on')) return;
+  box.innerHTML='';
+  for(const br of BRANCHES){
+    const col=document.createElement('div'); col.className='branch';
+    col.innerHTML='<h4>'+br+'</h4>';
+    for(const id of Object.keys(RESEARCH).filter(k=>RESEARCH[k].branch===br)){
+      const n=RESEARCH[id], done=researched.has(id), cur=researching===id, ok=canResearch(id);
+      const b=document.createElement('button');
+      b.className='node'+(done?' done':'')+(cur?' cur':'');
+      b.disabled=done||!ok;
+      b.innerHTML='<b>'+n.name+'</b><span>'+n.effect+'</span><em>'+
+        (done?'completata':cur?Math.floor(sci)+'/'+n.cost:n.cost+' ricerca')+'</em>';
+      b.addEventListener('click',()=>chooseResearch(id));
+      col.appendChild(b);
+    }
+    box.appendChild(col);
+  }
+}
+
+/* ── veterani ──────────────────────────────────────────────────────
+   Al decollo salgono a bordo i coloni più esperti, fino ai posti della
+   rampa (3 + 2 per taglia, più la criogenia). Nel mondo nuovo arrivano
+   con nome, tratti, abilità ed età.                                    */
+let veterans=[];
+function boardVeterans(pad){
+  const seats=3+2*sizeOf(pad)+techSum('veterans');
+  const xp=u=>Object.values(u.skills||{}).reduce((a,b)=>a+b,0);
+  const crew=units.filter(u=>isPerson(u)&&u.stage!=='child'&&u.name)
+    .sort((a,b)=>xp(b)-xp(a)).slice(0,seats);
+  veterans=crew.map(u=>({name:u.name, traits:[...(u.traits||[])], skills:{...(u.skills||{})}, age:u.age}));
+  return veterans.length;
+}
+/* dopo generateWorld: i primi coloni diventano i veterani sbarcati */
+function landVeterans(){
+  if(!veterans.length) return;
+  const mine=units.filter(u=>u.faction==='you'&&u.kind==='worker');
+  veterans.forEach((v,i)=>{
+    const u=mine[i]; if(!u) return;
+    u.name=v.name; u.traits=v.traits; u.skills=v.skills; u.age=Math.min(v.age,AGES.adult.until-20); applyAge(u);
+  });
+  const best=veterans.map(v=>{ const k=Object.keys(v.skills).sort((a,b)=>v.skills[b]-v.skills[a])[0];
+    return v.name+(k?' ('+SKILLS[k]+')':''); });
+  logEvent('🚀 Sbarcano '+veterans.length+' veterani: '+best.slice(0,5).join(', ')+(best.length>5?'…':'')+'.');
+  veterans=[];
+}
+
+/* ── statistiche ───────────────────────────────────────────────────
+   Un campione ogni 10 tick; oltre 400 campioni si dimezza la risoluzione,
+   così una partita lunga resta leggera.                                */
+let stats=[];
+function statsTick(){
+  if(worldAge%10) return;
+  const minds=units.filter(u=>hasNeeds(u)&&u.needs);
+  const live=settlements.filter(s=>!settled(s));
+  stats.push({t:worldAge, w:worldIndex, pop:myPeople().length,
+    food:Math.round(res.food), mat:Math.round(res.mat), pow:Math.round(res.pow), bar:Math.round(res.bar||0),
+    wealth:Math.round(colonyWealth()),
+    mood:minds.length?Math.round(100*minds.reduce((s,u)=>s+u.needs.mood,0)/minds.length):null,
+    goodwill:live.length?Math.round(live.reduce((s,x)=>s+x.goodwill,0)/live.length):null,
+    raids:raidNo});
+  if(stats.length>400) stats=stats.filter((_,i)=>i%2===0);
+}
+
+/* ── schermata statistiche ───────────────────────────────────────────
+   Piccoli multipli: un grafico per misura, ognuno con la sua scala (mai
+   due assi sullo stesso grafico). Una serie sola per grafico, quindi un
+   solo colore e nessuna legenda: il titolo dice cosa si guarda. Al
+   passaggio del mouse, mirino e valore; le linee tratteggiate segnano
+   i cambi di mondo. C'è anche la vista a tabella.                       */
+const STAT_CHARTS = [
+  {key:'pop',      label:'Coloni'},
+  {key:'wealth',   label:'Ricchezza'},
+  {key:'mood',     label:'Umore medio', unit:'%'},
+  {key:'goodwill', label:'Benevolenza media dei clan'},
+  {key:'food',     label:'Cibo'},
+  {key:'mat',      label:'Materiali'}
+];
+let statsTable=false;
+function toggleStats(){
+  const on=!$('stats').classList.contains('on');
+  $('stats').classList.toggle('on',on); $('b-stats').classList.toggle('on',on);
+  if(on) renderStats();
+}
+function renderStats(){
+  const box=$('stats-body');
+  $('stats-mode').textContent=statsTable?'grafici':'tabella';
+  if(!stats.length){ box.innerHTML='<p class="muted">Ancora nessun dato: torna tra qualche secondo.</p>'+achievementsHTML(); return; }
+  if(statsTable){ box.innerHTML=statsTableHTML()+achievementsHTML(); return; }
+  box.innerHTML='';
+  for(const C of STAT_CHARTS){
+    const pts=stats.filter(s=>s[C.key]!==null&&s[C.key]!==undefined);
+    const fig=document.createElement('figure'); fig.className='sc';
+    const last=pts.length?pts[pts.length-1][C.key]:null;
+    fig.innerHTML='<figcaption><span>'+C.label+'</span><b>'+(last===null?'—':last.toLocaleString('it')+(C.unit||''))+'</b></figcaption>';
+    if(pts.length<2){ fig.insertAdjacentHTML('beforeend','<p class="muted">servono più dati</p>'); box.appendChild(fig); continue; }
+    fig.appendChild(lineChart(pts,C));
+    box.appendChild(fig);
+  }
+  box.insertAdjacentHTML('beforeend',achievementsHTML());
+}
+function lineChart(pts,C){
+  const W=260, H=86, L=34, Rp=6, T=6, B=16;
+  const xs=pts.map(p=>p.t), ys=pts.map(p=>p[C.key]);
+  const x0=Math.min(...xs), x1=Math.max(...xs);
+  let y0=Math.min(0,...ys), y1=Math.max(...ys);
+  if(y1===y0) y1=y0+1;
+  const X=t=>L+(W-L-Rp)*(t-x0)/Math.max(1,x1-x0), Y=v=>T+(H-T-B)*(1-(v-y0)/(y1-y0));
+  const ns='http://www.w3.org/2000/svg', svg=document.createElementNS(ns,'svg');
+  svg.setAttribute('viewBox','0 0 '+W+' '+H); svg.setAttribute('class','sc-svg');
+  svg.setAttribute('role','img'); svg.setAttribute('aria-label',C.label+': da '+ys[0]+' a '+ys[ys.length-1]);
+  const fmt=v=>Math.abs(v)>=1000?(v/1000).toFixed(1).replace('.',',')+'k':String(Math.round(v));
+  let html='';
+  // griglia recessiva: zero (o minimo) e massimo
+  for(const v of [y0,y1]) html+='<line class="grid" x1="'+L+'" x2="'+(W-Rp)+'" y1="'+Y(v)+'" y2="'+Y(v)+'"/>'+
+    '<text class="ax" x="'+(L-4)+'" y="'+(Y(v)+3)+'" text-anchor="end">'+fmt(v)+'</text>';
+  // cambi di mondo
+  for(let i=1;i<pts.length;i++) if(pts[i].w!==pts[i-1].w)
+    html+='<line class="world" x1="'+X(pts[i].t)+'" x2="'+X(pts[i].t)+'" y1="'+T+'" y2="'+(H-B)+'"/>';
+  html+='<text class="ax" x="'+L+'" y="'+(H-3)+'">'+x0+'s</text><text class="ax" x="'+(W-Rp)+'" y="'+(H-3)+'" text-anchor="end">'+x1+'s</text>';
+  html+='<path class="line" d="'+pts.map((p,i)=>(i?'L':'M')+X(p.t).toFixed(1)+' '+Y(p[C.key]).toFixed(1)).join('')+'"/>';
+  html+='<line class="cross" y1="'+T+'" y2="'+(H-B)+'" visibility="hidden"/><circle class="dot" r="4" visibility="hidden"/>';
+  html+='<rect class="hit" x="'+L+'" y="0" width="'+(W-L-Rp)+'" height="'+H+'"/>';
+  svg.innerHTML=html;
+  const tip=document.createElement('div'); tip.className='sc-tip';
+  const cross=svg.querySelector('.cross'), dot=svg.querySelector('.dot');
+  const hit=svg.querySelector('.hit');
+  const move=e=>{
+    const r=svg.getBoundingClientRect(), t=x0+(x1-x0)*(((e.clientX-r.left)/r.width*W)-L)/(W-L-Rp);
+    let best=pts[0]; for(const p of pts) if(Math.abs(p.t-t)<Math.abs(best.t-t)) best=p;
+    const px=X(best.t), py=Y(best[C.key]);
+    cross.setAttribute('x1',px); cross.setAttribute('x2',px); cross.setAttribute('visibility','visible');
+    dot.setAttribute('cx',px); dot.setAttribute('cy',py); dot.setAttribute('visibility','visible');
+    tip.textContent=best.t+'s · mondo '+best.w+' · '+best[C.key].toLocaleString('it')+(C.unit||'');
+    tip.style.left=(px/W*100)+'%'; tip.classList.add('on');
+  };
+  hit.addEventListener('pointermove',move);
+  hit.addEventListener('pointerleave',()=>{ cross.setAttribute('visibility','hidden'); dot.setAttribute('visibility','hidden'); tip.classList.remove('on'); });
+  const wrap=document.createElement('div'); wrap.className='sc-wrap';
+  wrap.appendChild(svg); wrap.appendChild(tip);
+  return wrap;
+}
+function statsTableHTML(){
+  const rows=stats.slice(-40).reverse();
+  return '<div class="st-scroll"><table class="st"><thead><tr><th>tempo</th><th>mondo</th>'+
+    STAT_CHARTS.map(C=>'<th>'+C.label.toLowerCase()+'</th>').join('')+'<th>incursioni</th></tr></thead><tbody>'+
+    rows.map(s=>'<tr><td>'+s.t+'s</td><td>'+s.w+'</td>'+
+      STAT_CHARTS.map(C=>'<td>'+(s[C.key]===null||s[C.key]===undefined?'—':s[C.key].toLocaleString('it')+(C.unit||''))+'</td>').join('')+
+      '<td>'+s.raids+'</td></tr>').join('')+'</tbody></table></div>';
+}
+/* ═══════════════ amicizie e traguardi ═══════════════ */
+
+/* ── amicizie ────────────────────────────────────────────────────────
+   Chi lavora sullo stesso edificio o dorme sotto lo stesso tetto si
+   affeziona. Un legame va da 0 a 1; da FRIEND_AT in su è un'amicizia.
+   Gli amici vicini alzano l'umore; perderne uno lo abbassa per un po',
+   più del lutto generale. I legami non curati si affievoliscono.       */
+const FRIEND_AT = 0.5, BOND_GAIN = 0.04, BOND_DECAY = 0.001, MAX_BONDS = 6;
+let nextUid = 1;
+const uidOf = u => u.uid || (u.uid = nextUid++);
+const bondOf = (u,v) => (u.bonds&&u.bonds[uidOf(v)])||0;
+function addBond(u,v,k){
+  u.bonds=u.bonds||{};
+  const id=uidOf(v); u.bonds[id]=Math.min(1,(u.bonds[id]||0)+k);
+}
+/* ogni 5 tick: gruppi di coloni sulla stessa casella di lavoro o di sonno */
+function socialTick(){
+  if(worldAge%5) return;
+  const groups=new Map();
+  for(const u of units){
+    if(!hasNeeds(u)||u.stage==='child') continue;
+    // i legami che non si coltivano si affievoliscono
+    if(u.bonds) for(const id in u.bonds){ u.bonds[id]-=BOND_DECAY*5; if(u.bonds[id]<=0) delete u.bonds[id]; }
+    // colleghi dello stesso edificio (anche mentre portano il raccolto),
+    // compagni di stanza, e chi è in taverna nello stesso momento
+    const place = u.act==='work'&&u.job ? u.job : u.act==='sleep'&&u.bed&&u.from===u.bed ? u.bed :
+                  u.act==='relax' ? u.from : null;
+    if(!place) continue;
+    if(!groups.has(place)) groups.set(place,[]);
+    groups.get(place).push(u);
+  }
+  for(const g of groups.values()){
+    if(g.length<2||g.length>12) continue;       // in una folla non ci si conosce
+    for(const a of g) for(const b of g) if(a!==b) addBond(a,b,BOND_GAIN*traitMul(a,'social'));
+  }
+  // si tengono solo i legami più forti
+  for(const u of units) if(u.bonds){
+    const ids=Object.keys(u.bonds);
+    if(ids.length>MAX_BONDS) ids.sort((a,b)=>u.bonds[a]-u.bonds[b]).slice(0,ids.length-MAX_BONDS).forEach(id=>delete u.bonds[id]);
+  }
+}
+const friendsOf = u => units.filter(v=>v!==u&&hasNeeds(v)&&bondOf(u,v)>=FRIEND_AT);
+const friendNear = u => units.some(v=>v!==u&&hasNeeds(v)&&bondOf(u,v)>=FRIEND_AT&&
+  (v.from===u.from||u.from.neighbors.includes(v.from.id)));
+/* chiamata da killUnit: gli amici di chi se ne va ne soffrono */
+function mournFriend(u,died){
+  if(!u.uid) return;
+  let sad=0;
+  for(const v of units){
+    if(v===u||!hasNeeds(v)||bondOf(v,u)<FRIEND_AT) continue;
+    v.sorrowT=died?120:60; delete v.bonds[u.uid]; sad++;
+  }
+  if(sad&&died&&u.name) logEvent('🕯 '+sad+(sad===1?' amico piange':' amici piangono')+' '+u.name+'.');
+}
+
+/* ── traguardi ───────────────────────────────────────────────────────
+   Restano nel browser anche tra una partita e l'altra (localStorage a
+   parte dal salvataggio). Si controllano ogni 10 tick.                 */
+const ACH_KEY = 'tiny-planet-colony-achievements';
+const ACHIEVEMENTS = {
+  pop10:    {label:'Villaggio',         desc:'10 coloni',                    test:()=>myPeople().length>=10},
+  pop50:    {label:'Borgo',             desc:'50 coloni',                    test:()=>myPeople().length>=50},
+  pop150:   {label:'Città',             desc:'150 coloni',                   test:()=>myPeople().length>=150},
+  research1:{label:'Prima scoperta',    desc:'completa un nodo di ricerca',  test:()=>researched.size>=1},
+  branch:   {label:'Specialista',       desc:'completa un ramo della ricerca',
+             test:()=>BRANCHES.some(b=>Object.keys(RESEARCH).filter(k=>RESEARCH[k].branch===b).every(k=>researched.has(k)))},
+  raids5:   {label:'Veterani di guerra',desc:'sopravvivi a 5 incursioni',    test:()=>raidNo>=5&&!raidActive},
+  ally:     {label:'Amici lontani',     desc:'stringi un\'alleanza',          test:()=>settlements.some(s=>s.relation==='alleato')},
+  peace:    {label:'Pacificatore',      desc:'due clan in pace grazie a te', test:()=>achFlags.mediated},
+  subject:  {label:'Signore',           desc:'assoggetta un clan',           test:()=>settlements.some(s=>s.relation==='assoggettato')},
+  wed:      {label:'Fiori d\'arancio',  desc:'un matrimonio con un clan',    test:()=>achFlags.married},
+  friends:  {label:'Legami',            desc:'un colono con tre amici',      test:()=>units.some(u=>hasNeeds(u)&&friendsOf(u).length>=3)},
+  master:   {label:'Maestro',           desc:'un colono con +40% in un mestiere',
+             test:()=>units.some(u=>u.skills&&Object.keys(u.skills).some(k=>skillMul(u,k)>=1.4))},
+  ingots:   {label:'Età del ferro',     desc:'100 lingotti in magazzino',    test:()=>(res.bar||0)>=100},
+  world2:   {label:'Oltre il cielo',    desc:'raggiungi il secondo mondo',   test:()=>worldIndex>=2},
+  world5:   {label:'Nomadi delle stelle',desc:'raggiungi il quinto mondo',   test:()=>worldIndex>=5},
+  orbit5:   {label:'Costellazione',     desc:'cinque strutture in orbita',  test:()=>orbit.filter(o=>o.built).length>=5},
+  shielded: {label:'Sotto lo scudo',    desc:'lo scudo abbatte una navetta', test:()=>achFlags.shielded},
+  asteroid: {label:'Minatori stellari', desc:'una capsula dagli asteroidi',  test:()=>achFlags.asteroid},
+  maxorbit: {label:'Ingegneria orbitale',desc:'una struttura al livello 3',  test:()=>orbit.some(o=>(o.level||1)>=3)},
+  storm:    {label:'Tempesta perfetta', desc:'respingi un\'incursione durante un temporale',
+             test:()=>achFlags.stormRaid}
+};
+let achieved=new Set(), achFlags={};
+function loadAchievements(){
+  try{ achieved=new Set(JSON.parse(localStorage.getItem(ACH_KEY)||'[]').filter(id=>ACHIEVEMENTS[id])); }
+  catch(e){ achieved=new Set(); }
+}
+function achievementTick(){
+  if(worldAge%10) return;
+  for(const id in ACHIEVEMENTS){
+    if(achieved.has(id)||!ACHIEVEMENTS[id].test()) continue;
+    achieved.add(id);
+    logEvent('🏆 Traguardo: '+ACHIEVEMENTS[id].label+' — '+ACHIEVEMENTS[id].desc+'.');
+    try{ localStorage.setItem(ACH_KEY,JSON.stringify([...achieved])); }catch(e){}
+  }
+}
+function achievementsHTML(){
+  return '<div class="ach"><h4>Traguardi '+achieved.size+'/'+Object.keys(ACHIEVEMENTS).length+'</h4><div class="ach-grid">'+
+    Object.keys(ACHIEVEMENTS).map(id=>{
+      const A=ACHIEVEMENTS[id], on=achieved.has(id);
+      return '<div class="ach-i'+(on?' on':'')+'" title="'+A.desc+'"><b>'+(on?'🏆 ':'')+A.label+'</b><span>'+A.desc+'</span></div>';
+    }).join('')+'</div></div>';
+}
+/* ═══════════════ spazio ═══════════════
+   Le strutture orbitali si costruiscono, si migliorano fino al livello 3
+   e a volte si spengono (tempesta solare). Quelle avanzate richiedono un
+   Controllo missioni con addetti; l'Ascensore spaziale le rende più
+   economiche e fa viaggiare le navette più in fretta.                  */
+
+const orbitOf = k => orbit.find(o=>o.kind===k);
+/* sotto una tempesta solare l'orbita resta buia: niente effetti, niente consumi */
+let spaceOffline=0;
+/* un orbitale funziona se è costruito, l'orbita non è spenta e (se consuma) c'è energia */
+function orbitalOn(k){
+  const o=orbitOf(k);
+  if(!o||!o.built||spaceOffline>0) return false;
+  return !ORBITALS[k].drain||res.pow>0;
+}
+/* quanto rende: 0 se spento, altrimenti il moltiplicatore del livello */
+const orbMul = k => orbitalOn(k) ? ORBIT_LEVELS[(orbitOf(k).level||1)].mul : 0;
+const hasElevator = () => activeFlag('elevator');
+
+/* il costo di una struttura orbitale: ricerca e ascensore fanno sconto */
+function orbitCost(k){
+  const disc=(1-techSum('orbitCost'))*(hasElevator()?0.6:1), c={};
+  for(const r in ORBITALS[k].cost) c[r]=Math.round(ORBITALS[k].cost[r]*disc);
+  return c;
+}
+/* perché non si può (ancora) costruire: null se si può */
+function orbitBlock(k){
+  const O=ORBITALS[k];
+  if(orbitOf(k)) return 'già in orbita';
+  if(!O.hub&&!hasOrbital('station')) return 'serve prima la Stazione orbitale';
+  if(O.advanced&&!activeFlag('control')) return 'serve un Controllo missioni con addetti';
+  if(!canPay(orbitCost(k))) return 'servono '+costText(orbitCost(k));
+  return null;
+}
+function buildOrbital(k){
+  if(orbitBlock(k)) return;
+  pay(orbitCost(k));
+  addOrbital(k);
+  toast(ORBITALS[k].name+': lancio in corso.');
+  refreshHUD();
+}
+function upgradeCost(k){
+  const o=orbitOf(k); if(!o||!o.built) return null;
+  const next=ORBIT_LEVELS[(o.level||1)+1];
+  return next?next.cost:null;
+}
+function upgradeOrbital(k){
+  const c=upgradeCost(k);
+  if(!c||!canPay(c)) return;
+  pay(c);
+  const o=orbitOf(k); o.level=(o.level||1)+1;
+  o.mesh.scale.setScalar(1+0.15*(o.level-1));
+  logEvent('🛰 '+ORBITALS[k].name+' migliorata al livello '+o.level+'.');
+  refreshHUD();
+}
+/* un clic sulla carta del catalogo: costruisce, oppure migliora */
+function orbitalAction(k){ if(orbitOf(k)) upgradeOrbital(k); else buildOrbital(k); }
+
+/* ── scudo: abbatte parte di ogni navetta prima che atterri ── */
+function shieldCut(n){
+  const m=orbMul('shield');
+  if(!m||n<=1) return n;
+  const cut=Math.min(n-1,Math.round(n*Math.min(0.8,ORBITALS.shield.cut*m)));
+  if(cut>0){
+    achFlags.shielded=true;
+    logEvent('🛡 Lo scudo orbitale colpisce la navetta: '+cut+(cut===1?' predone in meno.':' predoni in meno.'));
+  }
+  return n-cut;
+}
+
+/* ── telescopio: prevede dove atterrerà la prossima navetta ── */
+let raidSite=null;
+function telescopeTick(){
+  if(raidActive||!orbMul('telescope')||raidSite||raidIn>30) return;
+  const spots=tiles.filter(t=>!t.building&&BIOMES[t.biome].build);
+  if(!spots.length) return;
+  raidSite=spots[Math.floor(Math.random()*spots.length)];
+  markLaunch(raidSite);
+  logEvent('🔭 Il telescopio ha calcolato la rotta: la navetta atterrerà tra '+raidIn+' secondi, vicino a '+
+    (raidSite.center.dot((colonyCenter()||raidSite.center))>0.9?'la colonia!':'un punto lontano.'));
+}
+
+/* ── raccoglitore di asteroidi: ogni tanto una capsula cade vicino a un magazzino ── */
+let minerT=0;
+function minerTick(){
+  const m=orbMul('miner');
+  if(!m) return;
+  minerT+=hasElevator()?2:1;
+  if(minerT<ORBITALS.miner.every) return;
+  minerT=0;
+  const st=FC.storage.find(isMine)||FC.mine.find(isMine);
+  if(!st) return;
+  const bars=Math.round(ORBITALS.miner.bars*m), mat=Math.round(ORBITALS.miner.mat*m);
+  capsuleFX(st,()=>{
+    const cap=capacity();
+    res.bar=Math.min(cap,(res.bar||0)+bars); res.mat=Math.min(cap,res.mat+mat);
+    achFlags.asteroid=true;
+    toast('☄ Capsula dagli asteroidi: +'+bars+' lingotti, +'+mat+' materiali.'); refreshHUD();
+  });
+}
+/* una capsula che scende dall'orbita col paracadute */
+function capsuleFX(tile,onLand){
+  const sky=tile.center.clone().multiplyScalar(R+20), ground=surfacePos(tile,0.3);
+  const g=new THREE.Group();
+  const pod=new THREE.Mesh(new THREE.ConeGeometry(.22,.4,8),mat(0xd9a441)); g.add(pod);
+  const chute=new THREE.Mesh(new THREE.SphereGeometry(.4,8,5,0,Math.PI*2,0,Math.PI/2),mat(0xff7a3c));
+  chute.position.y=.7; g.add(chute);
+  g.quaternion.setFromUnitVectors(UP,tile.center);
+  g.position.copy(sky);
+  addFX(g,3,k=>{ const p=1-k; g.position.lerpVectors(sky,ground,Math.min(1,p*1.1)); chute.visible=p>0.4; },onLand);
+}
+
+/* ── tempesta solare: l'orbita si spegne per un po', lo scudo la protegge ── */
+function solarFlare(){
+  if(!orbit.some(o=>o.built)) return false;
+  if(orbitalOn('shield')){ logEvent('☀ Tempesta solare: lo scudo orbitale ha protetto le strutture in orbita.'); return; }
+  spaceOffline=35;
+  logEvent('☀ Tempesta solare: le strutture orbitali sono fuori uso per 35 secondi.');
+}
+function spaceTick(){
+  if(spaceOffline>0&&--spaceOffline===0) logEvent('Le strutture orbitali tornano operative.');
+  telescopeTick(); minerTick();
+}
+
+/* ── il governatore in orbita: una decisione per volta, e solo con scorte abbondanti ── */
+function govOrbit(c){
+  if(!hasOrbital('station')&&res.mat<200&&!orbitOf('station')) return;
+  const bad=weather.kind==='temporale'||weather.kind==='siccita';
+  const want={
+    station:1, cannon:c.threat*0.9, shield:c.threat*1.1, eye:c.threat*0.5,
+    mirror:c.winter?0.7:0.3, telescope:researchLeft()?0.7:0.2, miner:c.wantBars?0.9:0.35,
+    weathersat:bad?0.6:0.25, habitat:c.freeBeds<3?0.75:0.15, moonbase:0.45
+  };
+  let best=null, bs=0;
+  for(const k in want){
+    if(orbitBlock(k)) continue;
+    // si lancia solo se dopo restano scorte: l'orbita è un lusso, non un bisogno
+    const cost=orbitCost(k);
+    if(!canPay(cost,1.6)) continue;
+    if(want[k]>bs){ bs=want[k]; best=k; }
+  }
+  if(best&&bs>=0.3){ buildOrbital(best); return; }
+  // altrimenti migliora quella che serve di più
+  for(const k of Object.keys(want).sort((a,b)=>want[b]-want[a])){
+    const u=upgradeCost(k);
+    if(u&&canPay(u,2)&&want[k]>=0.4){ upgradeOrbital(k); return; }
+  }
+}
+/* ═══════════════ meteo e difficoltà ═══════════════ */
+
+/* ── meteo ───────────────────────────────────────────────────────────
+   Sopra le stagioni c'è il tempo che fa, e cambia ogni 80–180 secondi.
+   Ogni tipo di tempo ha una conseguenza che chiede una risposta:
+   · temporale: i campi rendono di più, ma cadono fulmini sugli edifici
+     (un parafulmine è una torre di segnalazione: li attira lei);
+   · siccità: i campi rendono il 30% in meno, tranne vicino a un pozzo;
+   · nebbia: le torrette vedono meno lontano e la torre non avvista le navette. */
+const WEATHER = {
+  sereno:   {label:'sereno'},
+  temporale:{label:'temporale', food:1.15, bolts:0.05, light:0.55, mood:-0.04},
+  siccita:  {label:'siccità',   food:0.7,  light:1.12},
+  nebbia:   {label:'nebbia',    fog:true,  turret:0.7, light:0.75}
+};
+/* pesi per stagione: d'estate la siccità, d'autunno i temporali, d'inverno la nebbia */
+const WEATHER_ODDS = [
+  {sereno:5, temporale:3, nebbia:1},
+  {sereno:5, siccita:3, temporale:2},
+  {sereno:3, temporale:3, nebbia:3},
+  {sereno:4, nebbia:4, temporale:1}
+];
+let weather={kind:'sereno', t:120};
+const weatherNow = () => WEATHER[weather.kind]||WEATHER.sereno;
+/* quanto rende un campo col tempo di oggi: il pozzo salva dalla siccità */
+/* il satellite meteo dimezza la perdita della siccità */
+const weatherFood = t => weather.kind==='siccita' ? (wellNear(t)?1:orbitalOn('weathersat')?0.85:WEATHER.siccita.food) : (weatherNow().food||1);
+const turretReach = () => weatherNow().turret||1;
+function weatherTick(){
+  if(--weather.t>0){ lightningTick(); return; }
+  const odds=WEATHER_ODDS[season]||WEATHER_ODDS[0];
+  const total=Object.values(odds).reduce((a,b)=>a+b,0);
+  let r=Math.random()*total, kind='sereno';
+  for(const k in odds){ r-=odds[k]; if(r<0){ kind=k; break; } }
+  const was=weather.kind;
+  weather={kind, t:80+Math.floor(Math.random()*100)};
+  if(kind!==was) logEvent(kind==='sereno'?'☀ Torna il sereno.':
+    kind==='temporale'?'⛈ Temporale: i campi ringraziano, ma attenti ai fulmini.':
+    kind==='siccita'?'🌵 Siccità: i campi lontani dai pozzi rendono il 30% in meno.':
+    '🌫 Nebbia: le torrette vedono meno lontano, la torre non avvista le navette.');
+  applyWeather();
+}
+function lightningTick(){
+  const W=weatherNow();
+  if(!W.bolts||orbitalOn('weathersat')||Math.random()>W.bolts) return;   // il satellite scarica i fulmini in quota
+  const mine=FC.mine.filter(isMine);
+  if(!mine.length) return;
+  // una torre di segnalazione fa da parafulmine: il colpo va a lei e non fa danni
+  const rod=mine.find(t=>hasFlag(t,'watch'));
+  const hit=rod||mine[Math.floor(Math.random()*mine.length)];
+  boltFX(hit);
+  if(rod){ toast('⚡ Un fulmine si scarica sulla torre di segnalazione.'); return; }
+  const name=BUILDINGS[hit.building].name;
+  damageBuilding(hit,12);
+  toast('⚡ Un fulmine colpisce '+name+'.');
+}
+function boltFX(tile){
+  const top=tile.center.clone().multiplyScalar(R+18), pts=[top];
+  const end=surfacePos(tile,0.3);
+  for(let i=1;i<7;i++){ const p=top.clone().lerp(end,i/7); p.x+=Math.random()*0.8-0.4; p.z+=Math.random()*0.8-0.4; pts.push(p); }
+  pts.push(end);
+  const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineBasicMaterial({color:0xe6f0ff,transparent:true}));
+  addFX(line,0.35,k=>{ line.material.opacity=k; });
+}
+/* nebbia e luce: la scena cambia col tempo (le luci del giorno le ricalcola stepDay) */
+function applyWeather(){
+  const want=!!weatherNow().fog;
+  if(want===!!scene.fog) return;
+  // la camera sta a ~36 dal centro: la faccia visibile del pianeta è tra 22 e 36
+  scene.fog = want ? new THREE.Fog(0x8a97ad,16,42) : null;
+  // i materiali già compilati non vedono la nebbia aggiunta dopo: vanno ricompilati
+  scene.traverse(o=>{ if(o.material) (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.needsUpdate=true); });
+}
+
+/* ── difficoltà ──────────────────────────────────────────────────────
+   ?difficolta=facile | normale | difficile nell'indirizzo. Cambia la forza
+   delle incursioni, quanto in fretta vengono fame e sonno, e le scorte
+   iniziali.                                                            */
+const DIFFICULTY = {
+  facile:   {label:'facile',    raid:0.7,  needs:0.8, start:1.5},
+  normale:  {label:'normale',   raid:1,    needs:1,   start:1},
+  difficile:{label:'difficile', raid:1.35, needs:1.2, start:0.7}
+};
+let difficulty = DIFFICULTY[URLP.get('difficolta')] ? URLP.get('difficolta') : 'normale';
+const diff = () => DIFFICULTY[difficulty]||DIFFICULTY.normale;
+function startingRes(){
+  const k=diff().start;
+  return {food:Math.round(22*k), mat:Math.round(60*k), pow:12, bar:0};
+}
 try{
+  loadAchievements();
+  res=startingRes();
   generateWorld(worldSeed);
   applySeason();
   updateCamera();
   refreshHUD();
+  if(URLP.has('auto')) $('b-auto').click();
   const prev=readSave();
   if(prev&&prev.v===1) toast('C\'è una partita salvata (mondo n° '+prev.worldIndex+'): premi «carica» per riprenderla.');
 }catch(e){ fail(e.message+'\n'+(e.stack||'').split('\n')[1]); }
@@ -3401,6 +5505,7 @@ let last=performance.now(), acc=0, frames=0, fpsAcc=0, fps=0;
   const dt=raw*speedMul;
   try{
     if(autoSpin){ theta+=dt*0.04; updateCamera(); }
+    followTick(raw);
     stepDay(dt);
     stepUnits(dt);
     stepProps(dt);

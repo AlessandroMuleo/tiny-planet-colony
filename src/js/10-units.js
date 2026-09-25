@@ -42,10 +42,13 @@ function spawnUnit(kind,faction,tile){
     mode:'idle',carry:null,site:null,workT:0,bob:Math.random()*6,
     age:0, stage:'adult', wounded:false};
   if(UNITS[kind].civil){ u.age=AGES.child.until+Math.floor(Math.random()*60); applyAge(u); }
+  if(faction==='you'&&UNITS[kind].civil) initPerson(u);
   units.push(u);
   return u;
 }
-function killUnit(u,i){
+function killUnit(u,i,died){
+  releaseAll(u);
+  if(hasNeeds(u)) mournFriend(u,died===true||u.hp<=0);   // morto, o solo andato via
   dropCarry(u);
   planetGroup.remove(u.mesh);
   units.splice(i,1);
@@ -91,6 +94,8 @@ function unitDamage(u){
     if(u.stage==='child'||u.wounded) return 0;
     if(u.stage==='elder') d*=0.6;
   }
+  // la tattica raddoppia i colpi della milizia (coloni civili che difendono)
+  if(u.faction==='you'&&UNITS[u.kind].civil) d*=1+techSum('militia');
   return d*(u.faction==='you'?techWar():1);
 }
 const myUnits  = () => units.filter(u=>u.faction==='you');

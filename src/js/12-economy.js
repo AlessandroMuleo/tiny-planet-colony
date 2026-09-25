@@ -1,12 +1,14 @@
 function capacity(){
   let c=BASE_STORE;
   for(const t of tiles) if(isMine(t)) c+=storeOf(t);
-  for(const o of orbit) if(o.built) c+=ORBITALS[o.kind].store||0;
+  // la capienza in orbita resta anche con l'orbita spenta: le scorte non spariscono
+  for(const o of orbit) if(o.built) c+=(ORBITALS[o.kind].store||0)*ORBIT_LEVELS[o.level||1].mul;
   return c;
 }
 /* lo specchio solare toglie il morso all'inverno */
-const seasonFood = () => hasOrbital('mirror')
-  ? Math.max(1.0, SEASONS[season].food) : SEASONS[season].food;
+/* dal livello 2 lo specchio scalda anche le altre stagioni */
+const seasonFood = () => { const m=orbMul('mirror');
+  return m ? Math.max(1+0.2*(m-1), SEASONS[season].food) : SEASONS[season].food; };
 /* ── taglia della struttura (1–3): più grande = più posti e più capienza ── */
 const sizeOf   = t => t.size||1;
 const jobsOf   = t => (BUILDINGS[t.building].jobs||0)*sizeOf(t);
@@ -21,32 +23,74 @@ const idleCount     = () => Math.max(0,workforce()-assignedTotal()-buildersCount
 /* dove si portano i carichi: deposito o capanna più vicini */
 const storageTiles  = () => tiles.filter(t=>isMine(t)&&storeOf(t)>0);
 
+/* FC.mine è la fotografia di inizio fotogramma: un edificio può essere caduto
+   nel frattempo, quindi questi helper riverificano sempre con isMine */
+/* edifici attivi con una certa proprietà: con jobs, solo se hanno addetti */
+const activeFlag = f => FC.mine.some(t=>isMine(t)&&hasFlag(t,f)&&(!jobsOf(t)||(t.workers||0)>0));
+/* un pozzo a portata d'acqua */
+const wellNear = t => FC.mine.some(w=>isMine(w)&&hasFlag(w,'well')&&
+  surfacePos(w).distanceTo(surfacePos(t))<BUILDINGS[w.building].range);
+/* il cibo che i granai conservano; il resto marcisce piano (SPOIL a tick) */
+const SPOIL = 0.01, FRESH_BASE = 60;
+const granaryCover = () => FRESH_BASE+FC.mine.reduce((n,t)=>n+(isMine(t)?(BUILDINGS[t.building].granary||0)*sizeOf(t):0),0);
+
 function rates(){
-  let food=FOOD_DRIP, matr=DRIP, pow=0, scir=0, houses=0, jobs=0, tribute=0;
+  let food=FOOD_DRIP, matr=DRIP, pow=0, scir=0, barr=0, houses=0, jobs=0, tribute=0;
   const S=seasonFood()*(trait.harsh?0.85:1), P=techProd()*legacy(), d=demography();
-  let eat=d.child*AGES.child.eat+d.adult*AGES.adult.eat+d.elder*AGES.elder.eat;
-  for(const u of myTroops()) if(u.kind==='guardian') eat += 0.30;
-  eat += myThralls().length*THRALL_EAT;
+  // eat: quanto mangiano i civili, che vanno da soli al magazzino (qui serve
+  // solo a mostrare il saldo nell'HUD). upkeep: le razioni di soldati e
+  // guardiani, che non hanno bisogni propri e si scalano dalla scorta a ogni tick
+  let eat=0, upkeep=0;
+  for(const u of units){
+    if(u.faction!=='you') continue;
+    if(hasNeeds(u)) eat+=eatRate(u);
+    else if(u.kind==='guardian') upkeep+=0.30;
+    else if(isPerson(u)) upkeep+=AGES[u.stage].eat;
+  }
   for(const t of tiles){
     if(!isMine(t)) continue;
     const B=BUILDINGS[t.building], w=t.workers||0;
     houses+=housesOf(t); jobs+=jobsOf(t);
     const w2=(t.effWorkers!==undefined?t.effWorkers:w);
-    if(B.eats) food-=(B.eats.food||0)*w2;          // l'officina brucia cibo
+    if(B.eats){                                     // l'officina brucia cibo, la fonderia materiali
+      food-=(B.eats.food||0)*w2; matr-=(B.eats.mat||0)*w2;
+    }
     if(B.per){
-      food+=(B.per.food||0)*w2*(B.noSeason?1:S)*P*(trait.food||1)*(boomT>0?1.4:1);
+      food+=(B.per.food||0)*w2*(B.noSeason?1:S)*P*(trait.food||1)*(boomT>0?1.4:1)*(famineT>0&&!B.noSeason?0.5:1)*(1+techSum('food'))
+           *(B.noSeason||!B.per.food?1:weatherFood(t));      // la serra è al riparo dal tempo
       matr+=(B.per.mat||0)*(B.per.mat>0?w2*P*(trait.mat||1):w);
       pow +=(B.per.pow||0)*w2*P*(trait.pow||1);
       scir+=(B.per.sci||0)*w2*P;
+      barr+=(B.per.bar||0)*w2*P*(1+techSum('bar'));
     }
     if(B.drain) pow-=B.drain;
   }
-  for(const o of orbit) if(o.built) pow-=ORBITALS[o.kind].drain||0;
+  if(!spaceOffline) for(const o of orbit) if(o.built) pow-=ORBITALS[o.kind].drain||0;
+  scir+=ORBITALS.telescope.sci*orbMul('telescope');
+  // i letti dell'habitat restano anche al buio: chi ci vive non se ne va
+  for(const o of orbit) if(o.built&&ORBITALS[o.kind].houses) houses+=ORBITALS[o.kind].houses*ORBIT_LEVELS[o.level||1].mul;
   for(const s of settlements) tribute += s.relation==='alleato' ? 0.6 : s.relation==='assoggettato' ? 1.4 : 0;
   if(tiles.some(t=>isMine(t)&&BUILDINGS[t.building].trade&&(t.workers||0)>0)) tribute*=1.6;
-  const block = pop>=houses ? 'servono letti' : (food-eat<=0 && res.food<=8) ? 'serve cibo'
+  tribute*=1+techSum('caravan');
+  const block = pop>=houses ? 'servono letti' : (food-eat-upkeep<=0 && res.food<=8) ? 'serve cibo'
               : res.food<=8 ? 'scorte basse' : null;
-  return {food:food-eat, mat:matr+tribute, pow:pow-pop*USE, sci:scir, houses, jobs, demo:d, block};
+  const spoil=Math.max(0,res.food-granaryCover())*SPOIL*(1-techSum('spoil'));
+  return {food:food-eat-upkeep-spoil, stock:food-upkeep-spoil, spoil, mat:matr+tribute, pow:pow-pop*USE,
+    sci:scir, bar:barr, houses, jobs, demo:d, block};
+}
+/* chi produce davvero: solo chi è al lavoro (o sta portando il raccolto).
+   Un colono che mangia, dorme o scappa non rende, e l'umore pesa sulla resa. */
+function dutyTick(){
+  for(const t of tiles) if(isMine(t)&&jobsOf(t)>0) t.effWorkers=0;
+  for(const u of units){
+    if(u.faction!=='you'||!u.job||!isMine(u.job)) continue;
+    if(hasNeeds(u)&&u.act!=='work') continue;
+    const k=skillKey(u.job);
+    // sulla sabbia, senza un pozzo vicino, si rende il 40% in meno
+    const dry=u.job.biome==='sand'&&!wellNear(u.job)?0.6:1;
+    u.job.effWorkers=(u.job.effWorkers||0)+workPower(u)*moodWork(u)*skillMul(u,k)*dry;
+    if(hasNeeds(u)) practice(u,k,1);
+  }
 }
 
 function setWorkers(tile,delta){
@@ -91,10 +135,17 @@ function syncJobs(){
     if(!t.site) continue;                     // completato in questo stesso frame
     blocksLeft += Math.max(0, t.site.need-t.site.have);
   }
-  const wanted=Math.min(6, Math.ceil(blocksLeft/4));
+  // con la utility AI i bambini non portano più blocchi e i portatori si fermano
+  // per mangiare e dormire: la squadra è un po' più grande per compensare
+  const wanted=Math.min(8, Math.ceil(blocksLeft/3));
   const needBuilders=Math.min(wanted, Math.max(0, able.length-1));
-  const crew=able.slice(0,needBuilders);
-  able=able.slice(needBuilders);
+  // la squadra si prende prima tra chi ci è già, poi tra chi non ha un lavoro,
+  // e a parità tra i costruttori più esperti: così i contadini restano nei campi
+  const crewOrder=able.slice().sort((a,b)=>
+    (b.builder?1:0)-(a.builder?1:0) || (a.job?1:0)-(b.job?1:0) ||
+    (a.kind==='thrall'?1:0)-(b.kind==='thrall'?1:0) || skillXp(b,'build')-skillXp(a,'build'));
+  const crew=crewOrder.slice(0,needBuilders);
+  able=able.filter(u=>!crew.includes(u));
   for(const u of crew){
     u.builder=true;
     if(u.job){ u.job=null; u.mode='idle'; dropCarry(u); }
@@ -103,8 +154,9 @@ function syncJobs(){
   for(const u of able) u.builder=false;
   const unable=myLabor().filter(u=>workPower(u)===0);
   for(const u of unable){ if(u.job){ u.job=null; u.mode='idle'; dropCarry(u); } }
-  able.forEach((u,i)=>{
-    const t=slots[i]||null;
+  const placed=placeWorkers(able,slots);
+  able.forEach(u=>{
+    const t=placed.get(u)||null;
     if(u.job!==t){ u.mode='idle'; u.workT=0; dropCarry(u); }
     u.job=t;
     let want='idle';
@@ -116,8 +168,36 @@ function syncJobs(){
   for(const u of unable) if(u.kind!=='idle'&&u.kind!=='thrall') morph(u,'idle');
   refreshArmy();
 }
+/* Chi ha già un posto lo tiene; i posti liberi vanno a chi è più esperto
+   in quel mestiere (i coloni prima degli assoggettati). Prima si ripartiva
+   da capo a ogni cambiamento e i coloni saltavano da un lavoro all'altro:
+   con le abilità, spostarli a caso butterebbe via l'esperienza.         */
+function placeWorkers(able,slots){
+  const free=new Map();
+  for(const t of slots) free.set(t,(free.get(t)||0)+1);
+  const out=new Map(), rest=[];
+  for(const u of able){
+    if(u.job&&free.get(u.job)>0){ out.set(u,u.job); free.set(u.job,free.get(u.job)-1); }
+    else rest.push(u);
+  }
+  for(const [t,n] of free){
+    const k=skillKey(t);
+    for(let i=0;i<n&&rest.length;i++){
+      let bi=0;
+      for(let j=1;j<rest.length;j++){
+        const a=rest[j], b=rest[bi];
+        const ta=a.kind==='thrall'?1:0, tb=b.kind==='thrall'?1:0;
+        if(ta<tb||(ta===tb&&skillXp(a,k)>skillXp(b,k))) bi=j;
+      }
+      out.set(rest[bi],t); rest.splice(bi,1);
+    }
+  }
+  return out;
+}
 function morph(u,kind){
   const carried=!!u.hasCargo;
+  // un soldato non ragiona più da civile: le sue prenotazioni tornano libere
+  if(!UNITS[kind].civil){ releaseAll(u); u.act=null; }
   dropCarry(u);
   planetGroup.remove(u.mesh);
   const m=unitMesh(kind);
@@ -141,7 +221,7 @@ function ageTick(){
       u.age++;
       const st=stageAt(u.age);
       if(u.age>=AGES.elder.until){
-        killUnit(u,i); pop=Math.max(0,pop-1); changed=true;
+        killUnit(u,i,true); pop=Math.max(0,pop-1); changed=true; mourn(0.15);
         toast('Un anziano è morto di vecchiaia.');
         continue;
       }
@@ -165,22 +245,24 @@ function ageTick(){
 function economyTick(){
   worldAge++;
   ageTick();
+  if(needsTick()){ trimWorkers(); syncJobs(); }
   // "pop" veniva aggiornato a mano in sei punti diversi e prima o poi si
   // sfasava dai coloni reali: ora si riallinea alla fonte a ogni tick
   pop=myPeople().length;
   if(checkCollapse()) return;
   if(boomT>0) boomT--;
   randomEventTick();
+  dutyTick();
   const r=rates(), cap=capacity(), clamp=v=>Math.min(cap,Math.max(0,v));
-  res.food=clamp(res.food+r.food);
+  res.food=clamp(res.food+r.stock);      // i civili mangiano da soli, al magazzino
   res.mat =clamp(res.mat +r.mat);
   res.pow =clamp(res.pow +r.pow);
+  res.bar =clamp((res.bar||0)+r.bar);
 
-  // ricerca
-  if(r.sci>0 && tech<3){
-    sci+=r.sci;
-    if(sci>=TECH_COST[tech+1]){ tech++; toast('Ricerca completata: livello '+tech+'. Rese e armi migliorate.'); }
-  }
+  // ricerca: va al nodo scelto dell'albero (25-progress.js)
+  researchTick(r.sci);
+  statsTick();
+  if(worldAge%10===0&&$('stats').classList.contains('on')) renderStats();
   // stagioni
   seasonT++;
   if(seasonT>=SEASON_LEN){
@@ -195,20 +277,19 @@ function economyTick(){
     baby.age=0; applyAge(baby);           // nasce bambino: non lavora ancora
     syncJobs();
     toast('È nato un colono.');
-  } else if(res.food<=0&&pop>1&&Math.random()<.3){
-    // solo un vero colono (non un assoggettato) conta come popolazione:
-    // prima si cercava un civile qualsiasi, e un assoggettato ucciso
-    // scalava "pop" senza che nessun colono fosse davvero mancante
-    const i=units.findIndex(isPerson);
-    if(i>=0){ pop--; killUnit(units[i],i); }
-    trimWorkers(); syncJobs();
-    toast('Il cibo è finito: un colono se n’è andato.');
   }
+  // la fame non fa più sparire un colono a caso: ognuno ha il suo stomaco
+  // (needsTick, in 15-colonists.js)
 
   sendCaravans();
-  if(!raidActive){ raidIn--; if(raidIn<=0){ spawnRaid();
-    raidIn=Math.round((120+(hasOrbital('eye')?ORBITALS.eye.delay:0))*(trait.raid?0.65:trait.calm?1.5:1)); } }
+  // la torre di segnalazione avvista la navetta 25 secondi prima
+  if(!raidActive&&raidIn===26&&activeFlag('watch')&&!weatherNow().fog){
+    raidWarned=true; logEvent('🔭 La torre avvista una navetta: incursione tra 25 secondi. Bambini al riparo!');
+  }
+  if(!raidActive){ raidIn--; if(raidIn<=0){ raidWarned=false; spawnRaid(); raidIn=raidInterval(); } }
+  raidersTick(); narratorTick(); choiceTick(); chainTick(); socialTick(); achievementTick(); weatherTick(); spaceTick();
   for(const s of settlements) rivalThink(s);
+  diplomacyTick();
   if(auto) autoThink();
   refreshHUD(r);
   // l'ispettore mostrava integrità e addetti fermi al momento del clic

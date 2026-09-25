@@ -60,7 +60,7 @@ const DAY_LEN=110;                      // secondi per un giro completo
 function stepDay(dt){
   if(!dayCycle){
     if(nightOn!==false){ nightOn=false; updateLights(); }
-    sun.intensity=1.15; rim.intensity=0.45; scene.children[0].intensity=0.9;
+    sun.intensity=1.15*(weatherNow().light||1); rim.intensity=0.45; scene.children[0].intensity=0.9*(weatherNow().light||1);
     return;
   }
   dayT=(dayT+dt/DAY_LEN)%1;
@@ -69,9 +69,9 @@ function stepDay(dt){
   // quanto è alto il sole rispetto all'emisfero illuminato
   const h=Math.max(-1,Math.min(1,Math.sin(a)*0.55+Math.cos(a)*0.45));
   const day=Math.max(0,Math.min(1,(h+0.35)/0.9));
-  sun.intensity=0.12+1.05*day;
+  sun.intensity=(0.12+1.05*day)*(weatherNow().light||1);
   rim.intensity=0.5-0.18*day;
-  scene.children[0].intensity=0.34+0.56*day;   // luce ambientale
+  scene.children[0].intensity=(0.34+0.56*day)*Math.min(1.05,weatherNow().light||1);   // luce ambientale
   const isNight=day<0.42;
   if(isNight!==nightOn){ nightOn=isNight; updateLights(); }
 }

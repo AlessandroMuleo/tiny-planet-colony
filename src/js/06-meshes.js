@@ -178,6 +178,58 @@ function buildingMesh(kind){
     const c=new THREE.Mesh(new THREE.ConeGeometry(.52,.4,6),mat(0xe0616b)); c.position.y=.75; g.add(c);
     const pole=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.5),mat(0xd8d2c4)); pole.position.y=1.15; g.add(pole);
     const flag=new THREE.Mesh(new THREE.BoxGeometry(.26,.16,.02),mat(0xe0616b)); flag.position.set(.14,1.3,0); g.add(flag);
+  } else if(kind==='foundry'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.7,.42,.6),mat(0x5a4f48)); b.position.y=.21; g.add(b);
+    const ch=new THREE.Mesh(new THREE.CylinderGeometry(.1,.13,.7,6),mat(0x3e3632)); ch.position.set(.2,.6,-.12); g.add(ch);
+    const glow=new THREE.Mesh(new THREE.BoxGeometry(.3,.14,.02),new THREE.MeshBasicMaterial({color:0xff8a3c}));
+    glow.position.set(-.1,.2,.31); g.add(glow);
+    const bar=new THREE.Mesh(new THREE.BoxGeometry(.22,.07,.1),mat(0xd9a441)); bar.position.set(-.22,.47,.1); g.add(bar);
+  } else if(kind==='granary'){
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,.6,10),mat(0xd8c49a)); b.position.y=.3; g.add(b);
+    const r=new THREE.Mesh(new THREE.ConeGeometry(.36,.3,10),mat(0x9a6a3c)); r.position.y=.75; g.add(r);
+    const s=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,.4,8),mat(0xc9b284)); s.position.set(.32,.2,.1); g.add(s);
+  } else if(kind==='well'){
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(.26,.28,.22,10),mat(0x9a9488)); b.position.y=.11; g.add(b);
+    const w=new THREE.Mesh(new THREE.CylinderGeometry(.19,.19,.02,10),mat(0x3d8fc4)); w.position.y=.22; g.add(w);
+    for(const x of [-.22,.22]){ const p=new THREE.Mesh(new THREE.BoxGeometry(.05,.4,.05),mat(0x6b5238)); p.position.set(x,.36,0); g.add(p); }
+    const r=new THREE.Mesh(new THREE.ConeGeometry(.34,.18,4),mat(0x8a5a3c)); r.position.y=.64; r.rotation.y=Math.PI/4; g.add(r);
+  } else if(kind==='tavern'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.72,.44,.56),mat(0xb88a5c)); b.position.y=.22; g.add(b);
+    const r=new THREE.Mesh(new THREE.BoxGeometry(.8,.12,.64),mat(0x7a4a2c)); r.position.y=.5; g.add(r);
+    const sign=new THREE.Mesh(new THREE.BoxGeometry(.16,.12,.02),mat(0xffc46b)); sign.position.set(.3,.36,.3); g.add(sign);
+    const w=new THREE.Mesh(new THREE.BoxGeometry(.3,.12,.02),new THREE.MeshBasicMaterial({color:0xffc070}));
+    w.position.set(-.1,.24,.29); w.userData.light=true; w.visible=false; g.add(w);
+  } else if(kind==='school'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.76,.4,.52),mat(0xe2d6c0)); b.position.y=.2; g.add(b);
+    const r=new THREE.Mesh(new THREE.ConeGeometry(.5,.3,4),mat(0x3f7fa8)); r.position.y=.55; r.rotation.y=Math.PI/4; r.scale.set(1.1,1,.8); g.add(r);
+    const bell=new THREE.Mesh(new THREE.SphereGeometry(.07,6,5),mat(0xd9a441)); bell.position.y=.78; g.add(bell);
+  } else if(kind==='memorial'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.5,.12,.5),mat(0x9a9aa2)); b.position.y=.06; g.add(b);
+    const o=new THREE.Mesh(new THREE.BoxGeometry(.14,.7,.14),mat(0xd7dbe2)); o.position.y=.47; g.add(o);
+    const f=new THREE.Mesh(new THREE.SphereGeometry(.06,6,5),new THREE.MeshBasicMaterial({color:0xffe0a0}));
+    f.position.set(.18,.18,.18); f.userData.light=true; f.visible=false; g.add(f);
+  } else if(kind==='embassy'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.74,.36,.6),mat(0xeae4d6)); b.position.y=.18; g.add(b);
+    for(const x of [-.26,-.09,.09,.26]){ const c=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,.34,6),mat(0xffffff)); c.position.set(x,.2,.33); g.add(c); }
+    const d=new THREE.Mesh(new THREE.SphereGeometry(.2,10,6,0,Math.PI*2,0,Math.PI/2),mat(0x8fd98a)); d.position.y=.36; g.add(d);
+  } else if(kind==='watch'){
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(.16,.24,.9,6),mat(0x8a7a64)); b.position.y=.45; g.add(b);
+    const p=new THREE.Mesh(new THREE.CylinderGeometry(.28,.2,.1,6),mat(0x6b5238)); p.position.y=.94; g.add(p);
+    const l=new THREE.Mesh(new THREE.SphereGeometry(.08,6,5),new THREE.MeshBasicMaterial({color:0xffe08a})); l.position.y=1.06; g.add(l);
+  } else if(kind==='control'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.8,.36,.64),mat(0xd7e2ea)); b.position.y=.18; g.add(b);
+    const d=new THREE.Mesh(new THREE.SphereGeometry(.26,10,6,0,Math.PI*2,0,Math.PI/2),mat(0x9aa4b2)); d.position.set(-.18,.36,0); g.add(d);
+    const dish=new THREE.Mesh(new THREE.SphereGeometry(.22,10,5,0,Math.PI*2,0,Math.PI/3),mat(0xffffff));
+    dish.position.set(.24,.62,0); dish.rotation.x=-Math.PI/4; g.add(dish);
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.3),mat(0x8d97a6)); pole.position.set(.24,.48,0); g.add(pole);
+    const w=new THREE.Mesh(new THREE.BoxGeometry(.4,.1,.02),new THREE.MeshBasicMaterial({color:0x50d2ff}));
+    w.position.set(.1,.22,.33); w.userData.light=true; w.visible=false; g.add(w);
+  } else if(kind==='elevator'){
+    // la base a terra e un cavo che sale oltre le nuvole
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(.42,.5,.3,8),mat(0x5b6472)); b.position.y=.15; g.add(b);
+    const t=new THREE.Mesh(new THREE.CylinderGeometry(.12,.2,1.2,6),mat(0x9aa4b2)); t.position.y=.9; g.add(t);
+    const cable=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,6,4),mat(0xd8d2c4)); cable.position.y=4.4; g.add(cable);
+    const car=new THREE.Mesh(new THREE.BoxGeometry(.16,.2,.16),mat(0xffc46b)); car.position.y=2.4; car.userData.lift=true; g.add(car);
   } else if(kind==='camp'){
     const b=new THREE.Mesh(new THREE.ConeGeometry(.36,.5,5),mat(0x8a4a52)); b.position.y=.25; g.add(b);
     const r=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.3),mat(0xd8d2c4)); r.position.y=.62; g.add(r);

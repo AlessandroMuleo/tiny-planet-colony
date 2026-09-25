@@ -18,6 +18,7 @@
   <div class="stat"><b id="s-food">0</b><span>cibo</span><span class="rate" id="r-food"></span></div>
   <div class="stat"><b id="s-mat">0</b><span>materiali</span><span class="rate" id="r-mat"></span></div>
   <div class="stat"><b id="s-pow">0</b><span>energia</span><span class="rate" id="r-pow"></span></div>
+  <div class="stat"><b id="s-bar">0</b><span>lingotti</span><span class="rate" id="r-bar"></span></div>
   <div class="stat"><b id="s-pop">0</b><span>coloni</span><span class="rate" id="r-pop"></span></div>
   <div class="stat"><b id="s-demo">0·0·0</b><span>bimbi·adulti·anziani</span><span class="rate" id="r-hurt"></span></div>
   <div class="stat"><b id="s-build">0</b><span>al cantiere</span></div>
@@ -42,6 +43,9 @@
       <button id="b-save" title="Salva la partita in questo browser (Ctrl+S). Salvataggio automatico ogni 30 s">salva</button>
       <button id="b-load" title="Riprendi l'ultima partita salvata">carica</button>
       <button id="b-log" title="Registro eventi e scorciatoie (L)">registro</button>
+      <button id="b-research" title="Albero della ricerca (T)">ricerca</button>
+      <button id="b-stats" title="Statistiche della partita (S)">statistiche</button>
+      <button id="b-share" title="Copia un link che riapre questo pianeta">condividi</button>
     </div>
     <div class="ctrl" id="speeds">
       <button data-mul="0" title="Pausa (spazio)" aria-label="Pausa">⏸</button>
@@ -92,6 +96,7 @@
   <div class="demo" id="i-disbandrow">
     <button class="fill" id="i-disband">congeda tutti → coloni</button>
   </div>
+  <div class="minds" id="i-minds"></div>
 </div>
 
 <div class="panel army" id="army">
@@ -120,7 +125,8 @@
   <div class="keys">
     <kbd>spazio</kbd> pausa · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> velocità · <kbd>A</kbd> auto ·
     <kbd>F</kbd> fulmine · <kbd>R</kbd> pioggia · <kbd>C</kbd> cura · <kbd>U</kbd> amplia ·
-    <kbd>Esc</kbd> annulla · <kbd>Ctrl+S</kbd> salva · <kbd>L</kbd> registro
+    <kbd>Esc</kbd> annulla · <kbd>Ctrl+S</kbd> salva · <kbd>L</kbd> registro ·
+    <kbd>T</kbd> ricerca · <kbd>S</kbd> statistiche · clic su un colono: seguilo
   </div>
   <ol id="log-list"></ol>
 </div>
@@ -132,6 +138,19 @@
   </div>
 </div>
 <div class="tip" id="tip"></div>
+<div class="panel research" id="research">
+  <h3>Albero della ricerca <span class="muted">i nodi completati restano quando cambi mondo</span></h3>
+  <div class="tree" id="research-tree"></div>
+</div>
+<div class="panel stats" id="stats">
+  <h3>Statistiche <button id="stats-mode" class="link">tabella</button></h3>
+  <div id="stats-body"></div>
+</div>
+<div class="choice" id="choice" role="dialog" aria-labelledby="choice-title">
+  <div class="choice-head"><h3 id="choice-title">—</h3><span id="choice-time"></span></div>
+  <p id="choice-text"></p>
+  <div class="choice-acts" id="choice-acts"></div>
+</div>
 <div class="toast" id="toast"></div>
 <div class="err" id="err"></div>
 <div class="diag" id="diag">avvio…</div>

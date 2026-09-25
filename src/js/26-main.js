@@ -1,8 +1,11 @@
 try{
+  loadAchievements();
+  res=startingRes();
   generateWorld(worldSeed);
   applySeason();
   updateCamera();
   refreshHUD();
+  if(URLP.has('auto')) $('b-auto').click();
   const prev=readSave();
   if(prev&&prev.v===1) toast('C\'è una partita salvata (mondo n° '+prev.worldIndex+'): premi «carica» per riprenderla.');
 }catch(e){ fail(e.message+'\n'+(e.stack||'').split('\n')[1]); }
@@ -14,6 +17,7 @@ let last=performance.now(), acc=0, frames=0, fpsAcc=0, fps=0;
   const dt=raw*speedMul;
   try{
     if(autoSpin){ theta+=dt*0.04; updateCamera(); }
+    followTick(raw);
     stepDay(dt);
     stepUnits(dt);
     stepProps(dt);

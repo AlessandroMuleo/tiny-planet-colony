@@ -23,11 +23,12 @@ function rebuildProtection(){
 }
 const sheltered = u => u.faction==='you' &&
   (u.stage==='child'||u.wounded||u.kind==='thrall') && shelterTiles.has(u.from.id);
+const hostileToYou = u => u.faction==='raider'||(u.settlement&&u.settlement.relation==='ostile');
 const behindWalls = u => u.faction==='you' && wallTiles.has(u.from.id);
 function resolveCombat(dt){
   if(beams) beams.clear();
   rebuildProtection();
-  for(const u of units){
+  if(FC.danger) for(const u of units){
     if(u.state==='landing') continue;
     const U=UNITS[u.kind], dmg=unitDamage(u);
     if(!dmg) continue;
@@ -49,10 +50,14 @@ function resolveCombat(dt){
     const t=u.from, dmg=unitDamage(u);
     if(!dmg||!t.building) continue;
     if(u.faction==='raider'&&(t.owner==='you'||t.owner==='rival')) damageBuilding(t,dmg*dt);
-    else if(u.faction!=='you'&&t.owner==='you') damageBuilding(t,dmg*dt);
+    // solo un clan ostile danneggia i tuoi edifici: prima bastava che un soldato
+    // di un clan neutrale ci passasse sopra
+    else if(u.faction==='rival'&&u.settlement&&u.settlement.relation==='ostile'&&t.owner==='you') damageBuilding(t,dmg*dt);
     // la mura che sbarra il passo successivo viene abbattuta
-    if(u.faction!=='you'&&u.to&&u.to!==t&&blocksFoe(u.to)) damageBuilding(u.to,dmg*dt);
+    if(u.faction!=='you'&&hostileToYou(u)&&u.to&&u.to!==t&&blocksFoe(u.to)) damageBuilding(u.to,dmg*dt);
     if(u.faction==='you'&&t.owner==='rival'&&t.settlement&&t.settlement.relation==='ostile')
+      damageBuilding(t,dmg*dt);
+    if(u.faction==='rival'&&u.settlement&&t.settlement&&atWar(u.settlement,t.settlement))
       damageBuilding(t,dmg*dt);
   }
   for(const t of FC.turrets){
@@ -63,7 +68,7 @@ function resolveCombat(dt){
       const foe=o.faction==='raider'||
         (o.faction==='rival'&&o.settlement&&o.settlement.relation==='ostile');
       if(!foe) continue;
-      if(tp.distanceTo(o.mesh.position)<B.range){
+      if(tp.distanceTo(o.mesh.position)<(B.range+(hasTech('forts')?1:0))*turretReach()){
         o.hp-=B.dps*techWar()*dt;
         if(beams){
           const g=new THREE.BufferGeometry().setFromPoints([tp,o.mesh.position.clone()]);
@@ -91,7 +96,7 @@ function resolveCombat(dt){
   }
   // cannone orbitale: un colpo alla volta, dall'alto
   for(const o of orbit){
-    if(!o.built||o.kind!=='cannon'||res.pow<=0) continue;
+    if(!o.built||o.kind!=='cannon'||res.pow<=0||spaceOffline) continue;
     let best=null,bd=1e9;
     for(const e of units){
       if(e.faction!=='raider'||e.state==='landing') continue;
@@ -99,7 +104,7 @@ function resolveCombat(dt){
       if(d<bd){ bd=d; best=e; }
     }
     if(best){
-      best.hp-=ORBITALS.cannon.dps*techWar()*dt;
+      best.hp-=ORBITALS.cannon.dps*ORBIT_LEVELS[o.level||1].mul*techWar()*dt;
       if(beams) beams.add(new THREE.Line(
         new THREE.BufferGeometry().setFromPoints([o.mesh.position.clone(),best.mesh.position.clone()]),
         new THREE.LineBasicMaterial({color:0xffc46b})));
@@ -109,25 +114,57 @@ function resolveCombat(dt){
     const u=units[i];
     if(u.hp>0) continue;
     const wasMine=u.faction==='you', kind=u.kind, set=u.settlement;
+    if(kind==='raider') raiderFellNear(u);
+    // un emissario ucciso prima di consegnare il messaggio è un incidente diplomatico
+    if(kind==='envoy'&&set&&!u.delivered){
+      shiftGoodwill(set,-30,'emissario ucciso');
+      logEvent('⚠ L\'emissario di '+set.name+' è stato ucciso: incidente diplomatico.');
+    }
     killUnit(u,i);
     if(wasMine){
       // guardiani e assoggettati non sono "pop": non vanno scalati dalla popolazione
-      if(kind!=='guardian'&&kind!=='thrall'){ pop=Math.max(1,pop-1); trimWorkers(); }
+      if(kind!=='guardian'&&kind!=='thrall'){ pop=Math.max(1,pop-1); trimWorkers(); mourn(0.3); narratorHurt(1); }
       syncJobs();
       toast('Hai perso '+(kind==='guardian'?'un guardiano.':kind==='thrall'?'un assoggettato.':'un combattente.'));
       refreshHUD();
     }
     if(set) checkConquest(set);
   }
-  if(raidActive&&raiders().length===0){ raidActive=false; toast('Incursione respinta.'); refreshHUD(); }
+  if(raidActive&&raiders().length===0&&!props.some(p=>p.payload)){
+    raidActive=false; if(weather.kind==='temporale') achFlags.stormRaid=true;
+    toast('Incursione respinta.'); refreshHUD();
+  }
 }
 
 /* ═══════════════ incursioni: la navetta li sbarca ═══════════ */
-function spawnRaid(){
-  const n=Math.min(9,1+Math.floor(worldIndex/2)+Math.floor(raidNo/3));
+/* Saccheggio e ritirata: dopo RAID_STAY tick a terra i predoni prendono
+   quello che possono e ripartono. Prima restavano finché qualcuno non li
+   uccideva: se morivano i coloni in grado di combattere, due predoni
+   radevano al suolo tutto, alloggi compresi, e la colonia non poteva più
+   rinascere. La simulazione lo mostrava come estinzioni "per sfortuna". */
+const RAID_STAY = 60;
+function raidersTick(){
+  const rs=raiders().filter(u=>u.state!=='landing');
+  if(!rs.length) return;
+  for(const u of rs) u.lifeT=(u.lifeT||0)+1;
+  if(Math.max(...rs.map(u=>u.lifeT))<RAID_STAY) return;
+  const cap=n=>Math.min(Math.floor(res.mat),n);
+  const mat=cap(12*rs.length), food=Math.min(Math.floor(res.food),10*rs.length);
+  res.mat-=mat; res.food-=food;
+  for(let i=units.length-1;i>=0;i--) if(units[i].faction==='raider') killUnit(units[i],i);
+  raidActive=false;
+  logEvent('I predoni ripartono col bottino: −'+mat+' materiali, −'+food+' cibo.');
+  refreshHUD();
+}
+/* la forza la decide il narratore (19-events.js), in base a quanto vale la colonia */
+function spawnRaid(){ spawnRaidOf(raidSize()); }
+function spawnRaidOf(n){
   const spots=tiles.filter(t=>!t.building&&BIOMES[t.biome].build);
   if(!spots.length) return;
-  const site=spots[Math.floor(Math.random()*spots.length)];
+  n=shieldCut(n);
+  // se il telescopio ha già calcolato la rotta, atterrano lì
+  const site=raidSite&&!raidSite.building?raidSite:spots[Math.floor(Math.random()*spots.length)];
+  raidSite=null;
   const ship=dropshipMesh();
   planetGroup.add(ship);
   props.push({mesh:ship, tile:site, phase:'down', t:0, payload:n});

@@ -3,7 +3,19 @@
 Colony sim su una geosfera di 1.212 caselle, in un solo file HTML con three.js.
 Logistica a blocchi, stagioni, ricerca, clan rivali, incursioni, spazio.
 
-**Per giocare:** apri `dist/tiny-planet-colony.html` nel browser.
+**Per giocare:** apri `dist/tiny-planet-colony.html` nel browser, oppure
+`index.html`, che ci rimanda. Con GitHub Pages attivo (Settings → Pages →
+*Deploy from a branch*, `main`, cartella `/ (root)`) il gioco è su
+<https://alessandromuleo.github.io/tiny-planet-colony/>.
+
+Parametri dell'indirizzo, utili per condividere un pianeta:
+`?seed=4242` riapre lo stesso mondo, `&mondo=3` parte dal terzo (con i
+clan), `&auto` accende il governatore. Il pulsante «condividi» copia il
+link del pianeta in corso. Cliccando un colono la camera lo segue e
+l'ispettore lo mette in cima; Esc o un trascinamento della vista lo
+lasciano andare. `&difficolta=facile` o `difficile` cambia la
+forza delle incursioni (×0,7 / ×1,35), quanto in fretta vengono fame e
+sonno (×0,8 / ×1,2) e le scorte iniziali (×1,5 / ×0,7).
 
 ## Struttura
 
@@ -29,32 +41,46 @@ trasformarli.
 | 05-world | generazione del mondo, terreno, clan iniziali |
 | 06-meshes · 07-visuals · 08-orbit | modelli 3D, giorno/notte, orbita e luna |
 | 09-sites · 10-units | cantieri, unità |
-| 11-economy | risorse, lavoro, età, tick economico |
-| 12-pathing | campi di distanza, cache di frame |
-| 13-colonists | cervello dei coloni e delle unità |
-| 14-combat | combattimento, incursioni |
-| 15-diplomacy · 16-trade | diplomazia, clan rivali, carovane |
-| 17-events | poteri del giocatore, **eventi casuali** |
-| 18-auto | governatore automatico |
-| 19-ui … 23-main | interfaccia, salvataggio, input, ciclo principale |
+| 12-economy | risorse, lavoro, età, tick economico |
+| 13-pathing | campi di distanza, cache di frame |
+| 14-utility | **utility AI**: curve, considerazioni, punteggi, spiegazioni |
+| 15-colonists | azioni, bisogni e prenotazioni dei coloni; cervello delle altre unità |
+| 16-combat | combattimento, incursioni |
+| 17-diplomacy · 18-trade | diplomazia, clan rivali, carovane |
+| 19-events | poteri del giocatore, **eventi casuali** |
+| 20-governor | governatore automatico |
+| 21-ui … 24-input | interfaccia, salvataggio, ciclo di vita, input |
+| 25-progress | albero della ricerca, veterani, statistiche |
+| 25-social · 25-space · 25-weather | amicizie e traguardi, strutture orbitali, meteo |
+| 26-main | avvio e ciclo principale |
 
 ## Comandi
 
 ```sh
 npm install          # solo three.js, per la simulazione
 npm run build        # ricompone dist/tiny-planet-colony.html
-npm test             # build + simulazione rapida (300 tick, pochi secondi)
-npm run sim          # simulazione lunga (900 tick, qualche minuto)
+npm test             # build + simulazione (900 tick, circa 20 secondi)
+npm run sim:quick    # simulazione corta (300 tick, pochi secondi)
 ```
 
 `node test/sim.mjs --only rivali --ticks 500 --verbose` lancia solo alcuni
 scenari, con la durata scelta, e stampa anche i messaggi del gioco.
+`--trace 30` stampa ogni 30 tick cosa stanno facendo i coloni e i loro
+bisogni medi.
 
 ## La simulazione di prova
 
 Gira il codice vero del gioco (three.js r128, lo stesso della CDN) con DOM e
-renderer finti e `Math.random` a seme fisso. Cinque scenari: primo mondo con
-e senza governatore, e mondi con clan rivali. A ogni tick controlla che:
+renderer finti e `Math.random` a seme fisso. Dieci scenari, tra cui uno in
+difficoltà difficile: primo mondo con
+e senza governatore, mondi con clan rivali, una partita salvata e ricaricata
+a metà, una partenza per il mondo successivo coi veterani, un clan
+assoggettato senza guarnigione e una colonia lanciata verso lo spazio. Col governatore la colonia
+deve arrivare viva alla fine, e alcuni scenari devono vedere certi eventi
+(una richiesta di un clan, una rivolta). Gli eventi casuali (scelte,
+ricerche, traguardi, amici piante, matrimoni, carestie, predoni che
+ripartono, fasi di ripresa) devono comparire in almeno uno scenario della
+suite: per un seme solo sarebbero fragili. A ogni tick controlla che:
 
 - `pop` coincida con i coloni che esistono davvero;
 - nessuna risorsa sia negativa, `NaN` o oltre la capienza;
@@ -63,7 +89,16 @@ e senza governatore, e mondi con clan rivali. A ogni tick controlla che:
 - gli addetti totali non superino le braccia disponibili;
 - i cantieri siano coerenti (tipo, proprietario, blocchi ≤ necessari) e
   nessun portatore resti più di 3 tick legato a un cantiere chiuso;
-- salute e posizioni delle unità siano numeri validi.
+- le prenotazioni di blocchi e letti coincidano con chi le tiene, nessun
+  cantiere abbia più blocchi prenotati di quanti gliene mancano e nessun
+  alloggio più coloni a letto dei posti;
+- benevolenza, malcontento e richieste dei clan siano validi, e le guerre
+  tra clan valgano da entrambe le parti;
+- bisogni, salute e posizioni delle unità siano numeri validi;
+- ogni struttura orbitale sia unica, con un livello valido e la stazione.
+
+Dopo il caricamento a metà partita controlla anche che coloni, bisogni e
+scorte siano gli stessi di prima del salvataggio.
 
 Un cantiere fermo da 240 tick è un avviso, non un errore.
 
@@ -71,11 +106,89 @@ Ogni scenario stampa un'**impronta** della partita. Con lo stesso seme, un
 refactor che non cambia il comportamento deve lasciarla identica: è il modo
 più rapido per accorgersi di aver cambiato qualcosa senza volerlo.
 
+## Come decidono i coloni
+
+Con una utility AI: ogni azione riceve un punteggio da curve di risposta sui
+bisogni e sulla situazione, e si fa quella che vale di più. I dettagli, con un
+esempio numerico, sono in [docs/utility-ai.md](docs/utility-ai.md). Ogni
+colono ha un nome, da zero a due tratti che correggono le sue curve, e abilità
+che crescono con la pratica. In gioco, selezionando una casella con dei coloni
+l'ispettore mostra nome, tratti, mestiere migliore, bisogni e le tre azioni
+col punteggio più alto.
+
+## Amicizie e traguardi
+
+Chi lavora sullo stesso edificio, dorme sotto lo stesso tetto o passa la
+serata in taverna si affeziona. Gli amici vicini alzano l'umore (+0,06),
+perderne uno lo abbassa per due minuti (−0,2). Due tratti nuovi, socievole
+e solitario, cambiano quanto in fretta nascono i legami. L'ispettore mostra
+gli amici di ogni colono.
+
+Venti traguardi (popolazione, ricerca, diplomazia, mondi raggiunti…) si
+sbloccano giocando e restano nel browser da una partita all'altra; sono in
+fondo alla schermata statistiche.
+
+## Meteo
+
+Sopra le stagioni c'è il tempo, che cambia ogni 80–180 secondi con pesi
+diversi per stagione:
+
+| Tempo | Effetto | Risposta |
+|---|---|---|
+| temporale | campi +15%, fulmini sugli edifici (12 danni), umore −0,04 a chi è fuori | una torre di segnalazione fa da parafulmine |
+| siccità | campi −30% | un pozzo vicino li salva; il governatore ne costruisce |
+| nebbia | torrette −30% di portata, la torre non avvista le navette | — |
+
+La scena cambia: luce più scura col temporale, più chiara in siccità,
+nebbia vera che sbiadisce il bordo del pianeta.
+
+## Diplomazia
+
+I clan hanno una benevolenza da −100 a +100 e una personalità. Mandano
+emissari con richieste a tempo, si fanno guerra tra loro, e gli assoggettati
+possono ribellarsi. I dettagli sono in [docs/diplomazia.md](docs/diplomazia.md).
+
+## Edifici
+
+Oltre a quelli di base ci sono fonderia (lingotti), granaio (il cibo
+marcisce), pozzo (acqua sulla sabbia), taverna, scuola, memoriale,
+ambasciata e torre di segnalazione. Cosa cambia ognuno è in
+[docs/edifici.md](docs/edifici.md).
+
+## Spazio
+
+Dieci strutture orbitali, cinque delle quali nuove: scudo, telescopio,
+raccoglitore di asteroidi, satellite meteo e habitat. Si migliorano fino al
+livello 3 e una tempesta solare può spegnerle. A terra, il Controllo missioni
+sblocca quelle avanzate e l'Ascensore spaziale le rende più economiche.
+Dettagli in [docs/spazio.md](docs/spazio.md).
+
+## Narratore
+
+Le incursioni crescono con la ricchezza e seguono un ciclo di calma,
+tensione e picco, con una fase di ripresa dopo una batosta. Alcuni eventi
+chiedono una scelta, e un'epidemia non curata può finire con un clan di
+esuli. Dettagli in [docs/narratore.md](docs/narratore.md).
+
+## Progressione
+
+Un albero della ricerca a quattro rami, veterani che portano nome, tratti e
+abilità nel mondo successivo, e una schermata di statistiche. Dettagli in
+[docs/progressione.md](docs/progressione.md).
+
 ## Aggiungere cose
 
 - **Un edificio:** una voce in `BUILDINGS` (02-data) e un modello in
   `buildingMesh` (06-meshes). Il comportamento viene dai campi (`guard`,
   `trade`, `heal`, `dps`, `spawns`, `core`, `launch`…), descritti sopra la
   tabella: non servono controlli sul nome altrove.
-- **Un evento casuale:** una voce in `EVENTS` (17-events), con `weight` e
+- **Un evento casuale:** una voce in `EVENTS` (19-events), con `weight` e
   `run()`.
+- **Un'azione dei coloni:** una voce in `COLONIST_ACTIONS` (15-colonists), con
+  peso, considerazioni e `run()`.
+- **Un tratto dei coloni:** una voce in `PERSON_TRAITS` (15-colonists).
+- **Un nodo di ricerca:** una voce in `RESEARCH` (25-progress), con ramo,
+  livello, costo ed effetto; l'effetto si legge con `techSum('chiave')`.
+- **Un evento con scelta:** una voce in `CHOICE_EVENTS` (19-events), con
+  `when()`, testo e opzioni, ognuna con `run()` e `score(c)` per il
+  governatore.

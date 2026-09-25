@@ -84,6 +84,8 @@ function nearestTile(from,test){
 function hostile(a,b){
   if(a.faction===b.faction) return false;
   if(a.faction==='raider'||b.faction==='raider') return true;
+  // due clan in guerra tra loro si combattono (gli emissari non combattono)
+  if(a.faction==='rival'&&b.faction==='rival') return !!(a.settlement&&b.settlement&&atWar(a.settlement,b.settlement));
   const set=a.faction==='rival'?a.settlement:b.settlement;
   return !!set&&set.relation==='ostile';
 }
@@ -127,6 +129,11 @@ function rebuildFrameCache(){
     if(!a){ a=[]; FC.bucket.set(u.from.id,a); }
     a.push(u);
   }
+  // C'è qualcuno con cui combattere? Solo predoni, clan ostili o clan in guerra
+  // tra loro. Senza, la ricerca di nemici intorno a ogni colono (centinaia di
+  // ricerche a fotogramma) è lavoro sprecato: era un quinto del tempo di gioco.
+  FC.danger = FC.raiders.length>0 || settlements.some(s=>!settled(s)&&
+    (s.relation==='ostile'||settlements.some(o=>atWar(s,o))));
 }
 function nearestOf(from,list,filter){
   let best=null,bd=-2;
