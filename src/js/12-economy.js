@@ -236,6 +236,7 @@ function ageTick(){
       if(u.hp>=u.hpMax*0.85){ u.wounded=false; applyAge(u); changed=true; }
     } else if(u.hp<u.hpMax*WOUND_AT){
       u.wounded=true; applyAge(u); changed=true;
+      addStory(u,raidActive?'Ferita durante un\'incursione':'Ferita');
       toast('Un colono è rimasto ferito: portatelo in ospedale.');
     }
   }
@@ -275,6 +276,7 @@ function economyTick(){
     pop++;
     const baby=spawnUnit('worker','you',randomHome());
     baby.age=0; applyAge(baby);           // nasce bambino: non lavora ancora
+    baby.story=[{t:worldAge, x:'Nascita'}];
     syncJobs();
     toast('È nato un colono.');
   }
@@ -287,7 +289,7 @@ function economyTick(){
     raidWarned=true; logEvent('🔭 La torre avvista una navetta: incursione tra 25 secondi. Bambini al riparo!');
   }
   if(!raidActive){ raidIn--; if(raidIn<=0){ raidWarned=false; spawnRaid(); raidIn=raidInterval(); } }
-  raidersTick(); narratorTick(); choiceTick(); chainTick(); socialTick(); achievementTick(); weatherTick(); spaceTick();
+  raidersTick(); narratorTick(); choiceTick(); chainTick(); socialTick(); mindTick(); achievementTick(); weatherTick(); spaceTick();
   for(const s of settlements) rivalThink(s);
   diplomacyTick();
   if(auto) autoThink();

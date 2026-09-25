@@ -4,43 +4,40 @@
    rimbalzava avanti e indietro all'infinito. Questo invece è esatto.        */
 let fieldCache=new Map(), foeCache=new Map();
 function bumpWalk(){ fieldCache.clear(); foeCache.clear(); }
-/* Per i tuoi coloni è una BFS semplice. Per i nemici è invece una Dijkstra
-   con le mura percorribili ma carissime (WALL_COST passi): così aggirano
-   la cinta se il giro vale meno di sfondarla, e sfondano solo quando il
-   muro è davvero la via più breve — cioè quando la cinta è chiusa.     */
+/* Entrambi sono una Dijkstra a costi interi. Per i tuoi coloni un passo
+   costa STEP_COST, e ROAD_COST su una strada finita: conoscono le strade
+   e le preferiscono quando il giro in più si ripaga (ci si cammina 1,6
+   volte più in fretta). Per i nemici un passo costa 1 e le mura sono
+   percorribili ma carissime (WALL_COST passi): così aggirano la cinta
+   se il giro vale meno di sfondarla, e sfondano solo quando il muro è
+   davvero la via più breve — cioè quando la cinta è chiusa.           */
+const STEP_COST=3, ROAD_COST=2;
+const onRoad = t => hasFlag(t,'road')&&!t.site;
 function distField(goal,foe){
   const cache = foe?foeCache:fieldCache;
   let f=cache.get(goal.id);
   if(f) return f;
-  if(cache.size>40) cache.clear();
+  // ogni posto di lavoro e cantiere ha il suo campo: 160 × 1.212 caselle ≈ 0,8 MB
+  if(cache.size>160) cache.clear();
   f=new Int32Array(tiles.length).fill(-1);
-  if(!foe){
-    f[goal.id]=0;
-    const q=[goal.id];
-    for(let h=0;h<q.length;h++){
-      const cur=q[h], d=f[cur];
-      for(const n of tiles[cur].neighbors){
-        if(f[n]!==-1||!walkable(tiles[n])) continue;
-        f[n]=d+1; q.push(n);
-      }
-    }
-  } else {
+  {
+    const cost = foe ? t=>blocksFoe(t)?WALL_COST:1 : t=>onRoad(t)?ROAD_COST:STEP_COST;
     // coda a bucket: i costi sono interi piccoli, niente heap
     const INF=0x3fffffff, dist=new Int32Array(tiles.length).fill(INF);
-    const maxD=tiles.length*(WALL_COST+1)+2;
-    const buckets=new Map();
-    const put=(id,d)=>{ let b=buckets.get(d); if(!b){b=[];buckets.set(d,b);} b.push(id); };
+    const maxD=tiles.length*(Math.max(WALL_COST,STEP_COST)+1)+2;
+    const buckets=[];
+    const put=(id,d)=>{ (buckets[d]||(buckets[d]=[])).push(id); };
     dist[goal.id]=0; put(goal.id,0);
-    for(let d=0; d<=maxD; d++){
-      const b=buckets.get(d);
+    for(let d=0; d<=maxD&&d<buckets.length; d++){
+      const b=buckets[d];
       if(!b) continue;
-      buckets.delete(d);
+      buckets[d]=null;
       for(const cur of b){
         if(dist[cur]!==d) continue;
         for(const n of tiles[cur].neighbors){
           const t=tiles[n];
           if(!walkable(t)) continue;
-          const nd=d+(blocksFoe(t)?WALL_COST:1);
+          const nd=d+cost(t);
           if(nd<dist[n]){ dist[n]=nd; put(n,nd); }
         }
       }
@@ -52,7 +49,10 @@ function distField(goal,foe){
 }
 const reachable=(from,goal)=>!!goal&&distField(goal)[from.id]>=0;
 
-function stepToward(from,goal,fly,foe){
+/* avoid(t): quanto il colono vuole evitare la casella (i luoghi che teme).
+   Tra i vicini che accorciano la strada si prende quello che teme meno:
+   non allunga mai il percorso, ma dove ci sono due vie aggira il ricordo */
+function stepToward(from,goal,fly,foe,avoid){
   if(fly){
     let best=from, bd=from.center.dot(goal.center);
     for(const n of from.neighbors){
@@ -65,10 +65,15 @@ function stepToward(from,goal,fly,foe){
   if(here<0){   // obiettivo irraggiungibile via terra: resta dov'è
     return from;
   }
-  let best=from, bd=here;
+  let best=from, bd=here, bf=Infinity;
   for(const n of from.neighbors){
     const d=f[n];
-    if(d>=0&&d<bd){ bd=d; best=tiles[n]; }
+    if(d<0||d>=here) continue;
+    if(avoid){
+      // vale anche un passo un po' più lungo, se si allontana dal ricordo
+      const fear=avoid(tiles[n]), key=d+fear*STEP_COST;
+      if(key<bf||(key===bf&&d<bd)){ bf=key; bd=d; best=tiles[n]; }
+    } else if(d<bd){ bd=d; best=tiles[n]; }
   }
   return best;
 }

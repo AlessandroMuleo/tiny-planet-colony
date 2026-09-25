@@ -32,10 +32,13 @@ function resolveCombat(dt){
     if(u.state==='landing') continue;
     const U=UNITS[u.kind], dmg=unitDamage(u);
     if(!dmg) continue;
-    for(const o of nearbyUnits(u.from, U.range>1.5)){
+    // la squadra colpisce il bersaglio comune, se è a tiro; altrimenti il primo che capita
+    const aim=squadAim(u,U.range);
+    for(const o of aim&&!sheltered(aim)?[aim]:nearbyUnits(u.from, U.range>1.5)){
       if(o.state==='landing'||!hostile(u,o)) continue;
       if(u.mesh.position.distanceTo(o.mesh.position)<U.range){
         if(sheltered(o)) continue;
+        if(hasNeeds(o)) remember(o,o.from,'danger',0.6);     // qui mi hanno colpito
         o.hp-=(u.faction!=='you'&&behindWalls(o)?dmg*0.6:dmg)*dt;   // 40% in meno dietro le mura
         if(U.range>2&&beams){
           const g=new THREE.BufferGeometry().setFromPoints([u.mesh.position.clone(),o.mesh.position.clone()]);
@@ -120,6 +123,7 @@ function resolveCombat(dt){
       shiftGoodwill(set,-30,'emissario ucciso');
       logEvent('⚠ L\'emissario di '+set.name+' è stato ucciso: incidente diplomatico.');
     }
+    if(wasMine&&hasNeeds(u)) witness(u.from,'danger',0.5);  // chi ha visto cadere un compagno
     killUnit(u,i);
     if(wasMine){
       // guardiani e assoggettati non sono "pop": non vanno scalati dalla popolazione
@@ -165,6 +169,7 @@ function spawnRaidOf(n){
   // se il telescopio ha già calcolato la rotta, atterrano lì
   const site=raidSite&&!raidSite.building?raidSite:spots[Math.floor(Math.random()*spots.length)];
   raidSite=null;
+  witness(site,'danger',0.7);                   // chi vede atterrare la navetta se lo ricorda
   const ship=dropshipMesh();
   planetGroup.add(ship);
   props.push({mesh:ship, tile:site, phase:'down', t:0, payload:n});

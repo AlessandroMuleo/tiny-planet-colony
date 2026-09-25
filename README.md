@@ -45,6 +45,7 @@ trasformarli.
 | 13-pathing | campi di distanza, cache di frame |
 | 14-utility | **utility AI**: curve, considerazioni, punteggi, spiegazioni |
 | 15-colonists | azioni, bisogni e prenotazioni dei coloni; cervello delle altre unità |
+| 15-mind | **mente dei coloni**: ricordi, piani, squadra, soccorso, rivalità, voci |
 | 16-combat | combattimento, incursioni |
 | 17-diplomacy · 18-trade | diplomazia, clan rivali, carovane |
 | 19-events | poteri del giocatore, **eventi casuali** |
@@ -95,7 +96,11 @@ suite: per un seme solo sarebbero fragili. A ogni tick controlla che:
 - benevolenza, malcontento e richieste dei clan siano validi, e le guerre
   tra clan valgano da entrambe le parti;
 - bisogni, salute e posizioni delle unità siano numeri validi;
-- ogni struttura orbitale sia unica, con un livello valido e la stazione.
+- ogni struttura orbitale sia unica, con un livello valido e la stazione;
+- ricordi, rivalità, piani e soccorsi dei coloni siano coerenti.
+
+La build si ferma se due moduli dichiarano lo stesso nome globale: con
+gli script classici l'ultimo vincerebbe in silenzio.
 
 Dopo il caricamento a metà partita controlla anche che coloni, bisogni e
 scorte siano gli stessi di prima del salvataggio.
@@ -115,6 +120,16 @@ colono ha un nome, da zero a due tratti che correggono le sue curve, e abilità
 che crescono con la pratica. In gioco, selezionando una casella con dei coloni
 l'ispettore mostra nome, tratti, mestiere migliore, bisogni e le tre azioni
 col punteggio più alto.
+
+## La mente dei coloni
+
+I coloni ricordano dove sono stati attaccati o dove è morto un amico, e
+se possono evitano quei luoghi. Conoscono le strade. Fanno piani di due o
+tre passi: mangiano prima di partire per un lavoro lontano, e al ritorno
+dal magazzino portano un blocco al cantiere vicino. In battaglia puntano
+lo stesso nemico, seguono un capo squadra, ripiegano insieme e portano i
+feriti in ospedale. Litigano, fanno pace, si passano voci, e ognuno ha una
+piccola storia personale. Dettagli in [docs/mente.md](docs/mente.md).
 
 ## Amicizie e traguardi
 

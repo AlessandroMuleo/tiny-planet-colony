@@ -10,8 +10,11 @@ let nextUid = 1;
 const uidOf = u => u.uid || (u.uid = nextUid++);
 const bondOf = (u,v) => (u.bonds&&u.bonds[uidOf(v)])||0;
 function addBond(u,v,k){
+  if(feudOf(u,v)>=0.3) return;                // con un rivale non si fa amicizia
   u.bonds=u.bonds||{};
-  const id=uidOf(v); u.bonds[id]=Math.min(1,(u.bonds[id]||0)+k);
+  const id=uidOf(v), was=u.bonds[id]||0;
+  u.bonds[id]=Math.min(1,was+k);
+  if(was<FRIEND_AT&&u.bonds[id]>=FRIEND_AT&&!u.ff&&v.name){ u.ff=true; addStory(u,'Prima amicizia: '+v.name); }
 }
 /* ogni 5 tick: gruppi di coloni sulla stessa casella di lavoro o di sonno */
 function socialTick(){
@@ -33,6 +36,7 @@ function socialTick(){
     if(g.length<2||g.length>12) continue;       // in una folla non ci si conosce
     for(const a of g) for(const b of g) if(a!==b) addBond(a,b,BOND_GAIN*traitMul(a,'social'));
   }
+  talkTick(groups);                             // liti, paci e voci (15-mind)
   // si tengono solo i legami più forti
   for(const u of units) if(u.bonds){
     const ids=Object.keys(u.bonds);
@@ -49,6 +53,7 @@ function mournFriend(u,died){
   for(const v of units){
     if(v===u||!hasNeeds(v)||bondOf(v,u)<FRIEND_AT) continue;
     v.sorrowT=died?120:60; delete v.bonds[u.uid]; sad++;
+    if(died){ remember(v,u.from,'death',1); if(u.name) addStory(v,'Lutto: '+u.name); }
   }
   if(sad&&died&&u.name) logEvent('🕯 '+sad+(sad===1?' amico piange':' amici piangono')+' '+u.name+'.');
 }

@@ -38,18 +38,25 @@ quindi rialzato in proporzione a quanti sono:
 **Inerzia.** L'azione in corso vale il 15% in più. Senza, un colono
 cambierebbe idea a ogni ragionamento per differenze di pochi centesimi.
 
+**Impegno.** Con un piano in corso, l'azione del passo in testa vale
+almeno 0,85 (se le sue considerazioni non la escludono). Basta per
+battere lavoro e sonno, non un nemico addosso. I piani sono in
+[mente.md](mente.md).
+
 ## Le azioni
 
 | Azione | Peso | Considerazioni |
 |---|---|---|
-| scappare | 1,2 | nemico vicino · vulnerabile (bambino, ferito, assoggettato, o salute bassa) |
-| difendere | 1,0 | sa combattere · nemico vicino · in salute |
+| scappare | 1,2 | nemico vicino · vulnerabile (bambino, ferito, assoggettato, salute bassa, o squadra in ritirata) |
+| difendere | 1,0 | sa combattere · nemico vicino · in salute · nessuna ritirata |
+| soccorrere | 0,9 | un compagno ferito lontano dall'ospedale · un ospedale aperto · nessun nemico addosso |
 | mangiare | 1,0 | fame (logistica, metà a 0,6) · c'è cibo · un magazzino |
 | al riparo | 0,95 | incursione · indifeso · c'è un rifugio |
 | dormire | 0,9 | stanchezza (logistica) · è notte (di giorno vale 0,55) · al sicuro |
 | curarsi | 0,85 | ferito · salute persa |
 | lavorare | 0,6 | ha un lavoro |
 | costruire | 0,55 | può lavorare senza incarico · c'è un cantiere con blocchi liberi |
+| portare un blocco | 0,6 | nel piano · il cantiere ha ancora blocchi da ricevere · al sicuro |
 | tornare a casa | 0,1 | nessuna: è il ripiego |
 
 ## Un esempio con i numeri

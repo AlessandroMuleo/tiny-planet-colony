@@ -54,10 +54,14 @@ function scoreAction(action, ctx, detail){
    piccolo bonus (inerzia), così un colono non cambia idea a ogni
    ragionamento per differenze di pochi centesimi.                      */
 const INERTIA = 1.15;
+/* Un impegno (ctx.commit = {action, floor}): l'azione promessa vale almeno
+   floor, purché le sue considerazioni non la escludano. È il modo in cui
+   un piano a più passi entra in una scelta che guarda solo al presente. */
+const committed = (ctx,key,s) => ctx.commit&&ctx.commit.action===key&&s>0 ? Math.max(s,ctx.commit.floor) : s;
 function chooseAction(actions, ctx, current){
   let best=null, bestScore=0;
   for(const key in actions){
-    let s=scoreAction(actions[key], ctx);
+    let s=committed(ctx,key,scoreAction(actions[key], ctx));
     if(key===current) s*=INERTIA;
     if(s>bestScore){ bestScore=s; best=key; }
   }
@@ -70,7 +74,9 @@ function explain(actions, ctx, current){
   const out=[];
   for(const key in actions){
     const detail=[];
-    let s=scoreAction(actions[key], ctx, detail);
+    const raw=scoreAction(actions[key], ctx, detail);
+    let s=committed(ctx,key,raw);
+    if(s>raw) detail.push({name:'nel piano', value:1});
     if(key===current) s*=INERTIA;
     out.push({action:key, label:actions[key].label||key, score:s, detail});
   }

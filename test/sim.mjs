@@ -28,7 +28,8 @@ const FPS = 5;                        // passi di simulazione per secondo di gio
    seme solo sarebbero fragili (ogni modifica sposta i numeri casuali), ma
    se non compaiono mai in tutta la suite qualcosa si è rotto davvero    */
 const SUITE_EXPECT = ['❓', 'Il governatore sceglie', '🔬', '🏆', '🕯', '💍', '🥀', 'ripartono col bottino', 'ripresa',
-  '⛈', '🌵', '🌫', '⚡', '🛰', '🛡', '☄', '🔭'];
+  '⛈', '🌵', '🌫', '⚡', '🛰', '🛡', '☄', '🔭',
+  'guida la difesa', 'La squadra ripiega', '🚑', '💢', '🤝'];
 
 const SCENARIOS = [
   // survive: col governatore la colonia deve arrivare viva alla fine
@@ -177,6 +178,30 @@ function __check(){
     if(o.built && !ORBITALS[o.kind].hub && !hasOrbital('station')) bad.push(o.kind + ' in orbita senza stazione');
   }
   if(!(spaceOffline >= 0)) bad.push('spaceOffline = ' + spaceOffline);
+  // la mente: ricordi, rivalità, piani, soccorsi
+  const alive = new Set(units);
+  for(const u of units){
+    const who = u.name || u.kind;
+    if(u.mem){
+      if(u.mem.length > MEM.MAX) bad.push(who + ': ' + u.mem.length + ' ricordi');
+      for(const m of u.mem)
+        if(!tiles[m.t] || !MEM_KINDS[m.k] || !__fin(m.w) || m.w <= 0 || m.w > 1) bad.push(who + ': ricordo non valido ' + JSON.stringify(m));
+    }
+    if(u.feud) for(const id in u.feud)
+      if(!__fin(u.feud[id]) || u.feud[id] <= 0 || u.feud[id] > 1) bad.push(who + ': rivalità ' + u.feud[id]);
+    if(u.plan){
+      if(!u.plan.steps.length) bad.push(who + ': piano vuoto');
+      for(const st of u.plan.steps){
+        if(!PLAN_STEPS[st.do]) bad.push(who + ': passo sconosciuto ' + st.do);
+        if(st.do === 'courier' && (!st.site || !st.site.center)) bad.push(who + ': consegna senza cantiere');
+      }
+    }
+    if(u.carriedBy && (!alive.has(u.carriedBy) || u.carriedBy.carrying !== u)) bad.push(who + ': portato da chi non lo porta');
+    if(u.carrying && (!alive.has(u.carrying) || u.carrying.carriedBy !== u)) bad.push(who + ': porta chi non è in spalla');
+    if(u.carrying && u.carriedBy) bad.push(who + ': porta ed è portato');
+    if(u.story && (u.story.length > STORY_MAX || u.story.some(e => typeof e.x !== 'string'))) bad.push(who + ': storia non valida');
+  }
+  if(squad.captain && !alive.has(squad.captain) && FC.danger) warn.push('capo squadra non più in vita');
   if(!NARRATOR_PHASES[narrator.phase]) bad.push('narratore in una fase sconosciuta: ' + narrator.phase);
   if(choice && !CHOICE_EVENTS[choice.id]) bad.push('scelta sconosciuta: ' + choice.id);
   const RELS = ['ostile','neutrale','alleato','assoggettato','conquistato'];
@@ -218,7 +243,7 @@ function __summary(){
     tick: __tick, gameOver, pop, demo: d,
     res: {food: Math.round(res.food), mat: Math.round(res.mat), pow: Math.round(res.pow)}, cap: capacity(),
     tech, buildings: playerBuildings().length, sites: tiles.filter(t => t.site && t.owner === 'you').length,
-    raids: raidNo, units: units.length,
+    raids: raidNo, units: units.length, mind: {...mindStats},
     orbit: orbit.filter(o => o.built).map(o => o.kind + (o.level > 1 ? o.level : '')).join(' '),
     clans: settlements.map(s => s.name + ' ' + s.relation).join(', '),
     // stato esatto, per l'impronta: nessun arrotondamento
@@ -279,6 +304,8 @@ function report(r) {
     `(${s.demo.child}b/${s.demo.adult}a/${s.demo.elder}v) · cibo ${s.res.food} mat ${s.res.mat} en ${s.res.pow} / ${s.cap}` +
     ` · edifici ${s.buildings} · cantieri ${s.sites} · ricerca ${s.tech} · incursioni ${s.raids}` +
     (s.clans ? ` · ${s.clans}` : '') + (s.orbit ? ` · orbita: ${s.orbit}` : ''));
+  if (s) console.log(`   mente: piani ${s.mind.plans} · blocchi di strada ${s.mind.couriers} · soccorsi ${s.mind.rescues}` +
+    ` · liti ${s.mind.quarrels} · paci ${s.mind.peace} · voci ${s.mind.rumors}`);
   if (r.crashed) console.log('   ECCEZIONE: ' + r.crashed.split('\n').slice(0, 4).join('\n     '));
   for (const f of r.failures) console.log('   fail(): ' + f.split('\n')[0]);
   // lo stesso errore ripetuto a ogni tick si stampa una volta sola, col primo tick

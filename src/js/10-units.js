@@ -47,7 +47,7 @@ function spawnUnit(kind,faction,tile){
   return u;
 }
 function killUnit(u,i,died){
-  releaseAll(u);
+  releaseAll(u); releaseRescue(u);
   if(hasNeeds(u)) mournFriend(u,died===true||u.hp<=0);   // morto, o solo andato via
   dropCarry(u);
   planetGroup.remove(u.mesh);
@@ -95,7 +95,8 @@ function unitDamage(u){
     if(u.stage==='elder') d*=0.6;
   }
   // la tattica raddoppia i colpi della milizia (coloni civili che difendono)
-  if(u.faction==='you'&&UNITS[u.kind].civil) d*=1+techSum('militia');
+  if(u.faction==='you'&&UNITS[u.kind].civil) d*=(1+techSum('militia'))*skillMul(u,'war');
+  if(nearCaptain(u)) d*=1.2;                     // accanto al capo squadra
   return d*(u.faction==='you'?techWar():1);
 }
 const myUnits  = () => units.filter(u=>u.faction==='you');

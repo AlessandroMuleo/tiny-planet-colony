@@ -137,6 +137,7 @@ function renderMinds(tile){
       (u.kind==='thrall'?' · assoggettato':'')+'<b>'+(cur?cur.label:'—')+'</b></div>'+
       ((tr||sk)?'<div class="traits">'+[tr, sk&&sk.bonus>=0.01?sk.label+' +'+Math.round(sk.bonus*100)+'%':''].filter(Boolean).join(' · ')+'</div>':'')+
       (fr.length?'<div class="traits">amici: '+fr.slice(0,3).join(', ')+(fr.length>3?'…':'')+'</div>':'')+
+      mindLines(u)+
       '<div class="needs">'+
       bar('sazio',n.food)+bar('riposato',n.rest)+bar('umore',n.mood)+'</div><ol>'+
       why.map(w=>{
@@ -149,6 +150,22 @@ function renderMinds(tile){
   $('i-minds').innerHTML=html;
 }
 
+/* la mente del colono (15-mind): piano, squadra, rivali, paure, ricordi */
+function mindLines(u){
+  const out=[];
+  if(u.plan) out.push('piano: '+planText(u)+' <span>('+u.plan.why+')</span>');
+  if(squad.captain===u) out.push('⚔ capo squadra');
+  if(u.carrying) out.push('🚑 porta '+(u.carrying.name||'un ferito')+' in ospedale');
+  if(u.carriedBy) out.push('🚑 in spalla a '+(u.carriedBy.name||'un compagno'));
+  const rv=rivalsOf(u).map(v=>v.name).filter(Boolean);
+  if(rv.length) out.push('rivali: '+rv.slice(0,3).join(', '));
+  const fear=(u.mem||[]).filter(m=>m.w>=0.3);
+  if(fear.length) out.push('teme '+(fear.length===1?'un luogo':fear.length+' luoghi')+
+    ' <span>('+[...new Set(fear.map(m=>MEM_KINDS[m.k]))].join(', ')+')</span>');
+  const st=(u.story||[]).slice(-3).reverse();
+  if(st.length) out.push('ricordi: '+st.map(e=>e.x).join(' · '));
+  return out.map(x=>'<div class="traits">'+x+'</div>').join('');
+}
 const canAfford=B=>canPay(B.cost);   // (orbitali e UI generica)
 function tileAllows(tile,key){
   if(!tile||tile.building||tile.site) return false;

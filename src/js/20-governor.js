@@ -4,7 +4,7 @@ function haulSteps(t){
   const st=nearestOf(t,FC.storage);
   if(!st) return 99;
   const d=distField(st)[t.id];
-  return d<0?99:d;
+  return d<0?99:Math.round(d/STEP_COST);
 }
 /* ── governatore a utility ─────────────────────────────────────────
    Stesso motore dei coloni (14-utility.js), applicato alla colonia intera.

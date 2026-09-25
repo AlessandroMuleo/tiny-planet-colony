@@ -103,7 +103,8 @@ function boardVeterans(pad){
   const xp=u=>Object.values(u.skills||{}).reduce((a,b)=>a+b,0);
   const crew=units.filter(u=>isPerson(u)&&u.stage!=='child'&&u.name)
     .sort((a,b)=>xp(b)-xp(a)).slice(0,seats);
-  veterans=crew.map(u=>({name:u.name, traits:[...(u.traits||[])], skills:{...(u.skills||{})}, age:u.age}));
+  veterans=crew.map(u=>({name:u.name, traits:[...(u.traits||[])], skills:{...(u.skills||{})}, age:u.age,
+    story:(u.story||[]).map(s=>({...s}))}));
   return veterans.length;
 }
 /* dopo generateWorld: i primi coloni diventano i veterani sbarcati */
@@ -113,6 +114,7 @@ function landVeterans(){
   veterans.forEach((v,i)=>{
     const u=mine[i]; if(!u) return;
     u.name=v.name; u.traits=v.traits; u.skills=v.skills; u.age=Math.min(v.age,AGES.adult.until-20); applyAge(u);
+    u.story=(v.story||[]).map(s=>({x:s.x, t:0})); addStory(u,'Sbarco su un mondo nuovo');
   });
   const best=veterans.map(v=>{ const k=Object.keys(v.skills).sort((a,b)=>v.skills[b]-v.skills[a])[0];
     return v.name+(k?' ('+SKILLS[k]+')':''); });

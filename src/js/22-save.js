@@ -22,7 +22,8 @@ function snapshot(){
       load:u.load, dl:!!u.delivered, life:u.lifeT||0,
       nd:u.needs?[u.needs.food,u.needs.rest,u.needs.mood]:null,
       nm:u.name, tr:u.traits, sk:u.skills, org:si(u.origin), rq:u.req||null, fun:u.funT||0, st:u.study||null,
-      uid:u.uid||0, bd:u.bonds||null, sor:u.sorrowT||0})),
+      uid:u.uid||0, bd:u.bonds||null, sor:u.sorrowT||0,
+      me:u.mem||null, fe:u.feud||null, sy:u.story||null, ff:!!u.ff})),
     orbit:orbit.filter(o=>o.built).map(o=>({k:o.kind, lv:o.level||1})), moonCrew:moonCrew.length,
     spaceOffline, minerT, raidSite:raidSite?raidSite.id:-1};
 }
@@ -97,6 +98,9 @@ function restore(d){
       if(e.nd) u.needs={food:e.nd[0], rest:e.nd[1], mood:e.nd[2]};
       u.funT=e.fun||0; u.study=e.st||null; u.sorrowT=e.sor||0;
       if(e.uid){ u.uid=e.uid; nextUid=Math.max(nextUid,e.uid+1); } if(e.bd) u.bonds={...e.bd};
+      if(e.me) u.mem=e.me.filter(m=>tiles[m.t]&&MEM_KINDS[m.k]).map(m=>({...m}));
+      if(e.fe) u.feud={...e.fe};
+      if(e.sy) u.story=e.sy.map(s=>({...s})); u.ff=!!e.ff;
       if(e.nm){ u.name=e.nm; u.traits=(e.tr||[]).filter(id=>PERSON_TRAITS[id]); u.skills={...(e.sk||{})}; }
       if(e.org>=0&&settlements[e.org]) u.origin=settlements[e.org];
       if(e.k==='envoy'){ u.lifeT=e.life; u.req=e.rq; u.delivered=e.dl||!e.rq; if(!u.delivered) takeCarry(u,0xffe08a); }

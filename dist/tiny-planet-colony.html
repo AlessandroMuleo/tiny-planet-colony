@@ -769,7 +769,7 @@ function generateWorld(seed){
   season=0; seasonT=0; worldAge=0;
   narrator={phase:'calma',t:0,hurt:0}; choice=null; famineT=0; exiles=0; chainT=0;
   weather={kind:'sereno',t:120}; applyWeather();
-  spaceOffline=0; raidSite=null; minerT=0;
+  spaceOffline=0; raidSite=null; minerT=0; resetMind();
   beams=new THREE.Group(); planetGroup.add(beams);
   ringGroup=new THREE.Group(); planetGroup.add(ringGroup); rings.clear();
   if(orbitGroup) scene.remove(orbitGroup);
@@ -1677,7 +1677,7 @@ function spawnUnit(kind,faction,tile){
   return u;
 }
 function killUnit(u,i,died){
-  releaseAll(u);
+  releaseAll(u); releaseRescue(u);
   if(hasNeeds(u)) mournFriend(u,died===true||u.hp<=0);   // morto, o solo andato via
   dropCarry(u);
   planetGroup.remove(u.mesh);
@@ -1725,7 +1725,8 @@ function unitDamage(u){
     if(u.stage==='elder') d*=0.6;
   }
   // la tattica raddoppia i colpi della milizia (coloni civili che difendono)
-  if(u.faction==='you'&&UNITS[u.kind].civil) d*=1+techSum('militia');
+  if(u.faction==='you'&&UNITS[u.kind].civil) d*=(1+techSum('militia'))*skillMul(u,'war');
+  if(nearCaptain(u)) d*=1.2;                     // accanto al capo squadra
   return d*(u.faction==='you'?techWar():1);
 }
 const myUnits  = () => units.filter(u=>u.faction==='you');
@@ -1972,6 +1973,7 @@ function ageTick(){
       if(u.hp>=u.hpMax*0.85){ u.wounded=false; applyAge(u); changed=true; }
     } else if(u.hp<u.hpMax*WOUND_AT){
       u.wounded=true; applyAge(u); changed=true;
+      addStory(u,raidActive?'Ferita durante un\'incursione':'Ferita');
       toast('Un colono è rimasto ferito: portatelo in ospedale.');
     }
   }
@@ -2011,6 +2013,7 @@ function economyTick(){
     pop++;
     const baby=spawnUnit('worker','you',randomHome());
     baby.age=0; applyAge(baby);           // nasce bambino: non lavora ancora
+    baby.story=[{t:worldAge, x:'Nascita'}];
     syncJobs();
     toast('È nato un colono.');
   }
@@ -2023,7 +2026,7 @@ function economyTick(){
     raidWarned=true; logEvent('🔭 La torre avvista una navetta: incursione tra 25 secondi. Bambini al riparo!');
   }
   if(!raidActive){ raidIn--; if(raidIn<=0){ raidWarned=false; spawnRaid(); raidIn=raidInterval(); } }
-  raidersTick(); narratorTick(); choiceTick(); chainTick(); socialTick(); achievementTick(); weatherTick(); spaceTick();
+  raidersTick(); narratorTick(); choiceTick(); chainTick(); socialTick(); mindTick(); achievementTick(); weatherTick(); spaceTick();
   for(const s of settlements) rivalThink(s);
   diplomacyTick();
   if(auto) autoThink();
@@ -2069,43 +2072,40 @@ function structureTick(dt){
    rimbalzava avanti e indietro all'infinito. Questo invece è esatto.        */
 let fieldCache=new Map(), foeCache=new Map();
 function bumpWalk(){ fieldCache.clear(); foeCache.clear(); }
-/* Per i tuoi coloni è una BFS semplice. Per i nemici è invece una Dijkstra
-   con le mura percorribili ma carissime (WALL_COST passi): così aggirano
-   la cinta se il giro vale meno di sfondarla, e sfondano solo quando il
-   muro è davvero la via più breve — cioè quando la cinta è chiusa.     */
+/* Entrambi sono una Dijkstra a costi interi. Per i tuoi coloni un passo
+   costa STEP_COST, e ROAD_COST su una strada finita: conoscono le strade
+   e le preferiscono quando il giro in più si ripaga (ci si cammina 1,6
+   volte più in fretta). Per i nemici un passo costa 1 e le mura sono
+   percorribili ma carissime (WALL_COST passi): così aggirano la cinta
+   se il giro vale meno di sfondarla, e sfondano solo quando il muro è
+   davvero la via più breve — cioè quando la cinta è chiusa.           */
+const STEP_COST=3, ROAD_COST=2;
+const onRoad = t => hasFlag(t,'road')&&!t.site;
 function distField(goal,foe){
   const cache = foe?foeCache:fieldCache;
   let f=cache.get(goal.id);
   if(f) return f;
-  if(cache.size>40) cache.clear();
+  // ogni posto di lavoro e cantiere ha il suo campo: 160 × 1.212 caselle ≈ 0,8 MB
+  if(cache.size>160) cache.clear();
   f=new Int32Array(tiles.length).fill(-1);
-  if(!foe){
-    f[goal.id]=0;
-    const q=[goal.id];
-    for(let h=0;h<q.length;h++){
-      const cur=q[h], d=f[cur];
-      for(const n of tiles[cur].neighbors){
-        if(f[n]!==-1||!walkable(tiles[n])) continue;
-        f[n]=d+1; q.push(n);
-      }
-    }
-  } else {
+  {
+    const cost = foe ? t=>blocksFoe(t)?WALL_COST:1 : t=>onRoad(t)?ROAD_COST:STEP_COST;
     // coda a bucket: i costi sono interi piccoli, niente heap
     const INF=0x3fffffff, dist=new Int32Array(tiles.length).fill(INF);
-    const maxD=tiles.length*(WALL_COST+1)+2;
-    const buckets=new Map();
-    const put=(id,d)=>{ let b=buckets.get(d); if(!b){b=[];buckets.set(d,b);} b.push(id); };
+    const maxD=tiles.length*(Math.max(WALL_COST,STEP_COST)+1)+2;
+    const buckets=[];
+    const put=(id,d)=>{ (buckets[d]||(buckets[d]=[])).push(id); };
     dist[goal.id]=0; put(goal.id,0);
-    for(let d=0; d<=maxD; d++){
-      const b=buckets.get(d);
+    for(let d=0; d<=maxD&&d<buckets.length; d++){
+      const b=buckets[d];
       if(!b) continue;
-      buckets.delete(d);
+      buckets[d]=null;
       for(const cur of b){
         if(dist[cur]!==d) continue;
         for(const n of tiles[cur].neighbors){
           const t=tiles[n];
           if(!walkable(t)) continue;
-          const nd=d+(blocksFoe(t)?WALL_COST:1);
+          const nd=d+cost(t);
           if(nd<dist[n]){ dist[n]=nd; put(n,nd); }
         }
       }
@@ -2117,7 +2117,10 @@ function distField(goal,foe){
 }
 const reachable=(from,goal)=>!!goal&&distField(goal)[from.id]>=0;
 
-function stepToward(from,goal,fly,foe){
+/* avoid(t): quanto il colono vuole evitare la casella (i luoghi che teme).
+   Tra i vicini che accorciano la strada si prende quello che teme meno:
+   non allunga mai il percorso, ma dove ci sono due vie aggira il ricordo */
+function stepToward(from,goal,fly,foe,avoid){
   if(fly){
     let best=from, bd=from.center.dot(goal.center);
     for(const n of from.neighbors){
@@ -2130,10 +2133,15 @@ function stepToward(from,goal,fly,foe){
   if(here<0){   // obiettivo irraggiungibile via terra: resta dov'è
     return from;
   }
-  let best=from, bd=here;
+  let best=from, bd=here, bf=Infinity;
   for(const n of from.neighbors){
     const d=f[n];
-    if(d>=0&&d<bd){ bd=d; best=tiles[n]; }
+    if(d<0||d>=here) continue;
+    if(avoid){
+      // vale anche un passo un po' più lungo, se si allontana dal ricordo
+      const fear=avoid(tiles[n]), key=d+fear*STEP_COST;
+      if(key<bf||(key===bf&&d<bd)){ bf=key; bd=d; best=tiles[n]; }
+    } else if(d<bd){ bd=d; best=tiles[n]; }
   }
   return best;
 }
@@ -2293,10 +2301,14 @@ function scoreAction(action, ctx, detail){
    piccolo bonus (inerzia), così un colono non cambia idea a ogni
    ragionamento per differenze di pochi centesimi.                      */
 const INERTIA = 1.15;
+/* Un impegno (ctx.commit = {action, floor}): l'azione promessa vale almeno
+   floor, purché le sue considerazioni non la escludano. È il modo in cui
+   un piano a più passi entra in una scelta che guarda solo al presente. */
+const committed = (ctx,key,s) => ctx.commit&&ctx.commit.action===key&&s>0 ? Math.max(s,ctx.commit.floor) : s;
 function chooseAction(actions, ctx, current){
   let best=null, bestScore=0;
   for(const key in actions){
-    let s=scoreAction(actions[key], ctx);
+    let s=committed(ctx,key,scoreAction(actions[key], ctx));
     if(key===current) s*=INERTIA;
     if(s>bestScore){ bestScore=s; best=key; }
   }
@@ -2309,7 +2321,9 @@ function explain(actions, ctx, current){
   const out=[];
   for(const key in actions){
     const detail=[];
-    let s=scoreAction(actions[key], ctx, detail);
+    const raw=scoreAction(actions[key], ctx, detail);
+    let s=committed(ctx,key,raw);
+    if(s>raw) detail.push({name:'nel piano', value:1});
     if(key===current) s*=INERTIA;
     out.push({action:key, label:actions[key].label||key, score:s, detail});
   }
@@ -2362,6 +2376,8 @@ function moodFactors(u){
   if(u.bonds&&friendNear(u)) f.push(['un amico vicino', 0.06]);
   if(orbitalOn('habitat')) f.push(['vista sulle stelle', 0.03]);
   if(u.sorrowT>0) f.push(['ha perso un amico', -0.2]);
+  if(rivalNear(u)) f.push(['un rivale vicino', -0.06]);
+  if(painfulPlace(u)) f.push(['ricordi dolorosi', -0.05]);
   if(u.kind==='thrall') f.push(['assoggettato', -0.2]);
   for(const id of u.traits||[]) if(PERSON_TRAITS[id].mood) f.push([PERSON_TRAITS[id].label, PERSON_TRAITS[id].mood]);
   return f;
@@ -2445,11 +2461,12 @@ function initPerson(u){
     u.traits.push(id);
   }
   u.skills={};
+  addStory(u, worldAge<2?'Sbarco sul pianeta':'Arrivo nella colonia');
 }
 
 /* abilità: si impara lavorando. A SKILL_HALF punti di esperienza la resa
    è +30%, e non supera mai il +60%: i primi tick valgono più degli ultimi */
-const SKILLS={food:'agricoltura', mat:'estrazione', pow:'energia', sci:'ricerca', bar:'fusione', build:'costruzione'};
+const SKILLS={food:'agricoltura', mat:'estrazione', pow:'energia', sci:'ricerca', bar:'fusione', build:'costruzione', war:'combattimento'};
 const SKILL_HALF=200;
 /* il mestiere di un edificio è la sua prima produzione positiva (l'armeria non ne ha) */
 const skillKey = t => {
@@ -2462,7 +2479,9 @@ const skillXp = (u,k) => (u.skills&&u.skills[k])||0;
 const skillMul = (u,k) => k ? 1+0.6*skillXp(u,k)/(skillXp(u,k)+SKILL_HALF) : 1;
 function practice(u,k,amount){
   if(!k||!u.skills) return;
+  const was=skillMul(u,k);
   u.skills[k]=skillXp(u,k)+amount*traitMul(u,'learn');
+  if(was<1.3&&skillMul(u,k)>=1.3) addStory(u,'Esperienza in '+SKILLS[k]);
 }
 /* a scuola si studia un mestiere produttivo, scelto a caso per ogni bambino */
 const pickStudy = () => { const k=['food','mat','pow','sci']; return k[Math.floor(Math.random()*k.length)]; };
@@ -2506,19 +2525,29 @@ function colonistContext(u){
     if(d<bd){ bd=d; foe=o; }
   }
   const able = workPower(u)>0;
-  // il cantiere si cerca solo se serve: chi ha un lavoro non ci va
+  // il cantiere si cerca solo se serve: chi ha un lavoro non ci va.
+  // Tra i cantieri vicini si evita quello in un luogo che il colono teme
   let site=null;
   if(able&&!u.job){
     if(holdsBlock(u)) site=u.claim;
-    else site=reachableSites(u.from).filter(t=>freeBlocks(t)>0)
-      .sort((a,b)=>b.center.dot(u.from.center)-a.center.dot(u.from.center))[0]||null;
+    else {
+      const near=reachableSites(u.from).filter(t=>freeBlocks(t)>0)
+        .sort((a,b)=>b.center.dot(u.from.center)-a.center.dot(u.from.center));
+      site=near.find(t=>fearOf(u,t)<0.5)||near[0]||null;
+    }
   }
+  // soccorso: un ferito da portare, e l'ospedale dove portarlo
+  const helper=canFight&&u.kind!=='thrall';
+  const casualty=helper&&(u.carrying||casualties.length)?findCasualty(u):null;
+  const hospital=casualty?nearestOf(u.from,FC.mine,t=>healer(t)&&reachable(u.from,t)):null;
+  const head=planHead(u);
+  const commit=head?{action:head.do, floor:PLAN_FLOOR}:null;
   // i tratti moltiplicano i pesi delle azioni: tw.fight = 1,3 per un coraggioso
   const tw={};
   for(const k in COLONIST_ACTIONS) tw[k]=traitMul(u,'weights',k);
   return {u, n:needsOf(u), tw, hungerMul:traitMul(u,'hunger'), canFight, able, foe, foeDist:foe?bd:Infinity,
     raid:FC.raiders.length>0, site, night:!!nightOn, current:u.act,
-    hpRatio:u.hp/u.hpMax};
+    hpRatio:u.hp/u.hpMax, casualty, hospital, commit, planDo:head?head.do:null, retreat:squad.retreatT>0};
 }
 
 /* ── le azioni ─────────────────────────────────────────────────────
@@ -2531,12 +2560,19 @@ const COLONIST_ACTIONS = {
   fight:{label:'difendere', weight:W(1.0,'fight'), considerations:[
     consider('sa combattere',  c=>is(c.canFight), CURVES.step(.5)),
     consider('nemico vicino',  c=>1-c.foeDist/MILITIA_RANGE, CURVES.power(.5)),
-    consider('in salute',      c=>c.hpRatio, CURVES.logistic(.45,12))
-  ], run:(u,c)=>c.foe.from},
+    consider('in salute',      c=>c.hpRatio, CURVES.logistic(.45,12)),
+    consider('nessuna ritirata', c=>is(!c.retreat), CURVES.step(.5))
+  ], run:(u,c)=>{
+    // la squadra punta tutta sullo stesso nemico, se non è troppo lontano
+    const t=squad.target;
+    if(t&&t.hp>0&&u.mesh.position.distanceTo(t.mesh.position)<MILITIA_RANGE*1.5) return t.from;
+    return c.foe.from;
+  }},
 
   flee:{label:'scappare', weight:W(1.2,'flee'), considerations:[
     consider('nemico vicino',  c=>1-c.foeDist/FLEE_RANGE, CURVES.power(.5)),
-    consider('vulnerabile',    c=>c.canFight ? (1-c.hpRatio) : 1, CURVES.power(2))
+    // in ritirata anche chi sa combattere si considera vulnerabile
+    consider('vulnerabile',    c=>c.canFight&&!c.retreat ? (1-c.hpRatio) : 1, CURVES.power(2))
   ], run:(u,c)=>{
     const refuge = nearestOf(u.from,FC.mine,t=>!!BUILDINGS[t.building].shelter)
                 || nearestOf(u.from,FC.beds,t=>reachable(u.from,t));
@@ -2610,6 +2646,18 @@ const COLONIST_ACTIONS = {
     consider('al sicuro',      c=>is(!c.raid))
   ], run:u=>nearestOf(u.from,FC.mine,x=>hasFlag(x,'school')&&(x.workers||0)>0&&reachable(u.from,x))||u.from},
 
+  rescue:{label:'soccorrere', weight:W(0.9,'rescue'), considerations:[
+    consider('un compagno ferito', c=>is(c.casualty), CURVES.step(.5)),
+    consider('c\'è un ospedale',  c=>is(c.hospital), CURVES.step(.5)),
+    consider('nessun nemico addosso', c=>c.foe?c.foeDist/MILITIA_RANGE:1, CURVES.logistic(.4,12))
+  ], run:(u,c)=>rescueRun(u,c)},
+
+  courier:{label:'portare un blocco', weight:W(0.6,'courier'), considerations:[
+    consider('nel piano',      c=>is(c.planDo==='courier'), CURVES.step(.5)),
+    consider('cantiere aperto',c=>is(courierOk(c.u)), CURVES.step(.5)),
+    consider('al sicuro',      c=>is(!c.foe))
+  ], run:u=>courierRun(u)},
+
   work:{label:'lavorare', weight:W(0.6,'work'), considerations:[
     consider('ha un lavoro',   c=>is(c.u.job), CURVES.step(.5))
   ], run:(u,c,dt)=>workRun(u,dt)},
@@ -2628,7 +2676,7 @@ function workRun(u,dt){
   const B=BUILDINGS[u.job.building];
   if(u.mode==='haul'){
     const st=nearestStorage(u.from);
-    if(!st||u.from===st){ dropCarry(u); u.mode='work'; u.workT=0; return u.job; }
+    if(!st||u.from===st){ dropCarry(u); u.mode='work'; u.workT=0; planCourier(u); return u.job; }
     return st;
   }
   if(u.mode!=='work'){ u.mode='work'; u.workT=0; }
@@ -2664,14 +2712,18 @@ function buildRun(u,site){
 /* lascia l'azione in corso: prenotazioni, carichi e stati intermedi */
 function leaveAction(u,next){
   releaseBlock(u);
+  if(u.act==='rescue') releaseRescue(u);             // il ferito resta dov'è
   if(next!=='sleep'&&next!=='heal') releaseBed(u);   // chi si cura può farlo a letto
   dropCarry(u); u.mode='idle';                       // il carico in mano va perso
   u.mesh.visible=true;
 }
 
 function civilBrain(u,dt){
-  const ctx=colonistContext(u);
-  const pick=chooseAction(COLONIST_ACTIONS,ctx,u.act);
+  advancePlan(u);
+  let ctx=colonistContext(u);
+  let pick=chooseAction(COLONIST_ACTIONS,ctx,u.act);
+  // prima di cominciare qualcosa si guarda avanti: serve un piano?
+  if(planAhead(u,pick.action)){ ctx=colonistContext(u); pick=chooseAction(COLONIST_ACTIONS,ctx,u.act); }
   const next=pick.action||'gather';
   if(next!==u.act){ leaveAction(u,next); u.act=next; }
   u.actScore=pick.score;
@@ -2740,6 +2792,14 @@ function stepUnits(dt){
   rebuildFrameCache();
   for(const u of units){
     if(u.state==='landing'){ u.mesh.scale.setScalar(.55+.45*Math.min(1,u.land)); continue; }
+    // un ferito in spalla va dove va chi lo porta, e intanto non decide nulla
+    if(u.carriedBy){
+      const c=u.carriedBy;
+      u.from=c.from; u.to=c.to; u.t=c.t; u.mesh.visible=true;
+      u.mesh.position.copy(c.mesh.position).multiplyScalar(1.03);
+      u.mesh.quaternion.copy(c.mesh.quaternion);
+      continue;
+    }
     const fly=false;   // i predoni ora camminano: se volassero le mura non conterebbero
     // l'obiettivo si ricalcola all'arrivo su una nuova casella o ogni ~0,3 s,
     // non a ogni fotogramma: è qui che se ne andavano le prestazioni
@@ -2766,7 +2826,7 @@ function stepUnits(dt){
     u.t+=dt*u.speed*(onRoad?1.6:1)*(u.act==='build'?skillMul(u,'build'):1);
     if(u.t>=1){
       u.t=0; u.from=u.to;
-      if(goal&&goal!==u.from) u.to=stepToward(u.from,goal,fly,u.faction!=='you');
+      if(goal&&goal!==u.from) u.to=stepToward(u.from,goal,fly,u.faction!=='you',hasNeeds(u)?avoidFor(u):null);
       else {
         const opts=u.from.neighbors.map(i=>tiles[i]).filter(t=>fly||walkable(t));
         u.to=(goal===u.from)?u.from:(opts.length?opts[Math.floor(Math.random()*opts.length)]:u.from);
@@ -2780,6 +2840,376 @@ function stepUnits(dt){
 }
 
 /* ═══════════════ combattimento ═══════════════ */
+/* ═══════════════ la mente dei coloni ═══════════════
+   Quello che la utility AI da sola non fa, perché sceglie un'azione per
+   volta e dimentica tutto al ragionamento dopo:
+   - ricordi: i luoghi dove si è stati feriti o dove è morto un amico;
+   - piani: due o tre azioni decise insieme, eseguite in fila;
+   - squadra: chi difende si coordina, e chi è ferito viene soccorso;
+   - carattere: rivalità, liti, paci, voci che girano, una storia personale.
+   Tutto passa comunque dalla utility AI: un ricordo sposta il percorso e
+   la scelta del cantiere, un piano alza il punteggio della sua azione, la
+   squadra cambia bersaglio e considerazioni. Niente comportamenti a parte. */
+
+/* statistiche della partita, per la schermata e per la simulazione */
+let mindStats = {plans:0, couriers:0, rescues:0, quarrels:0, peace:0, rumors:0};
+
+/* ── ricordi dei luoghi ──────────────────────────────────────────────
+   Ogni colono tiene al massimo MEM.MAX ricordi {t: casella, k: tipo, w: forza}.
+   Un pericolo sbiadisce in ~250 tick, un lutto nel doppio.            */
+const MEM = {MAX:8, FADE:0.004, MIN:0.05, SEE:0.98};
+const MEM_KINDS = {danger:'pericolo', death:'lutto'};
+function remember(u,tile,kind,w){
+  if(!hasNeeds(u)||!tile) return;
+  const m=u.mem||(u.mem=[]);
+  const e=m.find(x=>x.t===tile.id&&x.k===kind);
+  if(e){ e.w=Math.max(e.w,Math.min(1,w)); return; }
+  m.push({t:tile.id, k:kind, w:Math.min(1,w)});
+  if(m.length>MEM.MAX){ m.sort((a,b)=>b.w-a.w); m.length=MEM.MAX; }
+}
+/* chi vede un fatto lo ricorda: i coloni entro un paio di caselle */
+function witness(tile,kind,w){
+  for(const u of units) if(hasNeeds(u)&&u.from.center.dot(tile.center)>MEM.SEE) remember(u,tile,kind,w);
+}
+/* quanto il colono teme una casella: il ricordo pesa pieno lì, a metà accanto */
+function fearOf(u,t){
+  if(!u.mem) return 0;
+  let f=0;
+  for(const m of u.mem){
+    if(m.t===t.id) f+=m.w;
+    else if(tiles[m.t].neighbors.includes(t.id)) f+=m.w*0.5;
+  }
+  return f;
+}
+/* per stepToward: chi va incontro al nemico o a un ferito non si ferma ai ricordi */
+const avoidFor = u => u.mem&&u.act!=='fight'&&u.act!=='rescue' ? t=>fearOf(u,t) : null;
+const painfulPlace = u => !!u.mem&&u.mem.some(m=>m.k==='death'&&m.w>0.3&&
+  (m.t===u.from.id||u.from.neighbors.includes(m.t)));
+
+/* ── storia personale ────────────────────────────────────────────────
+   Gli ultimi fatti importanti della vita di un colono. Il primo (arrivo o
+   nascita) resta sempre. Frasi senza accordo di genere: i nomi non dicono
+   chi è uomo e chi donna.                                              */
+const STORY_MAX = 6;
+function addStory(u,text){
+  if(!hasNeeds(u)) return;
+  const s=u.story||(u.story=[]);
+  s.push({t:worldAge, x:text});
+  if(s.length>STORY_MAX) s.splice(1,s.length-STORY_MAX);
+}
+
+/* ── fumetti sopra la testa ──────────────────────────────────────────
+   Uno sprite con un'emoji, per due secondi. Al massimo BUBBLE_MAX alla
+   volta, e niente senza canvas (la simulazione non ne ha).             */
+const BUBBLE_MAX = 10, bubbleTex = new Map();
+let bubbles = 0;
+function bubble(u,emoji){
+  if(!u||!u.mesh||bubbles>=BUBBLE_MAX) return;
+  let tex=bubbleTex.get(emoji);
+  if(!tex){
+    const cv=document.createElement('canvas');
+    if(!cv.getContext) return;
+    cv.width=cv.height=64;
+    const g=cv.getContext('2d');
+    if(!g) return;
+    g.fillStyle='#fff'; g.strokeStyle='#1b2230'; g.lineWidth=4;
+    g.beginPath(); g.arc(32,32,27,0,Math.PI*2); g.fill(); g.stroke();
+    g.font='34px sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(emoji,32,34);
+    tex=new THREE.CanvasTexture(cv); bubbleTex.set(emoji,tex);
+  }
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:false, fog:false}));
+  sp.scale.setScalar(.75); sp.renderOrder=5; bubbles++;
+  addFX(sp,2.2,k=>{
+    sp.position.copy(u.mesh.position).multiplyScalar(1.06);
+    sp.material.opacity=Math.min(1,k*4);
+  },()=>{ bubbles--; sp.material.dispose(); });
+}
+
+/* ── piani ───────────────────────────────────────────────────────────
+   Un piano è una fila di passi. Il passo in testa vale almeno PLAN_FLOOR
+   nella scelta (vedi ctx.commit in 14-utility): abbastanza per battere il
+   lavoro e il sonno, non abbastanza per battere un nemico addosso o la
+   fuga. Un passo è finito quando la sua condizione è vera; un piano che
+   non si chiude in PLAN_TTL tick si abbandona.                         */
+const PLAN_FLOOR = 0.85, PLAN_TTL = 150;
+const PLAN_STEPS = {
+  eat:     {label:'mangiare',          done:u=>needsOf(u).food>=0.9},
+  sleep:   {label:'dormire',           done:u=>needsOf(u).rest>=0.95},
+  courier: {label:'portare un blocco', done:(u,s)=>s.done||!s.site.site},
+  work:    {label:'lavorare',          done:u=>!u.job||(u.act==='work'&&u.from===u.job)}
+};
+const planHead = u => u.plan&&u.plan.steps[0];
+function makePlan(u,steps,why){ u.plan={steps, why, at:worldAge}; mindStats.plans++; }
+function advancePlan(u){
+  const p=u.plan;
+  if(!p) return;
+  if(worldAge-p.at>PLAN_TTL){ u.plan=null; return; }
+  while(p.steps.length&&PLAN_STEPS[p.steps[0].do].done(u,p.steps[0])) p.steps.shift();
+  if(!p.steps.length) u.plan=null;
+}
+const planText = u => u.plan ? u.plan.steps.map(s=>PLAN_STEPS[s.do].label).join(' → ') : '';
+/* Decide un piano prima di un'azione: next è l'azione appena scelta.
+   Restituisce true se ha fatto un piano (e allora si sceglie di nuovo). */
+function planAhead(u,next){
+  if(u.plan||next===u.act) return false;
+  const n=needsOf(u), food=res.food>=1;
+  if(next==='work'&&u.job&&u.from!==u.job){
+    // un lavoro lontano: prima si mangia e si dorme, se ce n'è bisogno
+    const d=distField(u.job)[u.from.id];
+    if(d<6*STEP_COST) return false;
+    const steps=[];
+    if(n.food<0.55&&food) steps.push({do:'eat'});
+    if(n.rest<0.35&&!FC.raiders.length) steps.push({do:'sleep'});
+    if(!steps.length) return false;
+    makePlan(u,[...steps,{do:'work'}],'lavoro lontano');
+    return true;
+  }
+  if(next==='sleep'&&n.food<0.5&&food){
+    makePlan(u,[{do:'eat'},{do:'sleep'}],'cena prima di dormire');
+    return true;
+  }
+  return false;
+}
+/* chi porta il raccolto al magazzino, se accanto al suo lavoro c'è un
+   cantiere a cui mancano blocchi, ne prende uno per la strada del ritorno */
+const COURIER_EVERY = 30;
+function planCourier(u){
+  if(u.plan||!u.job||worldAge-(u.courierAt||-99)<COURIER_EVERY) return;
+  const job=u.job, fj=distField(job);
+  const site=nearestOf(job,FC.sites,t=>t.site&&t.owner==='you'&&freeBlocks(t)>0&&
+    fj[t.id]>=0&&fj[t.id]<=3*STEP_COST&&reachable(u.from,t));
+  if(!site) return;
+  u.courierAt=worldAge;
+  makePlan(u,[{do:'courier',site},{do:'work'}],'un blocco di strada');
+}
+function courierOk(u){
+  const s=planHead(u);
+  if(!s||s.do!=='courier'||!s.site.site||s.site.owner!=='you') return false;
+  return (u.claim===s.site&&holdsBlock(u)) || freeBlocks(s.site)>0;
+}
+function courierRun(u){
+  const s=planHead(u);
+  const g=buildRun(u,s.site);
+  if(g) return g;
+  s.done=true; mindStats.couriers++;
+  u.act=null;
+  return u.from;
+}
+
+/* ── squadra ─────────────────────────────────────────────────────────
+   Si ricalcola a ogni tick economico, solo con dei nemici in giro.
+   - bersaglio comune: il nemico più malconcio vicino a chi difende; chi
+     lo ha a tiro colpisce lui (16-combat), gli altri gli si avvicinano;
+   - capo: chi ha più esperienza di combattimento; chi gli sta vicino
+     colpisce il 20% più forte;
+   - ritirata: squadra in forte inferiorità, o in inferiorità e malconcia
+     (i feriti smettono da soli di difendere: la salute media di chi resta
+     non basta a dire che le cose vanno male) → tutti al riparo insieme,
+     poi RETREAT_COOL tick prima di poter ripiegare di nuovo.            */
+const squad = {target:null, captain:null, retreatT:0, cool:0, fighters:0, foes:0, loggedRaid:-1};
+const RETREAT_T = 12, RETREAT_COOL = 30;
+function squadTick(){
+  if(squad.retreatT>0) squad.retreatT--;
+  if(squad.cool>0) squad.cool--;
+  if(!FC.danger){ squad.target=null; squad.captain=null; squad.fighters=squad.foes=0; return; }
+  const fighters=units.filter(u=>isPerson(u)&&u.act==='fight');
+  squad.fighters=fighters.length;
+  let cap=null;
+  for(const u of fighters){ practice(u,'war',2); if(!cap||skillXp(u,'war')>skillXp(cap,'war')) cap=u; }
+  if(cap&&fighters.length>=3&&squad.loggedRaid!==raidNo){
+    squad.loggedRaid=raidNo;
+    logEvent('⚔ '+cap.name+' guida la difesa.');
+    addStory(cap,'Alla guida della difesa'); bubble(cap,'⚔');
+  }
+  squad.captain=cap;
+  let best=null, bh=Infinity;
+  const foes=new Set();
+  for(const u of fighters) for(const o of nearbyUnits(u.from,true)){
+    if(!hostile(u,o)||o.state==='landing'||o.hp<=0) continue;
+    foes.add(o);
+    if(o.hp<bh){ bh=o.hp; best=o; }
+  }
+  squad.target=best; squad.foes=foes.size;
+  if(fighters.length&&!squad.retreatT&&!squad.cool){
+    const hp=fighters.reduce((s,u)=>s+u.hp/u.hpMax,0)/fighters.length;
+    const outnumbered=foes.size>=3&&foes.size>=2*fighters.length;
+    if(outnumbered||(hp<0.6&&foes.size>fighters.length)){
+      squad.retreatT=RETREAT_T; squad.cool=RETREAT_T+RETREAT_COOL;
+      logEvent('⚔ La squadra ripiega: troppi feriti.');
+      for(const u of fighters) bubble(u,'↩');
+    }
+  }
+}
+/* per 16-combat: il bersaglio comune, se u ce l'ha a tiro */
+function squadAim(u,range){
+  const t=squad.target;
+  if(u.faction!=='you'||!t||t.hp<=0||t.state==='landing') return null;
+  return u.mesh.position.distanceTo(t.mesh.position)<range ? t : null;
+}
+/* per unitDamage: +20% accanto al capo */
+const nearCaptain = u => { const c=squad.captain;
+  return !!c&&c!==u&&u.faction==='you'&&(c.from===u.from||u.from.neighbors.includes(c.from.id)); };
+
+/* ── soccorso ────────────────────────────────────────────────────────
+   Un adulto sano vicino a un ferito lontano dall'ospedale se lo carica
+   in spalla e ce lo porta. Il ferito "prenotato" (rescuer) non viene
+   conteso da due soccorritori.                                         */
+let casualties = [];
+const healer = t => isMine(t)&&!!BUILDINGS[t.building].heal&&(t.workers||0)>0;
+const atHospital = v => FC.mine.some(t=>healer(t)&&(t===v.from||t.neighbors.includes(v.from.id)));
+function rescueTick(){
+  casualties=units.filter(v=>hasNeeds(v)&&v.wounded&&!v.carriedBy&&!atHospital(v));
+}
+function findCasualty(u){
+  if(u.carrying) return u.carrying;
+  let best=null, bd=MEM.SEE-0.01;
+  for(const v of casualties){
+    if(v===u||v.carriedBy||(v.rescuer&&v.rescuer!==u)) continue;
+    const d=u.from.center.dot(v.from.center);
+    if(d>bd){ bd=d; best=v; }
+  }
+  return best;
+}
+function rescueRun(u,c){
+  let v=u.carrying;
+  if(!v){
+    v=c.casualty;
+    if(!v||!units.includes(v)){ u.act=null; return u.from; }
+    v.rescuer=u; u.rescuing=v;
+    if(v.from!==u.from) return v.from;
+    u.carrying=v; v.carriedBy=u; bubble(u,'🚑');
+  }
+  if(u.from!==c.hospital) return c.hospital;
+  releaseRescue(u);
+  v.from=v.to=c.hospital; v.t=1; mindStats.rescues++;
+  logEvent('🚑 '+u.name+' ha portato '+v.name+' in ospedale.');
+  addStory(u,'Ha soccorso '+v.name); addStory(v,'In ospedale grazie a '+u.name);
+  addBond(v,u,0.3); addBond(u,v,0.15);
+  u.act=null;
+  return u.from;
+}
+/* scioglie soccorritore e ferito, da entrambe le parti (anche alla morte) */
+function releaseRescue(u){
+  const v=u.carrying||u.rescuing;
+  if(v){ if(v.carriedBy===u) v.carriedBy=null; if(v.rescuer===u) v.rescuer=null; }
+  u.carrying=null; u.rescuing=null;
+  const c=u.carriedBy;
+  if(c){ if(c.carrying===u) c.carrying=null; if(c.rescuing===u) c.rescuing=null; if(c.act==='rescue') c.act=null; }
+  u.carriedBy=null; u.rescuer=null;
+}
+
+/* ── carattere: rivalità, liti, paci, voci ───────────────────────────
+   feud va da 0 a 1 come i legami; da FEUD_AT in su è una rivalità: un
+   rivale vicino guasta l'umore e blocca l'amicizia. Le liti nascono tra
+   tratti che non vanno d'accordo e tra chi è di cattivo umore; la pace
+   si fa in taverna. Le voci girano tra conoscenti: i ricordi dei luoghi
+   pericolosi e, tra amici, da che parte stare in una lite.            */
+const FEUD_AT = 0.5, FEUD_FADE = 0.002;
+const feudOf = (u,v) => (u.feud&&u.feud[uidOf(v)])||0;
+function addFeud(u,v,k){
+  const f=u.feud||(u.feud={}), id=uidOf(v);
+  const x=Math.min(1,(f[id]||0)+k);
+  if(x<=0.001) delete f[id]; else f[id]=x;
+  if(!Object.keys(f).length) delete u.feud;
+}
+const rivalsOf = u => u.feud ? units.filter(v=>v!==u&&hasNeeds(v)&&feudOf(u,v)>=FEUD_AT) : [];
+const rivalNear = u => !!u.feud&&nearbyUnits(u.from,false).some(v=>v!==u&&hasNeeds(v)&&feudOf(u,v)>=FEUD_AT);
+const CLASH = [['lazy','sturdy'],['brave','timid'],['friendly','loner'],['cheerful','loner'],['glutton','glutton']];
+function clash(a,b){
+  let k=0;
+  const A=a.traits||[], B=b.traits||[];
+  for(const [x,y] of CLASH) if((A.includes(x)&&B.includes(y))||(A.includes(y)&&B.includes(x))) k++;
+  return k;
+}
+let lastQuarrelLog = -99;
+function quarrel(a,b){
+  addFeud(a,b,0.6); addFeud(b,a,0.6);
+  for(const [x,y] of [[a,b],[b,a]]) if(x.bonds&&x.bonds[uidOf(y)]){
+    x.bonds[uidOf(y)]-=0.3; if(x.bonds[uidOf(y)]<=0) delete x.bonds[uidOf(y)];
+  }
+  addStory(a,'Lite con '+b.name); addStory(b,'Lite con '+a.name);
+  bubble(a,'💢'); bubble(b,'💢');
+  mindStats.quarrels++;
+  if(worldAge-lastQuarrelLog>=40){ lastQuarrelLog=worldAge; logEvent('💢 '+a.name+' e '+b.name+' hanno litigato.'); }
+}
+function reconcile(a,b,k,where){
+  const before=Math.max(feudOf(a,b),feudOf(b,a));
+  addFeud(a,b,-k); addFeud(b,a,-k);
+  if(before>=0.3&&Math.max(feudOf(a,b),feudOf(b,a))<0.3){
+    addStory(a,'Pace con '+b.name); addStory(b,'Pace con '+a.name);
+    addBond(a,b,0.15); addBond(b,a,0.15);
+    bubble(a,'🤝'); bubble(b,'🤝');
+    mindStats.peace++;
+    logEvent('🤝 '+a.name+' e '+b.name+' hanno fatto pace'+where+'.');
+  }
+}
+/* una voce passa da a a b */
+function gossip(a,b,byUid){
+  if(bondOf(a,b)<0.15&&a.act!=='relax') return;      // non si confida a sconosciuti
+  // il ricordo più forte: "da quella parte hanno attaccato"
+  if(a.mem){
+    const m=a.mem.reduce((x,y)=>y.w>x.w?y:x);
+    if(m.w>=0.3&&!(b.mem&&b.mem.some(x=>x.t===m.t&&x.k===m.k&&x.w>=m.w*0.5))){
+      remember(b,tiles[m.t],m.k,m.w*0.5); mindStats.rumors++; bubble(a,'💬');
+    }
+  }
+  // tra amici: si prende le parti dell'amico in una lite
+  if(a.feud&&bondOf(b,a)>=FRIEND_AT) for(const id in a.feud){
+    const v=byUid.get(+id);
+    if(v&&v!==b&&a.feud[id]>=FEUD_AT&&feudOf(b,v)<FEUD_AT){ addFeud(b,v,0.12); mindStats.rumors++; }
+  }
+}
+/* chiamata da socialTick con i gruppi della stessa casella */
+function talkTick(groups){
+  const byUid=new Map();
+  for(const u of units) if(u.uid) byUid.set(u.uid,u);
+  for(const g of groups.values()){
+    if(g.length<2||g.length>12) continue;
+    for(let i=0;i<g.length;i++) for(let j=i+1;j<g.length;j++){
+      // in taverna: chi si svaga e chi ci lavora stanno nello stesso gruppo
+      const a=g[i], b=g[j], tavern=a.act==='relax'||b.act==='relax';
+      const feuding=feudOf(a,b)>0||feudOf(b,a)>0;
+      if(feuding){
+        // la pace si fa in taverna, o quando c'è un amico comune a mediare
+        const friend=g.some(x=>x!==a&&x!==b&&bondOf(a,x)>=FRIEND_AT&&bondOf(b,x)>=FRIEND_AT);
+        if(tavern) reconcile(a,b,0.15,' in taverna');
+        else if(friend) reconcile(a,b,0.06,' grazie a un amico comune');
+        // col buon umore, fianco a fianco al lavoro o sotto lo stesso tetto, la rabbia passa prima
+        else if(needsOf(a).mood>0.6&&needsOf(b).mood>0.6)
+          reconcile(a,b,0.03,a.act==='sleep'?' sotto lo stesso tetto':' lavorando insieme');
+      } else {
+        const sour=(needsOf(a).mood<0.4?1:0)+(needsOf(b).mood<0.4?1:0);
+        const p=0.002+0.01*clash(a,b)+0.006*sour-(tavern?0.002:0);
+        if(Math.random()<p){ quarrel(a,b); continue; }
+      }
+      if(Math.random()<0.1) gossip(a,b,byUid);
+      if(Math.random()<0.1) gossip(b,a,byUid);
+    }
+  }
+}
+
+/* ── un tick della mente: ricordi e rivalità sbiadiscono, squadra, feriti ── */
+function mindTick(){
+  for(const u of units){
+    if(u.mem){
+      for(const m of u.mem) m.w-=MEM.FADE*(m.k==='death'?0.5:1);
+      u.mem=u.mem.filter(m=>m.w>=MEM.MIN);
+      if(!u.mem.length) delete u.mem;
+    }
+    if(u.feud) for(const id in u.feud){
+      u.feud[id]-=FEUD_FADE;
+      if(u.feud[id]<=0.001) delete u.feud[id];
+    }
+    if(u.feud&&!Object.keys(u.feud).length) delete u.feud;
+  }
+  squadTick();
+  rescueTick();
+}
+function resetMind(){
+  mindStats={plans:0, couriers:0, rescues:0, quarrels:0, peace:0, rumors:0};
+  squad.target=squad.captain=null; squad.retreatT=squad.cool=squad.fighters=squad.foes=0; squad.loggedRaid=-1;
+  casualties=[]; lastQuarrelLog=-99; bubbles=0;
+}
 function damageBuilding(tile,dmg){
   tile.hp-=dmg;
   if(tile.hp<=0) destroyBuilding(tile);
@@ -2814,10 +3244,13 @@ function resolveCombat(dt){
     if(u.state==='landing') continue;
     const U=UNITS[u.kind], dmg=unitDamage(u);
     if(!dmg) continue;
-    for(const o of nearbyUnits(u.from, U.range>1.5)){
+    // la squadra colpisce il bersaglio comune, se è a tiro; altrimenti il primo che capita
+    const aim=squadAim(u,U.range);
+    for(const o of aim&&!sheltered(aim)?[aim]:nearbyUnits(u.from, U.range>1.5)){
       if(o.state==='landing'||!hostile(u,o)) continue;
       if(u.mesh.position.distanceTo(o.mesh.position)<U.range){
         if(sheltered(o)) continue;
+        if(hasNeeds(o)) remember(o,o.from,'danger',0.6);     // qui mi hanno colpito
         o.hp-=(u.faction!=='you'&&behindWalls(o)?dmg*0.6:dmg)*dt;   // 40% in meno dietro le mura
         if(U.range>2&&beams){
           const g=new THREE.BufferGeometry().setFromPoints([u.mesh.position.clone(),o.mesh.position.clone()]);
@@ -2902,6 +3335,7 @@ function resolveCombat(dt){
       shiftGoodwill(set,-30,'emissario ucciso');
       logEvent('⚠ L\'emissario di '+set.name+' è stato ucciso: incidente diplomatico.');
     }
+    if(wasMine&&hasNeeds(u)) witness(u.from,'danger',0.5);  // chi ha visto cadere un compagno
     killUnit(u,i);
     if(wasMine){
       // guardiani e assoggettati non sono "pop": non vanno scalati dalla popolazione
@@ -2947,6 +3381,7 @@ function spawnRaidOf(n){
   // se il telescopio ha già calcolato la rotta, atterrano lì
   const site=raidSite&&!raidSite.building?raidSite:spots[Math.floor(Math.random()*spots.length)];
   raidSite=null;
+  witness(site,'danger',0.7);                   // chi vede atterrare la navetta se lo ricorda
   const ship=dropshipMesh();
   planetGroup.add(ship);
   props.push({mesh:ship, tile:site, phase:'down', t:0, payload:n});
@@ -3848,7 +4283,7 @@ function haulSteps(t){
   const st=nearestOf(t,FC.storage);
   if(!st) return 99;
   const d=distField(st)[t.id];
-  return d<0?99:d;
+  return d<0?99:Math.round(d/STEP_COST);
 }
 /* ── governatore a utility ─────────────────────────────────────────
    Stesso motore dei coloni (14-utility.js), applicato alla colonia intera.
@@ -4249,6 +4684,7 @@ function renderMinds(tile){
       (u.kind==='thrall'?' · assoggettato':'')+'<b>'+(cur?cur.label:'—')+'</b></div>'+
       ((tr||sk)?'<div class="traits">'+[tr, sk&&sk.bonus>=0.01?sk.label+' +'+Math.round(sk.bonus*100)+'%':''].filter(Boolean).join(' · ')+'</div>':'')+
       (fr.length?'<div class="traits">amici: '+fr.slice(0,3).join(', ')+(fr.length>3?'…':'')+'</div>':'')+
+      mindLines(u)+
       '<div class="needs">'+
       bar('sazio',n.food)+bar('riposato',n.rest)+bar('umore',n.mood)+'</div><ol>'+
       why.map(w=>{
@@ -4261,6 +4697,22 @@ function renderMinds(tile){
   $('i-minds').innerHTML=html;
 }
 
+/* la mente del colono (15-mind): piano, squadra, rivali, paure, ricordi */
+function mindLines(u){
+  const out=[];
+  if(u.plan) out.push('piano: '+planText(u)+' <span>('+u.plan.why+')</span>');
+  if(squad.captain===u) out.push('⚔ capo squadra');
+  if(u.carrying) out.push('🚑 porta '+(u.carrying.name||'un ferito')+' in ospedale');
+  if(u.carriedBy) out.push('🚑 in spalla a '+(u.carriedBy.name||'un compagno'));
+  const rv=rivalsOf(u).map(v=>v.name).filter(Boolean);
+  if(rv.length) out.push('rivali: '+rv.slice(0,3).join(', '));
+  const fear=(u.mem||[]).filter(m=>m.w>=0.3);
+  if(fear.length) out.push('teme '+(fear.length===1?'un luogo':fear.length+' luoghi')+
+    ' <span>('+[...new Set(fear.map(m=>MEM_KINDS[m.k]))].join(', ')+')</span>');
+  const st=(u.story||[]).slice(-3).reverse();
+  if(st.length) out.push('ricordi: '+st.map(e=>e.x).join(' · '));
+  return out.map(x=>'<div class="traits">'+x+'</div>').join('');
+}
 const canAfford=B=>canPay(B.cost);   // (orbitali e UI generica)
 function tileAllows(tile,key){
   if(!tile||tile.building||tile.site) return false;
@@ -4542,7 +4994,8 @@ function snapshot(){
       load:u.load, dl:!!u.delivered, life:u.lifeT||0,
       nd:u.needs?[u.needs.food,u.needs.rest,u.needs.mood]:null,
       nm:u.name, tr:u.traits, sk:u.skills, org:si(u.origin), rq:u.req||null, fun:u.funT||0, st:u.study||null,
-      uid:u.uid||0, bd:u.bonds||null, sor:u.sorrowT||0})),
+      uid:u.uid||0, bd:u.bonds||null, sor:u.sorrowT||0,
+      me:u.mem||null, fe:u.feud||null, sy:u.story||null, ff:!!u.ff})),
     orbit:orbit.filter(o=>o.built).map(o=>({k:o.kind, lv:o.level||1})), moonCrew:moonCrew.length,
     spaceOffline, minerT, raidSite:raidSite?raidSite.id:-1};
 }
@@ -4617,6 +5070,9 @@ function restore(d){
       if(e.nd) u.needs={food:e.nd[0], rest:e.nd[1], mood:e.nd[2]};
       u.funT=e.fun||0; u.study=e.st||null; u.sorrowT=e.sor||0;
       if(e.uid){ u.uid=e.uid; nextUid=Math.max(nextUid,e.uid+1); } if(e.bd) u.bonds={...e.bd};
+      if(e.me) u.mem=e.me.filter(m=>tiles[m.t]&&MEM_KINDS[m.k]).map(m=>({...m}));
+      if(e.fe) u.feud={...e.fe};
+      if(e.sy) u.story=e.sy.map(s=>({...s})); u.ff=!!e.ff;
       if(e.nm){ u.name=e.nm; u.traits=(e.tr||[]).filter(id=>PERSON_TRAITS[id]); u.skills={...(e.sk||{})}; }
       if(e.org>=0&&settlements[e.org]) u.origin=settlements[e.org];
       if(e.k==='envoy'){ u.lifeT=e.life; u.req=e.rq; u.delivered=e.dl||!e.rq; if(!u.delivered) takeCarry(u,0xffe08a); }
@@ -5023,7 +5479,8 @@ function boardVeterans(pad){
   const xp=u=>Object.values(u.skills||{}).reduce((a,b)=>a+b,0);
   const crew=units.filter(u=>isPerson(u)&&u.stage!=='child'&&u.name)
     .sort((a,b)=>xp(b)-xp(a)).slice(0,seats);
-  veterans=crew.map(u=>({name:u.name, traits:[...(u.traits||[])], skills:{...(u.skills||{})}, age:u.age}));
+  veterans=crew.map(u=>({name:u.name, traits:[...(u.traits||[])], skills:{...(u.skills||{})}, age:u.age,
+    story:(u.story||[]).map(s=>({...s}))}));
   return veterans.length;
 }
 /* dopo generateWorld: i primi coloni diventano i veterani sbarcati */
@@ -5033,6 +5490,7 @@ function landVeterans(){
   veterans.forEach((v,i)=>{
     const u=mine[i]; if(!u) return;
     u.name=v.name; u.traits=v.traits; u.skills=v.skills; u.age=Math.min(v.age,AGES.adult.until-20); applyAge(u);
+    u.story=(v.story||[]).map(s=>({x:s.x, t:0})); addStory(u,'Sbarco su un mondo nuovo');
   });
   const best=veterans.map(v=>{ const k=Object.keys(v.skills).sort((a,b)=>v.skills[b]-v.skills[a])[0];
     return v.name+(k?' ('+SKILLS[k]+')':''); });
@@ -5155,8 +5613,11 @@ let nextUid = 1;
 const uidOf = u => u.uid || (u.uid = nextUid++);
 const bondOf = (u,v) => (u.bonds&&u.bonds[uidOf(v)])||0;
 function addBond(u,v,k){
+  if(feudOf(u,v)>=0.3) return;                // con un rivale non si fa amicizia
   u.bonds=u.bonds||{};
-  const id=uidOf(v); u.bonds[id]=Math.min(1,(u.bonds[id]||0)+k);
+  const id=uidOf(v), was=u.bonds[id]||0;
+  u.bonds[id]=Math.min(1,was+k);
+  if(was<FRIEND_AT&&u.bonds[id]>=FRIEND_AT&&!u.ff&&v.name){ u.ff=true; addStory(u,'Prima amicizia: '+v.name); }
 }
 /* ogni 5 tick: gruppi di coloni sulla stessa casella di lavoro o di sonno */
 function socialTick(){
@@ -5178,6 +5639,7 @@ function socialTick(){
     if(g.length<2||g.length>12) continue;       // in una folla non ci si conosce
     for(const a of g) for(const b of g) if(a!==b) addBond(a,b,BOND_GAIN*traitMul(a,'social'));
   }
+  talkTick(groups);                             // liti, paci e voci (15-mind)
   // si tengono solo i legami più forti
   for(const u of units) if(u.bonds){
     const ids=Object.keys(u.bonds);
@@ -5194,6 +5656,7 @@ function mournFriend(u,died){
   for(const v of units){
     if(v===u||!hasNeeds(v)||bondOf(v,u)<FRIEND_AT) continue;
     v.sorrowT=died?120:60; delete v.bonds[u.uid]; sad++;
+    if(died){ remember(v,u.from,'death',1); if(u.name) addStory(v,'Lutto: '+u.name); }
   }
   if(sad&&died&&u.name) logEvent('🕯 '+sad+(sad===1?' amico piange':' amici piangono')+' '+u.name+'.');
 }

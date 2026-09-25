@@ -44,6 +44,8 @@ function moodFactors(u){
   if(u.bonds&&friendNear(u)) f.push(['un amico vicino', 0.06]);
   if(orbitalOn('habitat')) f.push(['vista sulle stelle', 0.03]);
   if(u.sorrowT>0) f.push(['ha perso un amico', -0.2]);
+  if(rivalNear(u)) f.push(['un rivale vicino', -0.06]);
+  if(painfulPlace(u)) f.push(['ricordi dolorosi', -0.05]);
   if(u.kind==='thrall') f.push(['assoggettato', -0.2]);
   for(const id of u.traits||[]) if(PERSON_TRAITS[id].mood) f.push([PERSON_TRAITS[id].label, PERSON_TRAITS[id].mood]);
   return f;
@@ -127,11 +129,12 @@ function initPerson(u){
     u.traits.push(id);
   }
   u.skills={};
+  addStory(u, worldAge<2?'Sbarco sul pianeta':'Arrivo nella colonia');
 }
 
 /* abilità: si impara lavorando. A SKILL_HALF punti di esperienza la resa
    è +30%, e non supera mai il +60%: i primi tick valgono più degli ultimi */
-const SKILLS={food:'agricoltura', mat:'estrazione', pow:'energia', sci:'ricerca', bar:'fusione', build:'costruzione'};
+const SKILLS={food:'agricoltura', mat:'estrazione', pow:'energia', sci:'ricerca', bar:'fusione', build:'costruzione', war:'combattimento'};
 const SKILL_HALF=200;
 /* il mestiere di un edificio è la sua prima produzione positiva (l'armeria non ne ha) */
 const skillKey = t => {
@@ -144,7 +147,9 @@ const skillXp = (u,k) => (u.skills&&u.skills[k])||0;
 const skillMul = (u,k) => k ? 1+0.6*skillXp(u,k)/(skillXp(u,k)+SKILL_HALF) : 1;
 function practice(u,k,amount){
   if(!k||!u.skills) return;
+  const was=skillMul(u,k);
   u.skills[k]=skillXp(u,k)+amount*traitMul(u,'learn');
+  if(was<1.3&&skillMul(u,k)>=1.3) addStory(u,'Esperienza in '+SKILLS[k]);
 }
 /* a scuola si studia un mestiere produttivo, scelto a caso per ogni bambino */
 const pickStudy = () => { const k=['food','mat','pow','sci']; return k[Math.floor(Math.random()*k.length)]; };
@@ -188,19 +193,29 @@ function colonistContext(u){
     if(d<bd){ bd=d; foe=o; }
   }
   const able = workPower(u)>0;
-  // il cantiere si cerca solo se serve: chi ha un lavoro non ci va
+  // il cantiere si cerca solo se serve: chi ha un lavoro non ci va.
+  // Tra i cantieri vicini si evita quello in un luogo che il colono teme
   let site=null;
   if(able&&!u.job){
     if(holdsBlock(u)) site=u.claim;
-    else site=reachableSites(u.from).filter(t=>freeBlocks(t)>0)
-      .sort((a,b)=>b.center.dot(u.from.center)-a.center.dot(u.from.center))[0]||null;
+    else {
+      const near=reachableSites(u.from).filter(t=>freeBlocks(t)>0)
+        .sort((a,b)=>b.center.dot(u.from.center)-a.center.dot(u.from.center));
+      site=near.find(t=>fearOf(u,t)<0.5)||near[0]||null;
+    }
   }
+  // soccorso: un ferito da portare, e l'ospedale dove portarlo
+  const helper=canFight&&u.kind!=='thrall';
+  const casualty=helper&&(u.carrying||casualties.length)?findCasualty(u):null;
+  const hospital=casualty?nearestOf(u.from,FC.mine,t=>healer(t)&&reachable(u.from,t)):null;
+  const head=planHead(u);
+  const commit=head?{action:head.do, floor:PLAN_FLOOR}:null;
   // i tratti moltiplicano i pesi delle azioni: tw.fight = 1,3 per un coraggioso
   const tw={};
   for(const k in COLONIST_ACTIONS) tw[k]=traitMul(u,'weights',k);
   return {u, n:needsOf(u), tw, hungerMul:traitMul(u,'hunger'), canFight, able, foe, foeDist:foe?bd:Infinity,
     raid:FC.raiders.length>0, site, night:!!nightOn, current:u.act,
-    hpRatio:u.hp/u.hpMax};
+    hpRatio:u.hp/u.hpMax, casualty, hospital, commit, planDo:head?head.do:null, retreat:squad.retreatT>0};
 }
 
 /* ── le azioni ─────────────────────────────────────────────────────
@@ -213,12 +228,19 @@ const COLONIST_ACTIONS = {
   fight:{label:'difendere', weight:W(1.0,'fight'), considerations:[
     consider('sa combattere',  c=>is(c.canFight), CURVES.step(.5)),
     consider('nemico vicino',  c=>1-c.foeDist/MILITIA_RANGE, CURVES.power(.5)),
-    consider('in salute',      c=>c.hpRatio, CURVES.logistic(.45,12))
-  ], run:(u,c)=>c.foe.from},
+    consider('in salute',      c=>c.hpRatio, CURVES.logistic(.45,12)),
+    consider('nessuna ritirata', c=>is(!c.retreat), CURVES.step(.5))
+  ], run:(u,c)=>{
+    // la squadra punta tutta sullo stesso nemico, se non è troppo lontano
+    const t=squad.target;
+    if(t&&t.hp>0&&u.mesh.position.distanceTo(t.mesh.position)<MILITIA_RANGE*1.5) return t.from;
+    return c.foe.from;
+  }},
 
   flee:{label:'scappare', weight:W(1.2,'flee'), considerations:[
     consider('nemico vicino',  c=>1-c.foeDist/FLEE_RANGE, CURVES.power(.5)),
-    consider('vulnerabile',    c=>c.canFight ? (1-c.hpRatio) : 1, CURVES.power(2))
+    // in ritirata anche chi sa combattere si considera vulnerabile
+    consider('vulnerabile',    c=>c.canFight&&!c.retreat ? (1-c.hpRatio) : 1, CURVES.power(2))
   ], run:(u,c)=>{
     const refuge = nearestOf(u.from,FC.mine,t=>!!BUILDINGS[t.building].shelter)
                 || nearestOf(u.from,FC.beds,t=>reachable(u.from,t));
@@ -292,6 +314,18 @@ const COLONIST_ACTIONS = {
     consider('al sicuro',      c=>is(!c.raid))
   ], run:u=>nearestOf(u.from,FC.mine,x=>hasFlag(x,'school')&&(x.workers||0)>0&&reachable(u.from,x))||u.from},
 
+  rescue:{label:'soccorrere', weight:W(0.9,'rescue'), considerations:[
+    consider('un compagno ferito', c=>is(c.casualty), CURVES.step(.5)),
+    consider('c\'è un ospedale',  c=>is(c.hospital), CURVES.step(.5)),
+    consider('nessun nemico addosso', c=>c.foe?c.foeDist/MILITIA_RANGE:1, CURVES.logistic(.4,12))
+  ], run:(u,c)=>rescueRun(u,c)},
+
+  courier:{label:'portare un blocco', weight:W(0.6,'courier'), considerations:[
+    consider('nel piano',      c=>is(c.planDo==='courier'), CURVES.step(.5)),
+    consider('cantiere aperto',c=>is(courierOk(c.u)), CURVES.step(.5)),
+    consider('al sicuro',      c=>is(!c.foe))
+  ], run:u=>courierRun(u)},
+
   work:{label:'lavorare', weight:W(0.6,'work'), considerations:[
     consider('ha un lavoro',   c=>is(c.u.job), CURVES.step(.5))
   ], run:(u,c,dt)=>workRun(u,dt)},
@@ -310,7 +344,7 @@ function workRun(u,dt){
   const B=BUILDINGS[u.job.building];
   if(u.mode==='haul'){
     const st=nearestStorage(u.from);
-    if(!st||u.from===st){ dropCarry(u); u.mode='work'; u.workT=0; return u.job; }
+    if(!st||u.from===st){ dropCarry(u); u.mode='work'; u.workT=0; planCourier(u); return u.job; }
     return st;
   }
   if(u.mode!=='work'){ u.mode='work'; u.workT=0; }
@@ -346,14 +380,18 @@ function buildRun(u,site){
 /* lascia l'azione in corso: prenotazioni, carichi e stati intermedi */
 function leaveAction(u,next){
   releaseBlock(u);
+  if(u.act==='rescue') releaseRescue(u);             // il ferito resta dov'è
   if(next!=='sleep'&&next!=='heal') releaseBed(u);   // chi si cura può farlo a letto
   dropCarry(u); u.mode='idle';                       // il carico in mano va perso
   u.mesh.visible=true;
 }
 
 function civilBrain(u,dt){
-  const ctx=colonistContext(u);
-  const pick=chooseAction(COLONIST_ACTIONS,ctx,u.act);
+  advancePlan(u);
+  let ctx=colonistContext(u);
+  let pick=chooseAction(COLONIST_ACTIONS,ctx,u.act);
+  // prima di cominciare qualcosa si guarda avanti: serve un piano?
+  if(planAhead(u,pick.action)){ ctx=colonistContext(u); pick=chooseAction(COLONIST_ACTIONS,ctx,u.act); }
   const next=pick.action||'gather';
   if(next!==u.act){ leaveAction(u,next); u.act=next; }
   u.actScore=pick.score;
@@ -422,6 +460,14 @@ function stepUnits(dt){
   rebuildFrameCache();
   for(const u of units){
     if(u.state==='landing'){ u.mesh.scale.setScalar(.55+.45*Math.min(1,u.land)); continue; }
+    // un ferito in spalla va dove va chi lo porta, e intanto non decide nulla
+    if(u.carriedBy){
+      const c=u.carriedBy;
+      u.from=c.from; u.to=c.to; u.t=c.t; u.mesh.visible=true;
+      u.mesh.position.copy(c.mesh.position).multiplyScalar(1.03);
+      u.mesh.quaternion.copy(c.mesh.quaternion);
+      continue;
+    }
     const fly=false;   // i predoni ora camminano: se volassero le mura non conterebbero
     // l'obiettivo si ricalcola all'arrivo su una nuova casella o ogni ~0,3 s,
     // non a ogni fotogramma: è qui che se ne andavano le prestazioni
@@ -448,7 +494,7 @@ function stepUnits(dt){
     u.t+=dt*u.speed*(onRoad?1.6:1)*(u.act==='build'?skillMul(u,'build'):1);
     if(u.t>=1){
       u.t=0; u.from=u.to;
-      if(goal&&goal!==u.from) u.to=stepToward(u.from,goal,fly,u.faction!=='you');
+      if(goal&&goal!==u.from) u.to=stepToward(u.from,goal,fly,u.faction!=='you',hasNeeds(u)?avoidFor(u):null);
       else {
         const opts=u.from.neighbors.map(i=>tiles[i]).filter(t=>fly||walkable(t));
         u.to=(goal===u.from)?u.from:(opts.length?opts[Math.floor(Math.random()*opts.length)]:u.from);
