@@ -116,6 +116,12 @@ const GOV_PROJECTS={
     consider('ci sono clan', c=>is(settlements.some(s=>!settled(s)))), gNone('embassy'), gAfford('embassy')]},
   watch:   {label:'Torre di segnalazione', weight:0.6, considerations:[
     consider('minaccia', c=>c.threat), gNone('watch'), gAfford('watch')]},
+  control: {label:'Controllo missioni', weight:0.6, considerations:[
+    consider('stazione in orbita', c=>is(hasOrbital('station'))), gNone('control'),
+    consider('colonia ricca', c=>res.mat/200, CURVES.logistic(.8,10)), gAfford('control')]},
+  elevator:{label:'Ascensore spaziale', weight:0.5, considerations:[
+    consider('molta orbita', c=>orbit.filter(o=>o.built).length/4, CURVES.linear(1,0)), gNone('elevator'),
+    consider('colonia ricca', c=>res.mat/300, CURVES.logistic(.8,10)), gAfford('elevator')]},
   market:  {label:'Mercato', weight:0.6, considerations:[
     consider('alleati', c=>is(c.allies)), gNone('market'), gAfford('market')]}
 };
@@ -206,6 +212,7 @@ function autoThink(){
   }
   // diplomazia: doni finché non sono alleati, pace con chi è ostile se non c'è
   // un esercito schierato, e le richieste in sospeso
+  govOrbit(c);
   for(const s of settlements){
     if(canGift(s)&&s.goodwill<GOODWILL.ALLY&&res.mat>110) giftTo(s);
     else if(canMakePeace(s)&&army.target!==s&&res.mat>140) makePeace(s);

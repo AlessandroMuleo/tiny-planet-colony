@@ -28,6 +28,8 @@ const EVENTS={
   meteor:{weight:1, run(){
     // tre impatti: uno vicino alla colonia, due a caso. Danneggiano ciò che
     // colpiscono ma lasciano frammenti di minerale da raccogliere
+    // lo scudo orbitale devia i meteoriti prima che tocchino terra
+    if(orbitalOn('shield')){ logEvent('🛡 Lo scudo orbitale devia una pioggia di meteoriti.'); return; }
     const land=tiles.filter(t=>BIOMES[t.biome].build);
     const home=playerBuildings();
     const hits=[];
@@ -65,6 +67,8 @@ const EVENTS={
     syncJobs();
     logEvent('🧳 Sono arrivati '+n+(n===1?' profugo: ora è un colono.':' profughi: ora sono coloni.'));
   }},
+  // solo se c'è qualcosa in orbita da spegnere
+  flare:{get weight(){ return orbit.some(o=>o.built)?0.7:0; }, run(){ return solarFlare(); }},
   harvest:{weight:1, run(){
     boomT=35;
     logEvent('🌾 Annata eccezionale: +40% cibo dai campi per 35 secondi.');
@@ -223,7 +227,7 @@ function raidSize(){
   return Math.max(1,Math.min(14,Math.round(pts*narratorPhase().size*diff().raid)));
 }
 function raidInterval(){
-  return Math.round((100+(hasOrbital('eye')?ORBITALS.eye.delay:0))*
+  return Math.round((100+ORBITALS.eye.delay*orbMul('eye'))*
     (trait.raid?0.65:trait.calm?1.5:1)*narratorPhase().every);
 }
 /* le perdite recenti: ogni colono perso vale 1, ogni edificio 0,5 */

@@ -182,18 +182,26 @@ function refreshTray(){
         const O=ORBITALS[key];
         const b=document.createElement('button');
         b.className='card launch'; b.dataset.orb=key;
-        b.textContent=ICONS[key]||'●';
-        attachTip(b,O.name,O.cost.mat+' mat · '+O.cost.pow+' en',O.effect);
-        b.addEventListener('click',()=>buildOrbital(key));
+        b.innerHTML=(ICONS[key]||'●')+'<small></small>';
+        attachTip(b,O.name,'',O.effect);
+        b.addEventListener('click',()=>orbitalAction(key));
         tray.appendChild(b);
       }
     }
+    // una carta per struttura: se non c'è la si lancia, se c'è la si migliora
     for(const b of tray.children){
-      const k=b.dataset.orb, O=ORBITALS[k];
-      const need=!O.hub&&!hasOrbital('station');
-      b.disabled = hasOrbital(k)||orbit.some(o=>o.kind===k)||need||
-                   res.mat<O.cost.mat||res.pow<O.cost.pow;
-      b.title = need ? 'Serve prima la Stazione orbitale' : '';
+      const k=b.dataset.orb, o=orbitOf(k), up=upgradeCost(k);
+      const lv=o&&o.built?(o.level||1):0;
+      b.querySelector('small').textContent=lv?'L'+lv:'';
+      b.classList.toggle('built',!!lv);
+      if(!o){
+        const why=orbitBlock(k);
+        b.disabled=!!why;
+        b._tipCost=costText(orbitCost(k))+(why?'  ·  '+why:'');
+      } else if(!o.built){ b.disabled=true; b._tipCost='in salita verso l\'orbita'; }
+      else if(!up){ b.disabled=true; b._tipCost='livello massimo'+(orbitalOn(k)?'':' · spenta'); }
+      else { b.disabled=!canPay(up); b._tipCost='migliora al livello '+(lv+1)+': '+costText(up)+
+        '  ·  effetto ×'+String(ORBIT_LEVELS[lv+1].mul).replace('.',',')+(orbitalOn(k)?'':'  ·  ora spenta'); }
     }
     return;
   }

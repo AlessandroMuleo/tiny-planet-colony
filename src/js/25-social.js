@@ -75,6 +75,10 @@ const ACHIEVEMENTS = {
   ingots:   {label:'Età del ferro',     desc:'100 lingotti in magazzino',    test:()=>(res.bar||0)>=100},
   world2:   {label:'Oltre il cielo',    desc:'raggiungi il secondo mondo',   test:()=>worldIndex>=2},
   world5:   {label:'Nomadi delle stelle',desc:'raggiungi il quinto mondo',   test:()=>worldIndex>=5},
+  orbit5:   {label:'Costellazione',     desc:'cinque strutture in orbita',  test:()=>orbit.filter(o=>o.built).length>=5},
+  shielded: {label:'Sotto lo scudo',    desc:'lo scudo abbatte una navetta', test:()=>achFlags.shielded},
+  asteroid: {label:'Minatori stellari', desc:'una capsula dagli asteroidi',  test:()=>achFlags.asteroid},
+  maxorbit: {label:'Ingegneria orbitale',desc:'una struttura al livello 3',  test:()=>orbit.some(o=>(o.level||1)>=3)},
   storm:    {label:'Tempesta perfetta', desc:'respingi un\'incursione durante un temporale',
              test:()=>achFlags.stormRaid}
 };

@@ -23,7 +23,8 @@ const WEATHER_ODDS = [
 let weather={kind:'sereno', t:120};
 const weatherNow = () => WEATHER[weather.kind]||WEATHER.sereno;
 /* quanto rende un campo col tempo di oggi: il pozzo salva dalla siccità */
-const weatherFood = t => weather.kind==='siccita' ? (wellNear(t)?1:WEATHER.siccita.food) : (weatherNow().food||1);
+/* il satellite meteo dimezza la perdita della siccità */
+const weatherFood = t => weather.kind==='siccita' ? (wellNear(t)?1:orbitalOn('weathersat')?0.85:WEATHER.siccita.food) : (weatherNow().food||1);
 const turretReach = () => weatherNow().turret||1;
 function weatherTick(){
   if(--weather.t>0){ lightningTick(); return; }
@@ -41,7 +42,7 @@ function weatherTick(){
 }
 function lightningTick(){
   const W=weatherNow();
-  if(!W.bolts||Math.random()>W.bolts) return;
+  if(!W.bolts||orbitalOn('weathersat')||Math.random()>W.bolts) return;   // il satellite scarica i fulmini in quota
   const mine=FC.mine.filter(isMine);
   if(!mine.length) return;
   // una torre di segnalazione fa da parafulmine: il colpo va a lei e non fa danni

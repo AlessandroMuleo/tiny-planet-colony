@@ -96,7 +96,7 @@ function resolveCombat(dt){
   }
   // cannone orbitale: un colpo alla volta, dall'alto
   for(const o of orbit){
-    if(!o.built||o.kind!=='cannon'||res.pow<=0) continue;
+    if(!o.built||o.kind!=='cannon'||res.pow<=0||spaceOffline) continue;
     let best=null,bd=1e9;
     for(const e of units){
       if(e.faction!=='raider'||e.state==='landing') continue;
@@ -104,7 +104,7 @@ function resolveCombat(dt){
       if(d<bd){ bd=d; best=e; }
     }
     if(best){
-      best.hp-=ORBITALS.cannon.dps*techWar()*dt;
+      best.hp-=ORBITALS.cannon.dps*ORBIT_LEVELS[o.level||1].mul*techWar()*dt;
       if(beams) beams.add(new THREE.Line(
         new THREE.BufferGeometry().setFromPoints([o.mesh.position.clone(),best.mesh.position.clone()]),
         new THREE.LineBasicMaterial({color:0xffc46b})));
@@ -161,7 +161,10 @@ function spawnRaid(){ spawnRaidOf(raidSize()); }
 function spawnRaidOf(n){
   const spots=tiles.filter(t=>!t.building&&BIOMES[t.biome].build);
   if(!spots.length) return;
-  const site=spots[Math.floor(Math.random()*spots.length)];
+  n=shieldCut(n);
+  // se il telescopio ha già calcolato la rotta, atterrano lì
+  const site=raidSite&&!raidSite.building?raidSite:spots[Math.floor(Math.random()*spots.length)];
+  raidSite=null;
   const ship=dropshipMesh();
   planetGroup.add(ship);
   props.push({mesh:ship, tile:site, phase:'down', t:0, payload:n});

@@ -42,6 +42,7 @@ function moodFactors(u){
   if(u.funT>0) f.push(['svago in taverna', 0.15]);
   if(weatherNow().mood&&!(u.act==='sleep'&&u.bed&&u.from===u.bed)) f.push([weatherNow().label+' fuori', weatherNow().mood]);
   if(u.bonds&&friendNear(u)) f.push(['un amico vicino', 0.06]);
+  if(orbitalOn('habitat')) f.push(['vista sulle stelle', 0.03]);
   if(u.sorrowT>0) f.push(['ha perso un amico', -0.2]);
   if(u.kind==='thrall') f.push(['assoggettato', -0.2]);
   for(const id of u.traits||[]) if(PERSON_TRAITS[id].mood) f.push([PERSON_TRAITS[id].label, PERSON_TRAITS[id].mood]);

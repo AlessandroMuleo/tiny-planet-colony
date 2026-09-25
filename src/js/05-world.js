@@ -26,6 +26,7 @@ function generateWorld(seed){
   season=0; seasonT=0; worldAge=0;
   narrator={phase:'calma',t:0,hurt:0}; choice=null; famineT=0; exiles=0; chainT=0;
   weather={kind:'sereno',t:120}; applyWeather();
+  spaceOffline=0; raidSite=null; minerT=0;
   beams=new THREE.Group(); planetGroup.add(beams);
   ringGroup=new THREE.Group(); planetGroup.add(ringGroup); rings.clear();
   if(orbitGroup) scene.remove(orbitGroup);

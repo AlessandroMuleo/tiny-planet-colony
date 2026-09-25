@@ -30,7 +30,9 @@ const BIOMES = {
    embassy  = doni più efficaci, mediazione a metà prezzo
    watch    = avvista le navette dei predoni prima che atterrino
    memorial = il lutto pesa la metà e passa prima
-   well     = acqua: sulla sabbia, senza un pozzo vicino, si rende meno  */
+   well     = acqua: sulla sabbia, senza un pozzo vicino, si rende meno
+   control  = controllo missioni: servono addetti per le strutture orbitali avanzate
+   elevator = ascensore spaziale: orbita più economica, navette più veloci  */
 const BUILDINGS = {
   hut:    {cat:'base', name:'Capanna',  cost:{mat:10},        blocks:3,  effect:'4 posti letto',        jobs:0, houses:4, hp:25, store:40, guard:true},
   block:  {cat:'base', name:'Alloggi',  cost:{mat:34},        blocks:7,  effect:'12 posti letto',       jobs:0, houses:12, hp:40, store:30, guard:true},
@@ -66,6 +68,8 @@ const BUILDINGS = {
   lab:    {cat:'scienza',name:'Centro ricerca',cost:{mat:55,pow:30}, blocks:9, effect:'0,9 ricerca a testa', jobs:2, per:{sci:0.9}, hp:35},
 
   pad:    {cat:'speciale',name:'Rampa di lancio', cost:{mat:70,pow:40,bar:25}, blocks:14, effect:'parti per un nuovo mondo', jobs:4, launch:true, hp:50},
+  control:{cat:'speciale',name:'Controllo missioni', cost:{mat:80,pow:30,bar:15}, blocks:12, effect:'sblocca le strutture orbitali avanzate · 0,5 ricerca a testa', jobs:2, per:{sci:0.5}, control:true, hp:45},
+  elevator:{cat:'speciale',name:'Ascensore spaziale', cost:{mat:160,pow:60,bar:40}, blocks:18, effect:'strutture orbitali −40%, navette due volte più veloci', jobs:2, elevator:true, fixed:true, hp:80},
 
   keep:   {cat:null, name:'Roccaforte rivale', cost:{}, blocks:0, effect:'cuore di un popolo rivale', jobs:0, hp:70, core:true, rivalOnly:true},
   camp:   {cat:null, name:'Accampamento',      cost:{}, blocks:0, effect:'insediamento rivale',      jobs:0, hp:32, rivalOnly:true},
@@ -85,8 +89,22 @@ const ORBITALS = {
   eye:    {name:'Occhio profondo',   cost:{mat:100,pow:70}, effect:'+45s tra un\'incursione e l\'altra',
            drain:0.4, delay:45},
   moonbase:{name:'Base lunare',      cost:{mat:160,pow:90}, effect:'spedizioni sulla luna: +40 materiali ogni 40s',
-           drain:0.8, every:40, haul:40}
+           drain:0.8, every:40, haul:40},
+  // avanzate: oltre alla stazione serve un Controllo missioni con addetti
+  shield:  {name:'Scudo orbitale',    cost:{mat:150,pow:100,bar:20}, effect:'abbatte il 40% di ogni navetta nemica e devia i meteoriti',
+           drain:1.2, cut:0.4, advanced:true},
+  telescope:{name:'Telescopio orbitale',cost:{mat:110,pow:70,bar:10}, effect:'+0,8 ricerca · mostra dove atterreranno i predoni',
+           drain:0.5, sci:0.8, advanced:true},
+  miner:   {name:'Raccoglitore di asteroidi',cost:{mat:170,pow:110,bar:25}, effect:'una capsula ogni 50s: +12 lingotti, +20 materiali',
+           drain:0.9, every:50, bars:12, mat:20, advanced:true},
+  weathersat:{name:'Satellite meteo', cost:{mat:90,pow:80,bar:10}, effect:'niente fulmini, la siccità pesa la metà',
+           drain:0.6, advanced:true},
+  habitat: {name:'Habitat orbitale',  cost:{mat:200,pow:120,bar:30}, effect:'+16 letti in orbita, con vista sulle stelle (+umore)',
+           drain:1.0, houses:16, advanced:true}
 };
+/* livelli delle strutture orbitali: il 2 e il 3 costano lingotti e
+   moltiplicano l'effetto (capienza, danno, ritardo, carico, letti…) */
+const ORBIT_LEVELS = [null, {mul:1}, {mul:1.5, cost:{mat:60,bar:20}}, {mul:2, cost:{mat:100,bar:45}}];
 const ICONS = {
   hut:'🏠', block:'🏘', farm:'🌾', mine:'⛏', plant:'⚡', depot:'📦', clinic:'✚',
   road:'🛣', workshop:'🔧', green:'🌱', market:'⚖',
@@ -94,7 +112,8 @@ const ICONS = {
   wall:'🧱', armory:'⚔', turret:'🎯', shrine:'🔯', fort:'🏰',
   lab:'🔬', pad:'🚀', foundry:'🔥', granary:'🌽', well:'💧', tavern:'🍺', school:'📚',
   memorial:'🕯', embassy:'🤝', watch:'🔭',
-  station:'🛰', mirror:'🪞', cannon:'💥', eye:'👁', moonbase:'🌙'
+  station:'🛰', mirror:'🪞', cannon:'💥', eye:'👁', moonbase:'🌙',
+  shield:'🛡', telescope:'🔭', miner:'☄', weathersat:'📡', habitat:'🪐', control:'🎛', elevator:'🗼'
 };
 
 const CATALOGS = [

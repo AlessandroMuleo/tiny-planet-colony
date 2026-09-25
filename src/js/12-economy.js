@@ -1,12 +1,14 @@
 function capacity(){
   let c=BASE_STORE;
   for(const t of tiles) if(isMine(t)) c+=storeOf(t);
-  for(const o of orbit) if(o.built) c+=ORBITALS[o.kind].store||0;
+  // la capienza in orbita resta anche con l'orbita spenta: le scorte non spariscono
+  for(const o of orbit) if(o.built) c+=(ORBITALS[o.kind].store||0)*ORBIT_LEVELS[o.level||1].mul;
   return c;
 }
 /* lo specchio solare toglie il morso all'inverno */
-const seasonFood = () => hasOrbital('mirror')
-  ? Math.max(1.0, SEASONS[season].food) : SEASONS[season].food;
+/* dal livello 2 lo specchio scalda anche le altre stagioni */
+const seasonFood = () => { const m=orbMul('mirror');
+  return m ? Math.max(1+0.2*(m-1), SEASONS[season].food) : SEASONS[season].food; };
 /* ── taglia della struttura (1–3): più grande = più posti e più capienza ── */
 const sizeOf   = t => t.size||1;
 const jobsOf   = t => (BUILDINGS[t.building].jobs||0)*sizeOf(t);
@@ -63,7 +65,10 @@ function rates(){
     }
     if(B.drain) pow-=B.drain;
   }
-  for(const o of orbit) if(o.built) pow-=ORBITALS[o.kind].drain||0;
+  if(!spaceOffline) for(const o of orbit) if(o.built) pow-=ORBITALS[o.kind].drain||0;
+  scir+=ORBITALS.telescope.sci*orbMul('telescope');
+  // i letti dell'habitat restano anche al buio: chi ci vive non se ne va
+  for(const o of orbit) if(o.built&&ORBITALS[o.kind].houses) houses+=ORBITALS[o.kind].houses*ORBIT_LEVELS[o.level||1].mul;
   for(const s of settlements) tribute += s.relation==='alleato' ? 0.6 : s.relation==='assoggettato' ? 1.4 : 0;
   if(tiles.some(t=>isMine(t)&&BUILDINGS[t.building].trade&&(t.workers||0)>0)) tribute*=1.6;
   tribute*=1+techSum('caravan');
@@ -282,7 +287,7 @@ function economyTick(){
     raidWarned=true; logEvent('🔭 La torre avvista una navetta: incursione tra 25 secondi. Bambini al riparo!');
   }
   if(!raidActive){ raidIn--; if(raidIn<=0){ raidWarned=false; spawnRaid(); raidIn=raidInterval(); } }
-  raidersTick(); narratorTick(); choiceTick(); chainTick(); socialTick(); achievementTick(); weatherTick();
+  raidersTick(); narratorTick(); choiceTick(); chainTick(); socialTick(); achievementTick(); weatherTick(); spaceTick();
   for(const s of settlements) rivalThink(s);
   diplomacyTick();
   if(auto) autoThink();

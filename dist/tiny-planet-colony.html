@@ -102,6 +102,9 @@
     border-radius:3px;padding:3px 6px;font-size:11px;white-space:nowrap;pointer-events:none;opacity:0;font-variant-numeric:tabular-nums}
   .sc-tip.on{opacity:1}
   .st-scroll{grid-column:1/-1;overflow-x:auto}
+  /* carte orbitali: il livello in piccolo, quelle già in orbita col bordo pieno */
+  .card small{position:absolute;right:3px;bottom:1px;font-size:9px;color:var(--ember)}
+  .card.built{border-color:rgba(80,210,255,.55)}
   .ach{grid-column:1/-1;margin-top:6px}
   .ach h4{margin:0 0 6px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-dim)}
   .ach-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
@@ -541,7 +544,9 @@ const BIOMES = {
    embassy  = doni più efficaci, mediazione a metà prezzo
    watch    = avvista le navette dei predoni prima che atterrino
    memorial = il lutto pesa la metà e passa prima
-   well     = acqua: sulla sabbia, senza un pozzo vicino, si rende meno  */
+   well     = acqua: sulla sabbia, senza un pozzo vicino, si rende meno
+   control  = controllo missioni: servono addetti per le strutture orbitali avanzate
+   elevator = ascensore spaziale: orbita più economica, navette più veloci  */
 const BUILDINGS = {
   hut:    {cat:'base', name:'Capanna',  cost:{mat:10},        blocks:3,  effect:'4 posti letto',        jobs:0, houses:4, hp:25, store:40, guard:true},
   block:  {cat:'base', name:'Alloggi',  cost:{mat:34},        blocks:7,  effect:'12 posti letto',       jobs:0, houses:12, hp:40, store:30, guard:true},
@@ -577,6 +582,8 @@ const BUILDINGS = {
   lab:    {cat:'scienza',name:'Centro ricerca',cost:{mat:55,pow:30}, blocks:9, effect:'0,9 ricerca a testa', jobs:2, per:{sci:0.9}, hp:35},
 
   pad:    {cat:'speciale',name:'Rampa di lancio', cost:{mat:70,pow:40,bar:25}, blocks:14, effect:'parti per un nuovo mondo', jobs:4, launch:true, hp:50},
+  control:{cat:'speciale',name:'Controllo missioni', cost:{mat:80,pow:30,bar:15}, blocks:12, effect:'sblocca le strutture orbitali avanzate · 0,5 ricerca a testa', jobs:2, per:{sci:0.5}, control:true, hp:45},
+  elevator:{cat:'speciale',name:'Ascensore spaziale', cost:{mat:160,pow:60,bar:40}, blocks:18, effect:'strutture orbitali −40%, navette due volte più veloci', jobs:2, elevator:true, fixed:true, hp:80},
 
   keep:   {cat:null, name:'Roccaforte rivale', cost:{}, blocks:0, effect:'cuore di un popolo rivale', jobs:0, hp:70, core:true, rivalOnly:true},
   camp:   {cat:null, name:'Accampamento',      cost:{}, blocks:0, effect:'insediamento rivale',      jobs:0, hp:32, rivalOnly:true},
@@ -596,8 +603,22 @@ const ORBITALS = {
   eye:    {name:'Occhio profondo',   cost:{mat:100,pow:70}, effect:'+45s tra un\'incursione e l\'altra',
            drain:0.4, delay:45},
   moonbase:{name:'Base lunare',      cost:{mat:160,pow:90}, effect:'spedizioni sulla luna: +40 materiali ogni 40s',
-           drain:0.8, every:40, haul:40}
+           drain:0.8, every:40, haul:40},
+  // avanzate: oltre alla stazione serve un Controllo missioni con addetti
+  shield:  {name:'Scudo orbitale',    cost:{mat:150,pow:100,bar:20}, effect:'abbatte il 40% di ogni navetta nemica e devia i meteoriti',
+           drain:1.2, cut:0.4, advanced:true},
+  telescope:{name:'Telescopio orbitale',cost:{mat:110,pow:70,bar:10}, effect:'+0,8 ricerca · mostra dove atterreranno i predoni',
+           drain:0.5, sci:0.8, advanced:true},
+  miner:   {name:'Raccoglitore di asteroidi',cost:{mat:170,pow:110,bar:25}, effect:'una capsula ogni 50s: +12 lingotti, +20 materiali',
+           drain:0.9, every:50, bars:12, mat:20, advanced:true},
+  weathersat:{name:'Satellite meteo', cost:{mat:90,pow:80,bar:10}, effect:'niente fulmini, la siccità pesa la metà',
+           drain:0.6, advanced:true},
+  habitat: {name:'Habitat orbitale',  cost:{mat:200,pow:120,bar:30}, effect:'+16 letti in orbita, con vista sulle stelle (+umore)',
+           drain:1.0, houses:16, advanced:true}
 };
+/* livelli delle strutture orbitali: il 2 e il 3 costano lingotti e
+   moltiplicano l'effetto (capienza, danno, ritardo, carico, letti…) */
+const ORBIT_LEVELS = [null, {mul:1}, {mul:1.5, cost:{mat:60,bar:20}}, {mul:2, cost:{mat:100,bar:45}}];
 const ICONS = {
   hut:'🏠', block:'🏘', farm:'🌾', mine:'⛏', plant:'⚡', depot:'📦', clinic:'✚',
   road:'🛣', workshop:'🔧', green:'🌱', market:'⚖',
@@ -605,7 +626,8 @@ const ICONS = {
   wall:'🧱', armory:'⚔', turret:'🎯', shrine:'🔯', fort:'🏰',
   lab:'🔬', pad:'🚀', foundry:'🔥', granary:'🌽', well:'💧', tavern:'🍺', school:'📚',
   memorial:'🕯', embassy:'🤝', watch:'🔭',
-  station:'🛰', mirror:'🪞', cannon:'💥', eye:'👁', moonbase:'🌙'
+  station:'🛰', mirror:'🪞', cannon:'💥', eye:'👁', moonbase:'🌙',
+  shield:'🛡', telescope:'🔭', miner:'☄', weathersat:'📡', habitat:'🪐', control:'🎛', elevator:'🗼'
 };
 
 const CATALOGS = [
@@ -747,6 +769,7 @@ function generateWorld(seed){
   season=0; seasonT=0; worldAge=0;
   narrator={phase:'calma',t:0,hurt:0}; choice=null; famineT=0; exiles=0; chainT=0;
   weather={kind:'sereno',t:120}; applyWeather();
+  spaceOffline=0; raidSite=null; minerT=0;
   beams=new THREE.Group(); planetGroup.add(beams);
   ringGroup=new THREE.Group(); planetGroup.add(ringGroup); rings.clear();
   if(orbitGroup) scene.remove(orbitGroup);
@@ -1104,6 +1127,20 @@ function buildingMesh(kind){
     const b=new THREE.Mesh(new THREE.CylinderGeometry(.16,.24,.9,6),mat(0x8a7a64)); b.position.y=.45; g.add(b);
     const p=new THREE.Mesh(new THREE.CylinderGeometry(.28,.2,.1,6),mat(0x6b5238)); p.position.y=.94; g.add(p);
     const l=new THREE.Mesh(new THREE.SphereGeometry(.08,6,5),new THREE.MeshBasicMaterial({color:0xffe08a})); l.position.y=1.06; g.add(l);
+  } else if(kind==='control'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.8,.36,.64),mat(0xd7e2ea)); b.position.y=.18; g.add(b);
+    const d=new THREE.Mesh(new THREE.SphereGeometry(.26,10,6,0,Math.PI*2,0,Math.PI/2),mat(0x9aa4b2)); d.position.set(-.18,.36,0); g.add(d);
+    const dish=new THREE.Mesh(new THREE.SphereGeometry(.22,10,5,0,Math.PI*2,0,Math.PI/3),mat(0xffffff));
+    dish.position.set(.24,.62,0); dish.rotation.x=-Math.PI/4; g.add(dish);
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.3),mat(0x8d97a6)); pole.position.set(.24,.48,0); g.add(pole);
+    const w=new THREE.Mesh(new THREE.BoxGeometry(.4,.1,.02),new THREE.MeshBasicMaterial({color:0x50d2ff}));
+    w.position.set(.1,.22,.33); w.userData.light=true; w.visible=false; g.add(w);
+  } else if(kind==='elevator'){
+    // la base a terra e un cavo che sale oltre le nuvole
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(.42,.5,.3,8),mat(0x5b6472)); b.position.y=.15; g.add(b);
+    const t=new THREE.Mesh(new THREE.CylinderGeometry(.12,.2,1.2,6),mat(0x9aa4b2)); t.position.y=.9; g.add(t);
+    const cable=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,6,4),mat(0xd8d2c4)); cable.position.y=4.4; g.add(cable);
+    const car=new THREE.Mesh(new THREE.BoxGeometry(.16,.2,.16),mat(0xffc46b)); car.position.y=2.4; car.userData.lift=true; g.add(car);
   } else if(kind==='camp'){
     const b=new THREE.Mesh(new THREE.ConeGeometry(.36,.5,5),mat(0x8a4a52)); b.position.y=.25; g.add(b);
     const r=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.3),mat(0xd8d2c4)); r.position.y=.62; g.add(r);
@@ -1275,6 +1312,38 @@ function orbitalMesh(kind){
     d.rotation.x=Math.PI/2.2; g.add(d);
     const r=new THREE.Mesh(new THREE.TorusGeometry(.85,.06,5,14),mat(0x9fe3bd));
     r.rotation.y=Math.PI/3; g.add(r);
+  } else if(kind==='shield'){
+    // un anello di generatori con una bolla di campo attorno
+    const core=new THREE.Mesh(new THREE.OctahedronGeometry(.45),mat(0x7fb0c9)); g.add(core);
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(1.2,.08,6,18),mat(0x9aa4b2)); g.add(ring);
+    const bub=new THREE.Mesh(new THREE.SphereGeometry(1.35,14,10),
+      new THREE.MeshBasicMaterial({color:0x7fd4ff,transparent:true,opacity:.14,depthWrite:false}));
+    g.add(bub);
+  } else if(kind==='telescope'){
+    const tube=new THREE.Mesh(new THREE.CylinderGeometry(.32,.4,1.8,10),mat(0xe6ecf5));
+    tube.rotation.x=Math.PI/2; g.add(tube);
+    const lens=new THREE.Mesh(new THREE.CircleGeometry(.3,12),new THREE.MeshBasicMaterial({color:0x3e95d8}));
+    lens.position.z=-.91; lens.rotation.y=Math.PI; g.add(lens);
+    for(const x of [1,-1]){ const p=new THREE.Mesh(new THREE.BoxGeometry(1.1,.05,.6),mat(0x3f6fa8)); p.position.x=x*.9; g.add(p); }
+  } else if(kind==='miner'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.9,.6,.9),mat(0x8a7a64)); g.add(b);
+    const arm=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,1.4,6),mat(0xd9a441));
+    arm.rotation.z=Math.PI/2; arm.position.x=.9; g.add(arm);
+    const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.45,0),mat(0x6f6357)); rock.position.x=1.8; g.add(rock);
+  } else if(kind==='weathersat'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.5,.5,.7),mat(0xc9d2de)); g.add(b);
+    const dish=new THREE.Mesh(new THREE.SphereGeometry(.5,10,6,0,Math.PI*2,0,Math.PI/3),mat(0xffffff));
+    dish.position.z=.5; dish.rotation.x=-Math.PI/2; g.add(dish);
+    for(const x of [1,-1]){ const p=new THREE.Mesh(new THREE.BoxGeometry(.9,.04,.45),mat(0x3f6fa8)); p.position.x=x*.75; g.add(p); }
+  } else if(kind==='habitat'){
+    // anello rotante con i moduli abitativi
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(1.25,.22,8,20),mat(0xd7e2ea)); g.add(ring);
+    const hub=new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,.8,10),mat(0x9aa4b2)); hub.rotation.x=Math.PI/2; g.add(hub);
+    for(let i=0;i<4;i++){ const a=i/4*Math.PI*2;
+      const sp=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,1.2,5),mat(0x8d97a6));
+      sp.position.set(Math.cos(a)*.62,Math.sin(a)*.62,0); sp.rotation.z=a+Math.PI/2; g.add(sp); }
+    const glow=new THREE.Mesh(new THREE.TorusGeometry(1.25,.06,6,20),new THREE.MeshBasicMaterial({color:0xffe0a0}));
+    glow.position.z=.2; g.add(glow);
   }
   return g;
 }
@@ -1329,14 +1398,14 @@ function moonPos(t){
    superficie, atterra, lo lascia lì in tuta, e torna col carico. I coloni
    lunari restano visibili sul satellite e ne aumentano la resa.        */
 const moonCrew=[];
-function moonYield(){ return ORBITALS.moonbase.haul + moonCrew.length*6; }
+function moonYield(){ return Math.round((ORBITALS.moonbase.haul + moonCrew.length*6)*Math.max(1,orbMul('moonbase'))); }
 function stepMoon(dt,clock){
   if(!moon) return;
   moon.position.copy(moonPos(clock));
   moon.rotation.y+=dt*0.15;
 
   const base=orbit.find(o=>o.kind==='moonbase'&&o.built);
-  if(base&&res.pow>0){
+  if(base&&res.pow>0&&!spaceOffline){
     base.fireT=(base.fireT||0)+dt;
     if(base.fireT>=ORBITALS.moonbase.every){
       base.fireT=0;
@@ -1364,7 +1433,7 @@ function stepMoon(dt,clock){
 
   for(let i=moonRuns.length-1;i>=0;i--){
     const r=moonRuns[i];
-    r.t+=dt*(r.phase==='up'?0.5:0.22);
+    r.t+=dt*(r.phase==='up'?0.5:0.22)*(hasElevator()?2:1);   // con l'ascensore la navetta parte già in quota
     const k=Math.min(1,r.t);
     if(r.phase==='up'){
       // accensione: sale dal pianeta prima di puntare la luna
@@ -1429,7 +1498,7 @@ function addOrbital(kind){
   const m=orbitalMesh(kind);
   orbitGroup.add(m);
   // sale dal pianeta invece di apparire già in orbita
-  orbit.push({kind, mesh:m, built:false, rise:0, fireT:0});
+  orbit.push({kind, mesh:m, built:false, rise:0, fireT:0, level:1});
 }
 function stepOrbit(dt,clock){
   if(!orbitGroup) return;
@@ -1668,12 +1737,14 @@ const raiders  = () => units.filter(u=>u.faction==='raider');
 function capacity(){
   let c=BASE_STORE;
   for(const t of tiles) if(isMine(t)) c+=storeOf(t);
-  for(const o of orbit) if(o.built) c+=ORBITALS[o.kind].store||0;
+  // la capienza in orbita resta anche con l'orbita spenta: le scorte non spariscono
+  for(const o of orbit) if(o.built) c+=(ORBITALS[o.kind].store||0)*ORBIT_LEVELS[o.level||1].mul;
   return c;
 }
 /* lo specchio solare toglie il morso all'inverno */
-const seasonFood = () => hasOrbital('mirror')
-  ? Math.max(1.0, SEASONS[season].food) : SEASONS[season].food;
+/* dal livello 2 lo specchio scalda anche le altre stagioni */
+const seasonFood = () => { const m=orbMul('mirror');
+  return m ? Math.max(1+0.2*(m-1), SEASONS[season].food) : SEASONS[season].food; };
 /* ── taglia della struttura (1–3): più grande = più posti e più capienza ── */
 const sizeOf   = t => t.size||1;
 const jobsOf   = t => (BUILDINGS[t.building].jobs||0)*sizeOf(t);
@@ -1730,7 +1801,10 @@ function rates(){
     }
     if(B.drain) pow-=B.drain;
   }
-  for(const o of orbit) if(o.built) pow-=ORBITALS[o.kind].drain||0;
+  if(!spaceOffline) for(const o of orbit) if(o.built) pow-=ORBITALS[o.kind].drain||0;
+  scir+=ORBITALS.telescope.sci*orbMul('telescope');
+  // i letti dell'habitat restano anche al buio: chi ci vive non se ne va
+  for(const o of orbit) if(o.built&&ORBITALS[o.kind].houses) houses+=ORBITALS[o.kind].houses*ORBIT_LEVELS[o.level||1].mul;
   for(const s of settlements) tribute += s.relation==='alleato' ? 0.6 : s.relation==='assoggettato' ? 1.4 : 0;
   if(tiles.some(t=>isMine(t)&&BUILDINGS[t.building].trade&&(t.workers||0)>0)) tribute*=1.6;
   tribute*=1+techSum('caravan');
@@ -1949,7 +2023,7 @@ function economyTick(){
     raidWarned=true; logEvent('🔭 La torre avvista una navetta: incursione tra 25 secondi. Bambini al riparo!');
   }
   if(!raidActive){ raidIn--; if(raidIn<=0){ raidWarned=false; spawnRaid(); raidIn=raidInterval(); } }
-  raidersTick(); narratorTick(); choiceTick(); chainTick(); socialTick(); achievementTick(); weatherTick();
+  raidersTick(); narratorTick(); choiceTick(); chainTick(); socialTick(); achievementTick(); weatherTick(); spaceTick();
   for(const s of settlements) rivalThink(s);
   diplomacyTick();
   if(auto) autoThink();
@@ -2286,6 +2360,7 @@ function moodFactors(u){
   if(u.funT>0) f.push(['svago in taverna', 0.15]);
   if(weatherNow().mood&&!(u.act==='sleep'&&u.bed&&u.from===u.bed)) f.push([weatherNow().label+' fuori', weatherNow().mood]);
   if(u.bonds&&friendNear(u)) f.push(['un amico vicino', 0.06]);
+  if(orbitalOn('habitat')) f.push(['vista sulle stelle', 0.03]);
   if(u.sorrowT>0) f.push(['ha perso un amico', -0.2]);
   if(u.kind==='thrall') f.push(['assoggettato', -0.2]);
   for(const id of u.traits||[]) if(PERSON_TRAITS[id].mood) f.push([PERSON_TRAITS[id].label, PERSON_TRAITS[id].mood]);
@@ -2803,7 +2878,7 @@ function resolveCombat(dt){
   }
   // cannone orbitale: un colpo alla volta, dall'alto
   for(const o of orbit){
-    if(!o.built||o.kind!=='cannon'||res.pow<=0) continue;
+    if(!o.built||o.kind!=='cannon'||res.pow<=0||spaceOffline) continue;
     let best=null,bd=1e9;
     for(const e of units){
       if(e.faction!=='raider'||e.state==='landing') continue;
@@ -2811,7 +2886,7 @@ function resolveCombat(dt){
       if(d<bd){ bd=d; best=e; }
     }
     if(best){
-      best.hp-=ORBITALS.cannon.dps*techWar()*dt;
+      best.hp-=ORBITALS.cannon.dps*ORBIT_LEVELS[o.level||1].mul*techWar()*dt;
       if(beams) beams.add(new THREE.Line(
         new THREE.BufferGeometry().setFromPoints([o.mesh.position.clone(),best.mesh.position.clone()]),
         new THREE.LineBasicMaterial({color:0xffc46b})));
@@ -2868,7 +2943,10 @@ function spawnRaid(){ spawnRaidOf(raidSize()); }
 function spawnRaidOf(n){
   const spots=tiles.filter(t=>!t.building&&BIOMES[t.biome].build);
   if(!spots.length) return;
-  const site=spots[Math.floor(Math.random()*spots.length)];
+  n=shieldCut(n);
+  // se il telescopio ha già calcolato la rotta, atterrano lì
+  const site=raidSite&&!raidSite.building?raidSite:spots[Math.floor(Math.random()*spots.length)];
+  raidSite=null;
   const ship=dropshipMesh();
   planetGroup.add(ship);
   props.push({mesh:ship, tile:site, phase:'down', t:0, payload:n});
@@ -3389,6 +3467,8 @@ const EVENTS={
   meteor:{weight:1, run(){
     // tre impatti: uno vicino alla colonia, due a caso. Danneggiano ciò che
     // colpiscono ma lasciano frammenti di minerale da raccogliere
+    // lo scudo orbitale devia i meteoriti prima che tocchino terra
+    if(orbitalOn('shield')){ logEvent('🛡 Lo scudo orbitale devia una pioggia di meteoriti.'); return; }
     const land=tiles.filter(t=>BIOMES[t.biome].build);
     const home=playerBuildings();
     const hits=[];
@@ -3426,6 +3506,8 @@ const EVENTS={
     syncJobs();
     logEvent('🧳 Sono arrivati '+n+(n===1?' profugo: ora è un colono.':' profughi: ora sono coloni.'));
   }},
+  // solo se c'è qualcosa in orbita da spegnere
+  flare:{get weight(){ return orbit.some(o=>o.built)?0.7:0; }, run(){ return solarFlare(); }},
   harvest:{weight:1, run(){
     boomT=35;
     logEvent('🌾 Annata eccezionale: +40% cibo dai campi per 35 secondi.');
@@ -3584,7 +3666,7 @@ function raidSize(){
   return Math.max(1,Math.min(14,Math.round(pts*narratorPhase().size*diff().raid)));
 }
 function raidInterval(){
-  return Math.round((100+(hasOrbital('eye')?ORBITALS.eye.delay:0))*
+  return Math.round((100+ORBITALS.eye.delay*orbMul('eye'))*
     (trait.raid?0.65:trait.calm?1.5:1)*narratorPhase().every);
 }
 /* le perdite recenti: ogni colono perso vale 1, ogni edificio 0,5 */
@@ -3878,6 +3960,12 @@ const GOV_PROJECTS={
     consider('ci sono clan', c=>is(settlements.some(s=>!settled(s)))), gNone('embassy'), gAfford('embassy')]},
   watch:   {label:'Torre di segnalazione', weight:0.6, considerations:[
     consider('minaccia', c=>c.threat), gNone('watch'), gAfford('watch')]},
+  control: {label:'Controllo missioni', weight:0.6, considerations:[
+    consider('stazione in orbita', c=>is(hasOrbital('station'))), gNone('control'),
+    consider('colonia ricca', c=>res.mat/200, CURVES.logistic(.8,10)), gAfford('control')]},
+  elevator:{label:'Ascensore spaziale', weight:0.5, considerations:[
+    consider('molta orbita', c=>orbit.filter(o=>o.built).length/4, CURVES.linear(1,0)), gNone('elevator'),
+    consider('colonia ricca', c=>res.mat/300, CURVES.logistic(.8,10)), gAfford('elevator')]},
   market:  {label:'Mercato', weight:0.6, considerations:[
     consider('alleati', c=>is(c.allies)), gNone('market'), gAfford('market')]}
 };
@@ -3968,6 +4056,7 @@ function autoThink(){
   }
   // diplomazia: doni finché non sono alleati, pace con chi è ostile se non c'è
   // un esercito schierato, e le richieste in sospeso
+  govOrbit(c);
   for(const s of settlements){
     if(canGift(s)&&s.goodwill<GOODWILL.ALLY&&res.mat>110) giftTo(s);
     else if(canMakePeace(s)&&army.target!==s&&res.mat>140) makePeace(s);
@@ -4205,18 +4294,26 @@ function refreshTray(){
         const O=ORBITALS[key];
         const b=document.createElement('button');
         b.className='card launch'; b.dataset.orb=key;
-        b.textContent=ICONS[key]||'●';
-        attachTip(b,O.name,O.cost.mat+' mat · '+O.cost.pow+' en',O.effect);
-        b.addEventListener('click',()=>buildOrbital(key));
+        b.innerHTML=(ICONS[key]||'●')+'<small></small>';
+        attachTip(b,O.name,'',O.effect);
+        b.addEventListener('click',()=>orbitalAction(key));
         tray.appendChild(b);
       }
     }
+    // una carta per struttura: se non c'è la si lancia, se c'è la si migliora
     for(const b of tray.children){
-      const k=b.dataset.orb, O=ORBITALS[k];
-      const need=!O.hub&&!hasOrbital('station');
-      b.disabled = hasOrbital(k)||orbit.some(o=>o.kind===k)||need||
-                   res.mat<O.cost.mat||res.pow<O.cost.pow;
-      b.title = need ? 'Serve prima la Stazione orbitale' : '';
+      const k=b.dataset.orb, o=orbitOf(k), up=upgradeCost(k);
+      const lv=o&&o.built?(o.level||1):0;
+      b.querySelector('small').textContent=lv?'L'+lv:'';
+      b.classList.toggle('built',!!lv);
+      if(!o){
+        const why=orbitBlock(k);
+        b.disabled=!!why;
+        b._tipCost=costText(orbitCost(k))+(why?'  ·  '+why:'');
+      } else if(!o.built){ b.disabled=true; b._tipCost='in salita verso l\'orbita'; }
+      else if(!up){ b.disabled=true; b._tipCost='livello massimo'+(orbitalOn(k)?'':' · spenta'); }
+      else { b.disabled=!canPay(up); b._tipCost='migliora al livello '+(lv+1)+': '+costText(up)+
+        '  ·  effetto ×'+String(ORBIT_LEVELS[lv+1].mul).replace('.',',')+(orbitalOn(k)?'':'  ·  ora spenta'); }
     }
     return;
   }
@@ -4446,7 +4543,8 @@ function snapshot(){
       nd:u.needs?[u.needs.food,u.needs.rest,u.needs.mood]:null,
       nm:u.name, tr:u.traits, sk:u.skills, org:si(u.origin), rq:u.req||null, fun:u.funT||0, st:u.study||null,
       uid:u.uid||0, bd:u.bonds||null, sor:u.sorrowT||0})),
-    orbit:orbit.map(o=>o.kind), moonCrew:moonCrew.length};
+    orbit:orbit.filter(o=>o.built).map(o=>({k:o.kind, lv:o.level||1})), moonCrew:moonCrew.length,
+    spaceOffline, minerT, raidSite:raidSite?raidSite.id:-1};
 }
 function saveGame(silent){
   if(launching||gameOver) return;           // a metà volo o a colonia perduta non si salva
@@ -4537,7 +4635,13 @@ function restore(d){
     choice=d.choice&&CHOICE_EVENTS[d.choice.id]?d.choice:null; famineT=d.famineT||0; exiles=d.exiles||0; chainT=d.chainT||0;
     hideChoice(); if(choice&&!auto) showChoice(); padCargoMat=d.padCargoMat; padCargoFood=d.padCargoFood;
     army.size=d.army.size; army.target=d.army.target>=0?settlements[d.army.target]||null:null;
-    for(const k of d.orbit){ addOrbital(k); const o=orbit[orbit.length-1]; o.built=true; o.rise=1; }
+    // salvataggi vecchi: solo il nome; nuovi: nome e livello
+    for(const e of d.orbit){
+      const k=typeof e==='string'?e:e.k; if(!ORBITALS[k]) continue;
+      addOrbital(k); const o=orbit[orbit.length-1]; o.built=true; o.rise=1; o.level=e.lv||1;
+      o.mesh.scale.setScalar(1+0.15*(o.level-1));
+    }
+    spaceOffline=d.spaceOffline||0; minerT=d.minerT||0; raidSite=d.raidSite>=0?tiles[d.raidSite]:null;
     for(let i=0;i<d.moonCrew;i++) landOnMoon();
     raidActive=units.some(u=>u.faction==='raider');
     document.getElementById('w-count').textContent=
@@ -4582,17 +4686,7 @@ function construct(key){
   toast('Cantiere '+s+'× aperto: servono '+(B.blocks*s)+' blocchi dal magazzino.');
 }
 /* mandare in orbita: parte subito, ma ci mette qualche secondo a salire */
-function buildOrbital(kind){
-  const O=ORBITALS[kind];
-  if(hasOrbital(kind)||orbit.some(o=>o.kind===kind)) return;
-  if(!O.hub&&!hasOrbital('station')){ toast('Serve prima la Stazione orbitale.'); return; }
-  const k=1-techSum('orbitCost'), cm=Math.round(O.cost.mat*k), cp=Math.round(O.cost.pow*k);
-  if(res.mat<cm||res.pow<cp) return;
-  res.mat-=cm; res.pow-=cp;
-  addOrbital(kind);
-  toast(O.name+': lancio in corso.');
-  refreshHUD();
-}
+/* buildOrbital e i miglioramenti orbitali sono in 25-space.js */
 
 /* demolire: restituisce metà dei materiali spesi */
 function demolish(tile){
@@ -5126,6 +5220,10 @@ const ACHIEVEMENTS = {
   ingots:   {label:'Età del ferro',     desc:'100 lingotti in magazzino',    test:()=>(res.bar||0)>=100},
   world2:   {label:'Oltre il cielo',    desc:'raggiungi il secondo mondo',   test:()=>worldIndex>=2},
   world5:   {label:'Nomadi delle stelle',desc:'raggiungi il quinto mondo',   test:()=>worldIndex>=5},
+  orbit5:   {label:'Costellazione',     desc:'cinque strutture in orbita',  test:()=>orbit.filter(o=>o.built).length>=5},
+  shielded: {label:'Sotto lo scudo',    desc:'lo scudo abbatte una navetta', test:()=>achFlags.shielded},
+  asteroid: {label:'Minatori stellari', desc:'una capsula dagli asteroidi',  test:()=>achFlags.asteroid},
+  maxorbit: {label:'Ingegneria orbitale',desc:'una struttura al livello 3',  test:()=>orbit.some(o=>(o.level||1)>=3)},
   storm:    {label:'Tempesta perfetta', desc:'respingi un\'incursione durante un temporale',
              test:()=>achFlags.stormRaid}
 };
@@ -5149,6 +5247,154 @@ function achievementsHTML(){
       const A=ACHIEVEMENTS[id], on=achieved.has(id);
       return '<div class="ach-i'+(on?' on':'')+'" title="'+A.desc+'"><b>'+(on?'🏆 ':'')+A.label+'</b><span>'+A.desc+'</span></div>';
     }).join('')+'</div></div>';
+}
+/* ═══════════════ spazio ═══════════════
+   Le strutture orbitali si costruiscono, si migliorano fino al livello 3
+   e a volte si spengono (tempesta solare). Quelle avanzate richiedono un
+   Controllo missioni con addetti; l'Ascensore spaziale le rende più
+   economiche e fa viaggiare le navette più in fretta.                  */
+
+const orbitOf = k => orbit.find(o=>o.kind===k);
+/* sotto una tempesta solare l'orbita resta buia: niente effetti, niente consumi */
+let spaceOffline=0;
+/* un orbitale funziona se è costruito, l'orbita non è spenta e (se consuma) c'è energia */
+function orbitalOn(k){
+  const o=orbitOf(k);
+  if(!o||!o.built||spaceOffline>0) return false;
+  return !ORBITALS[k].drain||res.pow>0;
+}
+/* quanto rende: 0 se spento, altrimenti il moltiplicatore del livello */
+const orbMul = k => orbitalOn(k) ? ORBIT_LEVELS[(orbitOf(k).level||1)].mul : 0;
+const hasElevator = () => activeFlag('elevator');
+
+/* il costo di una struttura orbitale: ricerca e ascensore fanno sconto */
+function orbitCost(k){
+  const disc=(1-techSum('orbitCost'))*(hasElevator()?0.6:1), c={};
+  for(const r in ORBITALS[k].cost) c[r]=Math.round(ORBITALS[k].cost[r]*disc);
+  return c;
+}
+/* perché non si può (ancora) costruire: null se si può */
+function orbitBlock(k){
+  const O=ORBITALS[k];
+  if(orbitOf(k)) return 'già in orbita';
+  if(!O.hub&&!hasOrbital('station')) return 'serve prima la Stazione orbitale';
+  if(O.advanced&&!activeFlag('control')) return 'serve un Controllo missioni con addetti';
+  if(!canPay(orbitCost(k))) return 'servono '+costText(orbitCost(k));
+  return null;
+}
+function buildOrbital(k){
+  if(orbitBlock(k)) return;
+  pay(orbitCost(k));
+  addOrbital(k);
+  toast(ORBITALS[k].name+': lancio in corso.');
+  refreshHUD();
+}
+function upgradeCost(k){
+  const o=orbitOf(k); if(!o||!o.built) return null;
+  const next=ORBIT_LEVELS[(o.level||1)+1];
+  return next?next.cost:null;
+}
+function upgradeOrbital(k){
+  const c=upgradeCost(k);
+  if(!c||!canPay(c)) return;
+  pay(c);
+  const o=orbitOf(k); o.level=(o.level||1)+1;
+  o.mesh.scale.setScalar(1+0.15*(o.level-1));
+  logEvent('🛰 '+ORBITALS[k].name+' migliorata al livello '+o.level+'.');
+  refreshHUD();
+}
+/* un clic sulla carta del catalogo: costruisce, oppure migliora */
+function orbitalAction(k){ if(orbitOf(k)) upgradeOrbital(k); else buildOrbital(k); }
+
+/* ── scudo: abbatte parte di ogni navetta prima che atterri ── */
+function shieldCut(n){
+  const m=orbMul('shield');
+  if(!m||n<=1) return n;
+  const cut=Math.min(n-1,Math.round(n*Math.min(0.8,ORBITALS.shield.cut*m)));
+  if(cut>0){
+    achFlags.shielded=true;
+    logEvent('🛡 Lo scudo orbitale colpisce la navetta: '+cut+(cut===1?' predone in meno.':' predoni in meno.'));
+  }
+  return n-cut;
+}
+
+/* ── telescopio: prevede dove atterrerà la prossima navetta ── */
+let raidSite=null;
+function telescopeTick(){
+  if(raidActive||!orbMul('telescope')||raidSite||raidIn>30) return;
+  const spots=tiles.filter(t=>!t.building&&BIOMES[t.biome].build);
+  if(!spots.length) return;
+  raidSite=spots[Math.floor(Math.random()*spots.length)];
+  markLaunch(raidSite);
+  logEvent('🔭 Il telescopio ha calcolato la rotta: la navetta atterrerà tra '+raidIn+' secondi, vicino a '+
+    (raidSite.center.dot((colonyCenter()||raidSite.center))>0.9?'la colonia!':'un punto lontano.'));
+}
+
+/* ── raccoglitore di asteroidi: ogni tanto una capsula cade vicino a un magazzino ── */
+let minerT=0;
+function minerTick(){
+  const m=orbMul('miner');
+  if(!m) return;
+  minerT+=hasElevator()?2:1;
+  if(minerT<ORBITALS.miner.every) return;
+  minerT=0;
+  const st=FC.storage.find(isMine)||FC.mine.find(isMine);
+  if(!st) return;
+  const bars=Math.round(ORBITALS.miner.bars*m), mat=Math.round(ORBITALS.miner.mat*m);
+  capsuleFX(st,()=>{
+    const cap=capacity();
+    res.bar=Math.min(cap,(res.bar||0)+bars); res.mat=Math.min(cap,res.mat+mat);
+    achFlags.asteroid=true;
+    toast('☄ Capsula dagli asteroidi: +'+bars+' lingotti, +'+mat+' materiali.'); refreshHUD();
+  });
+}
+/* una capsula che scende dall'orbita col paracadute */
+function capsuleFX(tile,onLand){
+  const sky=tile.center.clone().multiplyScalar(R+20), ground=surfacePos(tile,0.3);
+  const g=new THREE.Group();
+  const pod=new THREE.Mesh(new THREE.ConeGeometry(.22,.4,8),mat(0xd9a441)); g.add(pod);
+  const chute=new THREE.Mesh(new THREE.SphereGeometry(.4,8,5,0,Math.PI*2,0,Math.PI/2),mat(0xff7a3c));
+  chute.position.y=.7; g.add(chute);
+  g.quaternion.setFromUnitVectors(UP,tile.center);
+  g.position.copy(sky);
+  addFX(g,3,k=>{ const p=1-k; g.position.lerpVectors(sky,ground,Math.min(1,p*1.1)); chute.visible=p>0.4; },onLand);
+}
+
+/* ── tempesta solare: l'orbita si spegne per un po', lo scudo la protegge ── */
+function solarFlare(){
+  if(!orbit.some(o=>o.built)) return false;
+  if(orbitalOn('shield')){ logEvent('☀ Tempesta solare: lo scudo orbitale ha protetto le strutture in orbita.'); return; }
+  spaceOffline=35;
+  logEvent('☀ Tempesta solare: le strutture orbitali sono fuori uso per 35 secondi.');
+}
+function spaceTick(){
+  if(spaceOffline>0&&--spaceOffline===0) logEvent('Le strutture orbitali tornano operative.');
+  telescopeTick(); minerTick();
+}
+
+/* ── il governatore in orbita: una decisione per volta, e solo con scorte abbondanti ── */
+function govOrbit(c){
+  if(!hasOrbital('station')&&res.mat<200&&!orbitOf('station')) return;
+  const bad=weather.kind==='temporale'||weather.kind==='siccita';
+  const want={
+    station:1, cannon:c.threat*0.9, shield:c.threat*1.1, eye:c.threat*0.5,
+    mirror:c.winter?0.7:0.3, telescope:researchLeft()?0.7:0.2, miner:c.wantBars?0.9:0.35,
+    weathersat:bad?0.6:0.25, habitat:c.freeBeds<3?0.75:0.15, moonbase:0.45
+  };
+  let best=null, bs=0;
+  for(const k in want){
+    if(orbitBlock(k)) continue;
+    // si lancia solo se dopo restano scorte: l'orbita è un lusso, non un bisogno
+    const cost=orbitCost(k);
+    if(!canPay(cost,1.6)) continue;
+    if(want[k]>bs){ bs=want[k]; best=k; }
+  }
+  if(best&&bs>=0.3){ buildOrbital(best); return; }
+  // altrimenti migliora quella che serve di più
+  for(const k of Object.keys(want).sort((a,b)=>want[b]-want[a])){
+    const u=upgradeCost(k);
+    if(u&&canPay(u,2)&&want[k]>=0.4){ upgradeOrbital(k); return; }
+  }
 }
 /* ═══════════════ meteo e difficoltà ═══════════════ */
 
@@ -5175,7 +5421,8 @@ const WEATHER_ODDS = [
 let weather={kind:'sereno', t:120};
 const weatherNow = () => WEATHER[weather.kind]||WEATHER.sereno;
 /* quanto rende un campo col tempo di oggi: il pozzo salva dalla siccità */
-const weatherFood = t => weather.kind==='siccita' ? (wellNear(t)?1:WEATHER.siccita.food) : (weatherNow().food||1);
+/* il satellite meteo dimezza la perdita della siccità */
+const weatherFood = t => weather.kind==='siccita' ? (wellNear(t)?1:orbitalOn('weathersat')?0.85:WEATHER.siccita.food) : (weatherNow().food||1);
 const turretReach = () => weatherNow().turret||1;
 function weatherTick(){
   if(--weather.t>0){ lightningTick(); return; }
@@ -5193,7 +5440,7 @@ function weatherTick(){
 }
 function lightningTick(){
   const W=weatherNow();
-  if(!W.bolts||Math.random()>W.bolts) return;
+  if(!W.bolts||orbitalOn('weathersat')||Math.random()>W.bolts) return;   // il satellite scarica i fulmini in quota
   const mine=FC.mine.filter(isMine);
   if(!mine.length) return;
   // una torre di segnalazione fa da parafulmine: il colpo va a lei e non fa danni

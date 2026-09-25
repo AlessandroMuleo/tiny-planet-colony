@@ -216,6 +216,20 @@ function buildingMesh(kind){
     const b=new THREE.Mesh(new THREE.CylinderGeometry(.16,.24,.9,6),mat(0x8a7a64)); b.position.y=.45; g.add(b);
     const p=new THREE.Mesh(new THREE.CylinderGeometry(.28,.2,.1,6),mat(0x6b5238)); p.position.y=.94; g.add(p);
     const l=new THREE.Mesh(new THREE.SphereGeometry(.08,6,5),new THREE.MeshBasicMaterial({color:0xffe08a})); l.position.y=1.06; g.add(l);
+  } else if(kind==='control'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.8,.36,.64),mat(0xd7e2ea)); b.position.y=.18; g.add(b);
+    const d=new THREE.Mesh(new THREE.SphereGeometry(.26,10,6,0,Math.PI*2,0,Math.PI/2),mat(0x9aa4b2)); d.position.set(-.18,.36,0); g.add(d);
+    const dish=new THREE.Mesh(new THREE.SphereGeometry(.22,10,5,0,Math.PI*2,0,Math.PI/3),mat(0xffffff));
+    dish.position.set(.24,.62,0); dish.rotation.x=-Math.PI/4; g.add(dish);
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.3),mat(0x8d97a6)); pole.position.set(.24,.48,0); g.add(pole);
+    const w=new THREE.Mesh(new THREE.BoxGeometry(.4,.1,.02),new THREE.MeshBasicMaterial({color:0x50d2ff}));
+    w.position.set(.1,.22,.33); w.userData.light=true; w.visible=false; g.add(w);
+  } else if(kind==='elevator'){
+    // la base a terra e un cavo che sale oltre le nuvole
+    const b=new THREE.Mesh(new THREE.CylinderGeometry(.42,.5,.3,8),mat(0x5b6472)); b.position.y=.15; g.add(b);
+    const t=new THREE.Mesh(new THREE.CylinderGeometry(.12,.2,1.2,6),mat(0x9aa4b2)); t.position.y=.9; g.add(t);
+    const cable=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,6,4),mat(0xd8d2c4)); cable.position.y=4.4; g.add(cable);
+    const car=new THREE.Mesh(new THREE.BoxGeometry(.16,.2,.16),mat(0xffc46b)); car.position.y=2.4; car.userData.lift=true; g.add(car);
   } else if(kind==='camp'){
     const b=new THREE.Mesh(new THREE.ConeGeometry(.36,.5,5),mat(0x8a4a52)); b.position.y=.25; g.add(b);
     const r=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.3),mat(0xd8d2c4)); r.position.y=.62; g.add(r);

@@ -23,6 +23,38 @@ function orbitalMesh(kind){
     d.rotation.x=Math.PI/2.2; g.add(d);
     const r=new THREE.Mesh(new THREE.TorusGeometry(.85,.06,5,14),mat(0x9fe3bd));
     r.rotation.y=Math.PI/3; g.add(r);
+  } else if(kind==='shield'){
+    // un anello di generatori con una bolla di campo attorno
+    const core=new THREE.Mesh(new THREE.OctahedronGeometry(.45),mat(0x7fb0c9)); g.add(core);
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(1.2,.08,6,18),mat(0x9aa4b2)); g.add(ring);
+    const bub=new THREE.Mesh(new THREE.SphereGeometry(1.35,14,10),
+      new THREE.MeshBasicMaterial({color:0x7fd4ff,transparent:true,opacity:.14,depthWrite:false}));
+    g.add(bub);
+  } else if(kind==='telescope'){
+    const tube=new THREE.Mesh(new THREE.CylinderGeometry(.32,.4,1.8,10),mat(0xe6ecf5));
+    tube.rotation.x=Math.PI/2; g.add(tube);
+    const lens=new THREE.Mesh(new THREE.CircleGeometry(.3,12),new THREE.MeshBasicMaterial({color:0x3e95d8}));
+    lens.position.z=-.91; lens.rotation.y=Math.PI; g.add(lens);
+    for(const x of [1,-1]){ const p=new THREE.Mesh(new THREE.BoxGeometry(1.1,.05,.6),mat(0x3f6fa8)); p.position.x=x*.9; g.add(p); }
+  } else if(kind==='miner'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.9,.6,.9),mat(0x8a7a64)); g.add(b);
+    const arm=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,1.4,6),mat(0xd9a441));
+    arm.rotation.z=Math.PI/2; arm.position.x=.9; g.add(arm);
+    const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.45,0),mat(0x6f6357)); rock.position.x=1.8; g.add(rock);
+  } else if(kind==='weathersat'){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.5,.5,.7),mat(0xc9d2de)); g.add(b);
+    const dish=new THREE.Mesh(new THREE.SphereGeometry(.5,10,6,0,Math.PI*2,0,Math.PI/3),mat(0xffffff));
+    dish.position.z=.5; dish.rotation.x=-Math.PI/2; g.add(dish);
+    for(const x of [1,-1]){ const p=new THREE.Mesh(new THREE.BoxGeometry(.9,.04,.45),mat(0x3f6fa8)); p.position.x=x*.75; g.add(p); }
+  } else if(kind==='habitat'){
+    // anello rotante con i moduli abitativi
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(1.25,.22,8,20),mat(0xd7e2ea)); g.add(ring);
+    const hub=new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,.8,10),mat(0x9aa4b2)); hub.rotation.x=Math.PI/2; g.add(hub);
+    for(let i=0;i<4;i++){ const a=i/4*Math.PI*2;
+      const sp=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,1.2,5),mat(0x8d97a6));
+      sp.position.set(Math.cos(a)*.62,Math.sin(a)*.62,0); sp.rotation.z=a+Math.PI/2; g.add(sp); }
+    const glow=new THREE.Mesh(new THREE.TorusGeometry(1.25,.06,6,20),new THREE.MeshBasicMaterial({color:0xffe0a0}));
+    glow.position.z=.2; g.add(glow);
   }
   return g;
 }
@@ -77,14 +109,14 @@ function moonPos(t){
    superficie, atterra, lo lascia lì in tuta, e torna col carico. I coloni
    lunari restano visibili sul satellite e ne aumentano la resa.        */
 const moonCrew=[];
-function moonYield(){ return ORBITALS.moonbase.haul + moonCrew.length*6; }
+function moonYield(){ return Math.round((ORBITALS.moonbase.haul + moonCrew.length*6)*Math.max(1,orbMul('moonbase'))); }
 function stepMoon(dt,clock){
   if(!moon) return;
   moon.position.copy(moonPos(clock));
   moon.rotation.y+=dt*0.15;
 
   const base=orbit.find(o=>o.kind==='moonbase'&&o.built);
-  if(base&&res.pow>0){
+  if(base&&res.pow>0&&!spaceOffline){
     base.fireT=(base.fireT||0)+dt;
     if(base.fireT>=ORBITALS.moonbase.every){
       base.fireT=0;
@@ -112,7 +144,7 @@ function stepMoon(dt,clock){
 
   for(let i=moonRuns.length-1;i>=0;i--){
     const r=moonRuns[i];
-    r.t+=dt*(r.phase==='up'?0.5:0.22);
+    r.t+=dt*(r.phase==='up'?0.5:0.22)*(hasElevator()?2:1);   // con l'ascensore la navetta parte già in quota
     const k=Math.min(1,r.t);
     if(r.phase==='up'){
       // accensione: sale dal pianeta prima di puntare la luna
@@ -177,7 +209,7 @@ function addOrbital(kind){
   const m=orbitalMesh(kind);
   orbitGroup.add(m);
   // sale dal pianeta invece di apparire già in orbita
-  orbit.push({kind, mesh:m, built:false, rise:0, fireT:0});
+  orbit.push({kind, mesh:m, built:false, rise:0, fireT:0, level:1});
 }
 function stepOrbit(dt,clock){
   if(!orbitGroup) return;

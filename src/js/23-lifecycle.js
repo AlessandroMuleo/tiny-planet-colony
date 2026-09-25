@@ -29,17 +29,7 @@ function construct(key){
   toast('Cantiere '+s+'× aperto: servono '+(B.blocks*s)+' blocchi dal magazzino.');
 }
 /* mandare in orbita: parte subito, ma ci mette qualche secondo a salire */
-function buildOrbital(kind){
-  const O=ORBITALS[kind];
-  if(hasOrbital(kind)||orbit.some(o=>o.kind===kind)) return;
-  if(!O.hub&&!hasOrbital('station')){ toast('Serve prima la Stazione orbitale.'); return; }
-  const k=1-techSum('orbitCost'), cm=Math.round(O.cost.mat*k), cp=Math.round(O.cost.pow*k);
-  if(res.mat<cm||res.pow<cp) return;
-  res.mat-=cm; res.pow-=cp;
-  addOrbital(kind);
-  toast(O.name+': lancio in corso.');
-  refreshHUD();
-}
+/* buildOrbital e i miglioramenti orbitali sono in 25-space.js */
 
 /* demolire: restituisce metà dei materiali spesi */
 function demolish(tile){

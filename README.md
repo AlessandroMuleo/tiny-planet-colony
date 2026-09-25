@@ -51,6 +51,7 @@ trasformarli.
 | 20-governor | governatore automatico |
 | 21-ui … 24-input | interfaccia, salvataggio, ciclo di vita, input |
 | 25-progress | albero della ricerca, veterani, statistiche |
+| 25-social · 25-space · 25-weather | amicizie e traguardi, strutture orbitali, meteo |
 | 26-main | avvio e ciclo principale |
 
 ## Comandi
@@ -70,11 +71,11 @@ bisogni medi.
 ## La simulazione di prova
 
 Gira il codice vero del gioco (three.js r128, lo stesso della CDN) con DOM e
-renderer finti e `Math.random` a seme fisso. Nove scenari, tra cui uno in
+renderer finti e `Math.random` a seme fisso. Dieci scenari, tra cui uno in
 difficoltà difficile: primo mondo con
 e senza governatore, mondi con clan rivali, una partita salvata e ricaricata
-a metà, una partenza per il mondo successivo coi veterani, e un clan
-assoggettato senza guarnigione. Col governatore la colonia
+a metà, una partenza per il mondo successivo coi veterani, un clan
+assoggettato senza guarnigione e una colonia lanciata verso lo spazio. Col governatore la colonia
 deve arrivare viva alla fine, e alcuni scenari devono vedere certi eventi
 (una richiesta di un clan, una rivolta). Gli eventi casuali (scelte,
 ricerche, traguardi, amici piante, matrimoni, carestie, predoni che
@@ -93,7 +94,8 @@ suite: per un seme solo sarebbero fragili. A ogni tick controlla che:
   alloggio più coloni a letto dei posti;
 - benevolenza, malcontento e richieste dei clan siano validi, e le guerre
   tra clan valgano da entrambe le parti;
-- bisogni, salute e posizioni delle unità siano numeri validi.
+- bisogni, salute e posizioni delle unità siano numeri validi;
+- ogni struttura orbitale sia unica, con un livello valido e la stazione.
 
 Dopo il caricamento a metà partita controlla anche che coloni, bisogni e
 scorte siano gli stessi di prima del salvataggio.
@@ -122,7 +124,7 @@ perderne uno lo abbassa per due minuti (−0,2). Due tratti nuovi, socievole
 e solitario, cambiano quanto in fretta nascono i legami. L'ispettore mostra
 gli amici di ogni colono.
 
-Sedici traguardi (popolazione, ricerca, diplomazia, mondi raggiunti…) si
+Venti traguardi (popolazione, ricerca, diplomazia, mondi raggiunti…) si
 sbloccano giocando e restano nel browser da una partita all'altra; sono in
 fondo alla schermata statistiche.
 
@@ -152,6 +154,14 @@ Oltre a quelli di base ci sono fonderia (lingotti), granaio (il cibo
 marcisce), pozzo (acqua sulla sabbia), taverna, scuola, memoriale,
 ambasciata e torre di segnalazione. Cosa cambia ognuno è in
 [docs/edifici.md](docs/edifici.md).
+
+## Spazio
+
+Dieci strutture orbitali, cinque delle quali nuove: scudo, telescopio,
+raccoglitore di asteroidi, satellite meteo e habitat. Si migliorano fino al
+livello 3 e una tempesta solare può spegnerle. A terra, il Controllo missioni
+sblocca quelle avanzate e l'Ascensore spaziale le rende più economiche.
+Dettagli in [docs/spazio.md](docs/spazio.md).
 
 ## Narratore
 

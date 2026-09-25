@@ -28,7 +28,7 @@ const FPS = 5;                        // passi di simulazione per secondo di gio
    seme solo sarebbero fragili (ogni modifica sposta i numeri casuali), ma
    se non compaiono mai in tutta la suite qualcosa si è rotto davvero    */
 const SUITE_EXPECT = ['❓', 'Il governatore sceglie', '🔬', '🏆', '🕯', '💍', '🥀', 'ripartono col bottino', 'ripresa',
-  '⛈', '🌵', '🌫', '⚡'];
+  '⛈', '🌵', '🌫', '⚡', '🛰', '🛡', '☄', '🔭'];
 
 const SCENARIOS = [
   // survive: col governatore la colonia deve arrivare viva alla fine
@@ -50,7 +50,14 @@ const SCENARIOS = [
     setup: `const s=settlements[0]; s.relation='ostile';
       for(let i=units.length-1;i>=0;i--) if(units[i].settlement===s) killUnit(units[i],i);
       for(const t of tiles) if(t.settlement===s&&hasFlag(t,'core')) destroyBuilding(t);
-      subjugate(s);` }
+      subjugate(s);` },
+  // una colonia già avviata verso lo spazio: stazione in orbita, controllo
+  // missioni e depositi. Il governatore deve lanciare e migliorare da solo
+  { name: 'corsa allo spazio', seed: 17, world: 2, auto: true, survive: true, expect: ['lancio in corso', '🛰'],
+    setup: `for(const k of ['depot','depot','depot','plant','plant','control','foundry','mine','farm','hut','hut']){
+        const t=pickSpot(k); if(t) finish(t,k,'you'); }
+      res.food=res.mat=res.pow=capacity(); res.bar=Math.min(capacity(),120);
+      addOrbital('station'); orbit[0].built=true;` }
 ];
 
 /* Il ciclo di gioco di 23-main.js, senza disegno né requestAnimationFrame,
@@ -161,6 +168,15 @@ function __check(){
   for(const id of researched) if(!RESEARCH[id]) bad.push('nodo di ricerca sconosciuto: ' + id);
   if(researching && (!RESEARCH[researching] || researched.has(researching))) bad.push('ricerca in corso non valida: ' + researching);
   if(!WEATHER[weather.kind] || !(weather.t > -1)) bad.push('meteo non valido: ' + weather.kind);
+  const kinds = new Set();
+  for(const o of orbit){
+    if(!ORBITALS[o.kind]) bad.push('orbitale sconosciuto: ' + o.kind);
+    if(kinds.has(o.kind)) bad.push('due ' + o.kind + ' in orbita');
+    kinds.add(o.kind);
+    if(!ORBIT_LEVELS[o.level]) bad.push(o.kind + ': livello ' + o.level);
+    if(o.built && !ORBITALS[o.kind].hub && !hasOrbital('station')) bad.push(o.kind + ' in orbita senza stazione');
+  }
+  if(!(spaceOffline >= 0)) bad.push('spaceOffline = ' + spaceOffline);
   if(!NARRATOR_PHASES[narrator.phase]) bad.push('narratore in una fase sconosciuta: ' + narrator.phase);
   if(choice && !CHOICE_EVENTS[choice.id]) bad.push('scelta sconosciuta: ' + choice.id);
   const RELS = ['ostile','neutrale','alleato','assoggettato','conquistato'];
@@ -203,6 +219,7 @@ function __summary(){
     res: {food: Math.round(res.food), mat: Math.round(res.mat), pow: Math.round(res.pow)}, cap: capacity(),
     tech, buildings: playerBuildings().length, sites: tiles.filter(t => t.site && t.owner === 'you').length,
     raids: raidNo, units: units.length,
+    orbit: orbit.filter(o => o.built).map(o => o.kind + (o.level > 1 ? o.level : '')).join(' '),
     clans: settlements.map(s => s.name + ' ' + s.relation).join(', '),
     // stato esatto, per l'impronta: nessun arrotondamento
     exact: JSON.stringify([res, sci, worldAge, units.map(u => u.kind + ':' + u.hp + ':' + u.from.id + ':' + u.mode),
@@ -261,7 +278,7 @@ function report(r) {
   if (s) console.log(`   tick ${s.tick}${s.gameOver ? ' · COLONIA PERDUTA' : ''} · coloni ${s.pop} ` +
     `(${s.demo.child}b/${s.demo.adult}a/${s.demo.elder}v) · cibo ${s.res.food} mat ${s.res.mat} en ${s.res.pow} / ${s.cap}` +
     ` · edifici ${s.buildings} · cantieri ${s.sites} · ricerca ${s.tech} · incursioni ${s.raids}` +
-    (s.clans ? ` · ${s.clans}` : ''));
+    (s.clans ? ` · ${s.clans}` : '') + (s.orbit ? ` · orbita: ${s.orbit}` : ''));
   if (r.crashed) console.log('   ECCEZIONE: ' + r.crashed.split('\n').slice(0, 4).join('\n     '));
   for (const f of r.failures) console.log('   fail(): ' + f.split('\n')[0]);
   // lo stesso errore ripetuto a ogni tick si stampa una volta sola, col primo tick

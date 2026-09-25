@@ -23,7 +23,8 @@ function snapshot(){
       nd:u.needs?[u.needs.food,u.needs.rest,u.needs.mood]:null,
       nm:u.name, tr:u.traits, sk:u.skills, org:si(u.origin), rq:u.req||null, fun:u.funT||0, st:u.study||null,
       uid:u.uid||0, bd:u.bonds||null, sor:u.sorrowT||0})),
-    orbit:orbit.map(o=>o.kind), moonCrew:moonCrew.length};
+    orbit:orbit.filter(o=>o.built).map(o=>({k:o.kind, lv:o.level||1})), moonCrew:moonCrew.length,
+    spaceOffline, minerT, raidSite:raidSite?raidSite.id:-1};
 }
 function saveGame(silent){
   if(launching||gameOver) return;           // a metà volo o a colonia perduta non si salva
@@ -114,7 +115,13 @@ function restore(d){
     choice=d.choice&&CHOICE_EVENTS[d.choice.id]?d.choice:null; famineT=d.famineT||0; exiles=d.exiles||0; chainT=d.chainT||0;
     hideChoice(); if(choice&&!auto) showChoice(); padCargoMat=d.padCargoMat; padCargoFood=d.padCargoFood;
     army.size=d.army.size; army.target=d.army.target>=0?settlements[d.army.target]||null:null;
-    for(const k of d.orbit){ addOrbital(k); const o=orbit[orbit.length-1]; o.built=true; o.rise=1; }
+    // salvataggi vecchi: solo il nome; nuovi: nome e livello
+    for(const e of d.orbit){
+      const k=typeof e==='string'?e:e.k; if(!ORBITALS[k]) continue;
+      addOrbital(k); const o=orbit[orbit.length-1]; o.built=true; o.rise=1; o.level=e.lv||1;
+      o.mesh.scale.setScalar(1+0.15*(o.level-1));
+    }
+    spaceOffline=d.spaceOffline||0; minerT=d.minerT||0; raidSite=d.raidSite>=0?tiles[d.raidSite]:null;
     for(let i=0;i<d.moonCrew;i++) landOnMoon();
     raidActive=units.some(u=>u.faction==='raider');
     document.getElementById('w-count').textContent=
